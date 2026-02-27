@@ -1,26 +1,24 @@
 import os
 from dotenv import load_dotenv
 import psycopg
+from psycopg.rows import dict_row
 
-# Load environment variables from .env
 load_dotenv()
 
-# Get database connection string
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL not found in .env")
 
 
 def get_connection():
     """
     Returns a new database connection.
-    Used by API endpoints.
+    Uses dict_row so fetch results are dictionaries.
     """
-    return psycopg.connect(DATABASE_URL)
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
 def test_connection():
-    """
-    Simple test query to verify database connectivity.
-    """
     try:
         with psycopg.connect(DATABASE_URL) as conn:
             with conn.cursor() as cur:
