@@ -30,6 +30,18 @@ from security import hash_password, verify_password
 from dotenv import load_dotenv
 load_dotenv()
 
+from fastapi import Body, HTTPException
+from fastapi.responses import Response
+from io import BytesIO
+
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, letter, legal
+
+from reportlab.graphics.barcode import code128
+
 # Path to logo file 
 SCHOOL_LOGO_PATH = "assets/school_logo.png"
 
@@ -57,6 +69,16 @@ from db import test_connection, get_connection
 # Create FastAPI app instance
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # dev only; later set to your GitHub Pages URL
+    allow_credentials=True,
+    allow_methods=["*"],  # includes OPTIONS, POST, GET
+    allow_headers=["*"],  # includes Authorization, Content-Type
+)
 
 def get_current_librarian(token: str = Depends(oauth2_scheme)):
     try:
@@ -1572,29 +1594,50 @@ def student_profile(student_id: int, current=Depends(get_current_librarian)):
         cur.close()
         conn.close()
 
+
 # -----------------------------
-# REPORTS: DASHBOARD (Librarian Only)
+# REPORTS: DASHBOARD (Librarian Only) - Upgraded
 # -----------------------------
 @app.get("/api/reports/dashboard")
-def reports_dashboard(current=Depends(get_current_librarian)):
+def reports_dashboard(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    current=Depends(get_current_librarian),
+):
     """
-    Dashboard analytics for Reports Module.
+    Dashboard analytics for Reports Module (Upgraded).
 
-    Returns:
-      - total_books (bibliographic records)
-      - total_copies (physical copies)
-      - active_loans (currently borrowed)
-      - overdue_loans (currently overdue)
-      - most_borrowed_books (top 5)
-      - most_active_students (top 5)
-      - monthly_borrow_trend (last 12 months)
-      - genre_distribution (top 10)
+    Optional filters:
+      - date_from (YYYY-MM-DD)
+      - date_to (YYYY-MM-DD)
+
+    Adds:
+      - copy_status_distribution
+      - barcode_print_status
+      - fine_analytics (outstanding + collected this month)
+      - overdue_by_grade / overdue_by_section
+      - daily_borrow_trend (last 30 days)
     """
 
     conn = get_connection()
     cur = conn.cursor()
 
     try:
+        # --------- Date filter handling (optional) ----------
+        # Used for TOP lists and trends (not for total books/copies).
+        date_where = "TRUE"
+        date_params: list = []
+
+        if date_from and date_to:
+            date_where = "borrowed_at::date BETWEEN %s::date AND %s::date"
+            date_params = [date_from, date_to]
+        elif date_from:
+            date_where = "borrowed_at::date >= %s::date"
+            date_params = [date_from]
+        elif date_to:
+            date_where = "borrowed_at::date <= %s::date"
+            date_params = [date_to]
+
         # --- Total books (bibliographic records) ---
         cur.execute("SELECT COUNT(*) AS total_books FROM book;")
         total_books = int(cur.fetchone()["total_books"])
@@ -1617,27 +1660,68 @@ def reports_dashboard(current=Depends(get_current_librarian)):
         )
         overdue_loans = int(cur.fetchone()["overdue_loans"])
 
-        # --- Most borrowed books (top 5 by total loans) ---
+        # -----------------------------
+        # NEW: Copy status distribution
+        # -----------------------------
         cur.execute(
             """
+            SELECT
+                COALESCE(NULLIF(TRIM(status), ''), 'unknown') AS status,
+                COUNT(*)::int AS count
+            FROM book_copy
+            GROUP BY COALESCE(NULLIF(TRIM(status), ''), 'unknown')
+            ORDER BY count DESC;
+            """
+        )
+        copy_status_distribution = cur.fetchall()
+
+        # -----------------------------
+        # NEW: Barcode printed status
+        # -----------------------------
+        cur.execute(
+            """
+            SELECT
+                CASE WHEN is_printed THEN 'printed' ELSE 'unprinted' END AS printed_status,
+                COUNT(*)::int AS count
+            FROM book_copy
+            GROUP BY CASE WHEN is_printed THEN 'printed' ELSE 'unprinted' END
+            ORDER BY count DESC;
+            """
+        )
+        barcode_print_status = cur.fetchall()
+
+        # -----------------------------
+        # Most borrowed books (Top 5) - filtered by date range
+        # + include cover + availability
+        # -----------------------------
+        cur.execute(
+            f"""
             SELECT
                 b.book_id,
                 b.title,
                 b.author,
-                COUNT(*) AS borrow_count
+                b.cover_url,
+                COUNT(*)::int AS borrow_count,
+                COUNT(bc_all.copy_id)::int AS total_copies,
+                COUNT(CASE WHEN bc_all.status='available' THEN 1 END)::int AS available_copies
             FROM loan l
             JOIN book_copy bc ON bc.copy_id = l.copy_id
             JOIN book b ON b.book_id = bc.book_id
+            LEFT JOIN book_copy bc_all ON bc_all.book_id = b.book_id
+            WHERE {date_where}
             GROUP BY b.book_id
             ORDER BY borrow_count DESC
             LIMIT 5;
-            """
+            """,
+            tuple(date_params),
         )
         most_borrowed_books = cur.fetchall()
 
-        # --- Most active students (top 5 by total loans) ---
+        # -----------------------------
+        # Most active students (Top 5) - filtered by date range
+        # -----------------------------
         cur.execute(
-            """
+            f"""
             SELECT
                 s.student_id,
                 s.student_code,
@@ -1645,22 +1729,26 @@ def reports_dashboard(current=Depends(get_current_librarian)):
                 s.first_name,
                 s.grade,
                 s.section,
-                COUNT(*) AS borrow_count
+                COUNT(*)::int AS borrow_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
+            WHERE {date_where}
             GROUP BY s.student_id
             ORDER BY borrow_count DESC
             LIMIT 5;
-            """
+            """,
+            tuple(date_params),
         )
         most_active_students = cur.fetchall()
 
-        # --- Monthly borrowing trend (last 12 months) ---
+        # -----------------------------
+        # Monthly borrowing trend (last 12 months) - always last 12 months
+        # -----------------------------
         cur.execute(
             """
             SELECT
                 TO_CHAR(DATE_TRUNC('month', borrowed_at), 'YYYY-MM') AS month,
-                COUNT(*) AS borrow_count
+                COUNT(*)::int AS borrow_count
             FROM loan
             WHERE borrowed_at >= (DATE_TRUNC('month', NOW()) - INTERVAL '11 months')
             GROUP BY DATE_TRUNC('month', borrowed_at)
@@ -1669,12 +1757,30 @@ def reports_dashboard(current=Depends(get_current_librarian)):
         )
         monthly_borrow_trend = cur.fetchall()
 
-        # --- Books by genre distribution (top 10) ---
+        # -----------------------------
+        # NEW: Daily borrowing trend (last 30 days)
+        # -----------------------------
+        cur.execute(
+            """
+            SELECT
+                TO_CHAR(borrowed_at::date, 'YYYY-MM-DD') AS day,
+                COUNT(*)::int AS borrow_count
+            FROM loan
+            WHERE borrowed_at >= (NOW() - INTERVAL '30 days')
+            GROUP BY borrowed_at::date
+            ORDER BY day ASC;
+            """
+        )
+        daily_borrow_trend = cur.fetchall()
+
+        # -----------------------------
+        # Books by genre distribution (top 10)
+        # -----------------------------
         cur.execute(
             """
             SELECT
                 COALESCE(NULLIF(TRIM(genre), ''), 'Unknown') AS genre,
-                COUNT(*) AS book_count
+                COUNT(*)::int AS book_count
             FROM book
             GROUP BY COALESCE(NULLIF(TRIM(genre), ''), 'Unknown')
             ORDER BY book_count DESC
@@ -1683,6 +1789,61 @@ def reports_dashboard(current=Depends(get_current_librarian)):
         )
         genre_distribution = cur.fetchall()
 
+        # -----------------------------
+        # NEW: Overdue breakdown by grade / section
+        # -----------------------------
+        cur.execute(
+            """
+            SELECT
+                COALESCE(s.grade, 'Unknown') AS grade,
+                COUNT(*)::int AS overdue_count
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE l.returned_at IS NULL AND l.due_at < NOW()
+            GROUP BY COALESCE(s.grade, 'Unknown')
+            ORDER BY overdue_count DESC;
+            """
+        )
+        overdue_by_grade = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT
+                COALESCE(s.section, 'Unknown') AS section,
+                COUNT(*)::int AS overdue_count
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE l.returned_at IS NULL AND l.due_at < NOW()
+            GROUP BY COALESCE(s.section, 'Unknown')
+            ORDER BY overdue_count DESC
+            LIMIT 15;
+            """
+        )
+        overdue_by_section = cur.fetchall()
+
+        # -----------------------------
+        # NEW: Fine analytics (outstanding + collected this month)
+        # -----------------------------
+        cur.execute(
+            """
+            SELECT
+                COALESCE(SUM(amount - amount_paid), 0)::numeric(10,2) AS outstanding_total,
+                COUNT(*) FILTER (WHERE status='unpaid')::int AS unpaid_fine_count
+            FROM fine;
+            """
+        )
+        fine_outstanding = cur.fetchone()
+
+        cur.execute(
+            """
+            SELECT
+                COALESCE(SUM(amount), 0)::numeric(10,2) AS collected_this_month
+            FROM fine_payment
+            WHERE DATE_TRUNC('month', paid_at) = DATE_TRUNC('month', NOW());
+            """
+        )
+        fine_collected_month = cur.fetchone()
+
         return {
             "totals": {
                 "total_books": total_books,
@@ -1690,15 +1851,31 @@ def reports_dashboard(current=Depends(get_current_librarian)):
                 "active_loans": active_loans,
                 "overdue_loans": overdue_loans,
             },
+            "inventory": {
+                "copy_status_distribution": copy_status_distribution,
+                "barcode_print_status": barcode_print_status,
+            },
+            "fines": {
+                "outstanding_total": str(fine_outstanding["outstanding_total"]),
+                "unpaid_fine_count": int(fine_outstanding["unpaid_fine_count"]),
+                "collected_this_month": str(fine_collected_month["collected_this_month"]),
+            },
             "most_borrowed_books": most_borrowed_books,
             "most_active_students": most_active_students,
             "monthly_borrow_trend": monthly_borrow_trend,
+            "daily_borrow_trend": daily_borrow_trend,
             "genre_distribution": genre_distribution,
+            "overdue_breakdown": {
+                "by_grade": overdue_by_grade,
+                "by_section": overdue_by_section,
+            },
+            "filters_used": {"date_from": date_from, "date_to": date_to},
         }
 
     finally:
         cur.close()
         conn.close()
+
 
 # -----------------------------
 # REPORTS: GENERATE REPORT (Preview JSON) (Librarian Only)
@@ -3261,5 +3438,558 @@ def list_librarians(current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
-
     
+
+# -----------------------------
+# LIBRARIAN: ADVANCED BOOK SEARCH (Librarian Only) - FIXED
+# -----------------------------
+@app.get("/api/librarian/books/search")
+def librarian_advanced_search(
+    q: str = "",
+    sort: str = "relevance",   # relevance|title_asc|title_desc|newest|most_borrowed
+    page: int = 1,
+    page_size: int = 20,
+    current=Depends(get_current_librarian),
+):
+    """
+    Advanced search for librarians:
+      - Searches title/author/publisher/genre/subject/section/catalog_key
+      - Searches identifiers (ISBN etc.) via book_identifier
+      - Searches barcode via book_copy
+      - Returns availability counts (available / total copies)
+      - Supports sorting + pagination
+
+    Fix note:
+      - Uses EXISTS-based relevance scoring (safe with GROUP BY).
+    """
+
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 100:
+        page_size = 20
+
+    q_clean = (q or "").strip()
+    like = f"%{q_clean}%"
+    offset = (page - 1) * page_size
+
+    # Sorting
+    # We define an ORDER BY block that does not reference ungrouped joined columns.
+    if sort == "title_asc":
+        order_sql = "b.title ASC"
+        order_params = []
+    elif sort == "title_desc":
+        order_sql = "b.title DESC"
+        order_params = []
+    elif sort == "newest":
+        order_sql = "b.created_at DESC"
+        order_params = []
+    elif sort == "most_borrowed":
+        order_sql = "borrow_count DESC NULLS LAST, b.title ASC"
+        order_params = []
+    else:
+        # Default = relevance
+        # Lower score means higher priority.
+        # Uses EXISTS subqueries so it works with GROUP BY.
+        order_sql = """
+        (
+          CASE
+            WHEN b.title ILIKE %s THEN 1
+            WHEN b.author ILIKE %s THEN 2
+            WHEN EXISTS (
+              SELECT 1 FROM book_identifier bi2
+              WHERE bi2.book_id = b.book_id AND bi2.id_value ILIKE %s
+            ) THEN 3
+            WHEN EXISTS (
+              SELECT 1 FROM book_copy bc3
+              WHERE bc3.book_id = b.book_id AND bc3.barcode ILIKE %s
+            ) THEN 4
+            ELSE 99
+          END
+        ) ASC,
+        b.title ASC
+        """
+        order_params = [like, like, like, like]
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Main query:
+        # - aggregates copy counts + availability
+        # - computes borrow_count via CTE
+        # - WHERE uses EXISTS for identifier/barcode matching (no duplicate explosion)
+        cur.execute(
+            f"""
+            WITH borrow AS (
+                SELECT
+                    bc.book_id,
+                    COUNT(*)::int AS borrow_count
+                FROM loan l
+                JOIN book_copy bc ON bc.copy_id = l.copy_id
+                GROUP BY bc.book_id
+            )
+            SELECT
+                b.book_id,
+                b.title,
+                b.author,
+                b.publisher,
+                b.pub_year,
+                b.genre,
+                b.subject,
+                b.section,
+                b.cover_url,
+                b.created_at,
+
+                COALESCE(borrow.borrow_count, 0) AS borrow_count,
+
+                COUNT(bc2.copy_id)::int AS total_copies,
+                COUNT(CASE WHEN bc2.status = 'available' THEN 1 END)::int AS available_copies
+            FROM book b
+            LEFT JOIN book_copy bc2 ON bc2.book_id = b.book_id
+            LEFT JOIN borrow ON borrow.book_id = b.book_id
+            WHERE
+                (%s = '' OR (
+                    b.title ILIKE %s OR
+                    b.author ILIKE %s OR
+                    COALESCE(b.publisher,'') ILIKE %s OR
+                    COALESCE(b.genre,'') ILIKE %s OR
+                    COALESCE(b.subject,'') ILIKE %s OR
+                    COALESCE(b.section,'') ILIKE %s OR
+                    COALESCE(b.catalog_key,'') ILIKE %s OR
+
+                    EXISTS (
+                        SELECT 1 FROM book_identifier bi
+                        WHERE bi.book_id = b.book_id AND bi.id_value ILIKE %s
+                    ) OR
+
+                    EXISTS (
+                        SELECT 1 FROM book_copy bc
+                        WHERE bc.book_id = b.book_id AND bc.barcode ILIKE %s
+                    )
+                ))
+            GROUP BY b.book_id, borrow.borrow_count
+            ORDER BY {order_sql}
+            LIMIT %s OFFSET %s
+            """,
+            tuple(
+                # WHERE params
+                [q_clean, like, like, like, like, like, like, like, like, like]
+                # ORDER params (only for relevance)
+                + order_params
+                # paging
+                + [page_size, offset]
+            ),
+        )
+
+        rows = cur.fetchall()
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "sort": sort,
+            "q": q_clean,
+            "results": rows,
+        }
+
+    finally:
+        cur.close()
+        conn.close()
+
+# -----------------------------
+# PUBLIC OPAC: SEARCH/LIST BOOKS (No Login)
+# -----------------------------
+@app.get("/api/opac/books")
+def opac_search(
+    q: str = "",
+    genre: str | None = None,
+    subject: str | None = None,
+    section: str | None = None,
+    sort: str = "title_asc",   # title_asc|title_desc|newest|most_borrowed
+    page: int = 1,
+    page_size: int = 24,
+):
+    """
+    Public OPAC list/search:
+      - filters: genre/subject/section
+      - sorts: A–Z, Newest, Most Borrowed
+      - includes availability: available/total
+    """
+
+    if page < 1:
+        page = 1
+    if page_size < 1 or page_size > 60:
+        page_size = 24
+
+    q_clean = (q or "").strip()
+    like = f"%{q_clean}%"
+    offset = (page - 1) * page_size
+
+    where = []
+    params = []
+
+    if q_clean:
+        where.append("(b.title ILIKE %s OR b.author ILIKE %s OR COALESCE(b.subject,'') ILIKE %s)")
+        params += [like, like, like]
+
+    if genre and genre.strip():
+        where.append("COALESCE(b.genre,'') ILIKE %s")
+        params.append(f"%{genre.strip()}%")
+
+    if subject and subject.strip():
+        where.append("COALESCE(b.subject,'') ILIKE %s")
+        params.append(f"%{subject.strip()}%")
+
+    if section and section.strip():
+        where.append("COALESCE(b.section,'') ILIKE %s")
+        params.append(f"%{section.strip()}%")
+
+    where_sql = " AND ".join(where) if where else "TRUE"
+
+    order_sql = "b.title ASC"
+    if sort == "title_desc":
+        order_sql = "b.title DESC"
+    elif sort == "newest":
+        order_sql = "b.created_at DESC"
+    elif sort == "most_borrowed":
+        order_sql = "borrow_count DESC NULLS LAST, b.title ASC"
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            f"""
+            WITH borrow AS (
+                SELECT bc.book_id, COUNT(*)::int AS borrow_count
+                FROM loan l
+                JOIN book_copy bc ON bc.copy_id = l.copy_id
+                GROUP BY bc.book_id
+            )
+            SELECT
+                b.book_id,
+                b.title,
+                b.author,
+                b.genre,
+                b.subject,
+                b.section,
+                b.cover_url,
+                COALESCE(borrow.borrow_count, 0) AS borrow_count,
+                COUNT(bc.copy_id)::int AS total_copies,
+                COUNT(CASE WHEN bc.status='available' THEN 1 END)::int AS available_copies
+            FROM book b
+            LEFT JOIN book_copy bc ON bc.book_id=b.book_id
+            LEFT JOIN borrow ON borrow.book_id=b.book_id
+            WHERE {where_sql}
+            GROUP BY b.book_id, borrow.borrow_count
+            ORDER BY {order_sql}
+            LIMIT %s OFFSET %s
+            """,
+            tuple(params + [page_size, offset]),
+        )
+        rows = cur.fetchall()
+
+        return {"page": page, "page_size": page_size, "sort": sort, "results": rows}
+
+    finally:
+        cur.close()
+        conn.close()
+
+# -----------------------------
+# PUBLIC OPAC: BOOK DETAILS (No Login)
+# -----------------------------
+@app.get("/api/opac/books/{book_id}")
+def opac_book_details(book_id: int):
+    """
+    Public OPAC book detail:
+      - full bibliographic details
+      - availability counts
+      - shelf/location section
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT book_id, title, author, publisher, pub_year, genre, subject, section, cover_url, catalog_key
+            FROM book
+            WHERE book_id = %s
+            """,
+            (book_id,),
+        )
+        book = cur.fetchone()
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        cur.execute(
+            """
+            SELECT
+                COUNT(*)::int AS total_copies,
+                COUNT(CASE WHEN status='available' THEN 1 END)::int AS available_copies
+            FROM book_copy
+            WHERE book_id = %s
+            """,
+            (book_id,),
+        )
+        counts = cur.fetchone()
+
+        return {"book": book, "availability": counts}
+
+    finally:
+        cur.close()
+        conn.close()
+# -----------------------------
+# PUBLIC OPAC: FILTER OPTIONS (No Login)
+# -----------------------------
+@app.get("/api/opac/filters")
+def opac_filters():
+    """
+    Returns distinct filter options for genre/subject/section.
+    Useful for dropdowns in the public OPAC.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT DISTINCT COALESCE(NULLIF(TRIM(genre), ''), NULL) AS v
+            FROM book
+            WHERE genre IS NOT NULL AND TRIM(genre) <> ''
+            ORDER BY v ASC
+        """)
+        genres = [r["v"] for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT DISTINCT COALESCE(NULLIF(TRIM(subject), ''), NULL) AS v
+            FROM book
+            WHERE subject IS NOT NULL AND TRIM(subject) <> ''
+            ORDER BY v ASC
+        """)
+        subjects = [r["v"] for r in cur.fetchall()]
+
+        cur.execute("""
+            SELECT DISTINCT COALESCE(NULLIF(TRIM(section), ''), NULL) AS v
+            FROM book
+            WHERE section IS NOT NULL AND TRIM(section) <> ''
+            ORDER BY v ASC
+        """)
+        sections = [r["v"] for r in cur.fetchall()]
+
+        return {"genres": genres, "subjects": subjects, "sections": sections}
+
+    finally:
+        cur.close()
+        conn.close()
+
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, letter, legal
+from reportlab.graphics.barcode import code128
+from fastapi import HTTPException
+
+
+def build_title_barcode_labels_pdf(
+    labels: list[dict],
+    paper: str = "A4",     # A4 | LEGAL | SHORT
+    columns: int = 3,      # 2 or 3
+) -> bytes:
+    """
+    labels: list of dict with keys:
+      - title: str
+      - barcode: str  (Copy ID / barcode value)
+
+    Output per label:
+      [ Barcode graphic ]
+      Title
+      Copy ID
+
+    Layout:
+      - 2 or 3 columns
+      - border outline around each label
+    """
+
+    # --- Paper size mapping ---
+    paper_key = (paper or "A4").strip().upper()
+    if paper_key in ["SHORT", "LETTER", "SHORT_BOND", "SHORTBOND"]:
+        page_size = letter  # short bond paper
+    elif paper_key in ["LEGAL", "LONG", "LONG_BOND", "LONGBOND"]:
+        page_size = legal
+    else:
+        page_size = A4
+
+    # --- Column validation ---
+    if columns not in [2, 3]:
+        raise HTTPException(status_code=400, detail="columns must be 2 or 3")
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=page_size,
+        leftMargin=0.35 * inch,
+        rightMargin=0.35 * inch,
+        topMargin=0.45 * inch,
+        bottomMargin=0.45 * inch,
+        title="Barcode Labels",
+        author="Golden Key OPAC",
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Smaller, cleaner label text
+    title_style = ParagraphStyle(
+        "LabelTitle",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=7,
+        leading=8,
+        alignment=1,  # center
+        spaceAfter=1,
+    )
+    id_style = ParagraphStyle(
+        "LabelID",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=7,
+        leading=8,
+        alignment=1,  # center
+    )
+
+    usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
+    col_w = usable_w / columns
+
+    # Label height tuning (smaller than before)
+    # 3 columns = tighter labels
+    label_h = 1.05 * inch if columns == 3 else 1.20 * inch
+
+    # Barcode sizing (smaller)
+    bar_height = 0.42 * inch if columns == 3 else 0.50 * inch
+    bar_width = 0.010 * inch  # thinner bars
+
+    def make_cell(item: dict):
+        raw_title = (item.get("title") or "").strip()
+        raw_code = (item.get("barcode") or "").strip()
+
+        # Title truncation to avoid overflow
+        title = raw_title
+        if len(title) > 48:
+            title = title[:48].rstrip() + "…"
+
+        # Barcode value is the Copy ID
+        barcode_value = raw_code if raw_code else "N/A"
+
+        bc = code128.Code128(
+            barcode_value,
+            barHeight=bar_height,
+            barWidth=bar_width,
+            humanReadable=False,  # you want text under barcode, not embedded
+        )
+
+        # Cell content: barcode first, then title + copy id under
+        inner = Table(
+            [
+                [bc],
+                [Spacer(1, 2)],
+                [Paragraph(title, title_style)],
+                [Paragraph(f"Copy ID: {barcode_value}", id_style)],
+            ],
+            colWidths=[col_w - 10],
+        )
+
+        inner.setStyle(TableStyle([
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ]))
+
+        return inner
+
+    # Build label grid
+    grid = []
+    row = []
+    for item in labels:
+        row.append(make_cell(item))
+        if len(row) == columns:
+            grid.append(row)
+            row = []
+    if row:
+        while len(row) < columns:
+            row.append("")
+        grid.append(row)
+
+    sheet = Table(
+        grid,
+        colWidths=[col_w] * columns,
+        rowHeights=[label_h] * len(grid),
+    )
+
+    # Outlines between labels (cut guides)
+    sheet.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("GRID", (0, 0), (-1, -1), 0.6, colors.black),  # strong outline border
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    doc.build([sheet])
+
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+# -----------------------------
+# BARCODE LABELS: TITLE + BARCODE PDF (Librarian Only)
+# -----------------------------
+@app.post("/api/barcodes/labels/pdf")
+def barcode_labels_pdf(
+    copy_ids: list[int] = Body(..., embed=True),
+    paper: str = "A4",      # A4 | LEGAL | SHORT
+    columns: int = 3,       # 2 or 3
+    current=Depends(get_current_librarian),
+):
+    """
+    Generates a label PDF containing ONLY:
+      - Book Title
+      - Barcode graphic
+
+    Layout:
+      - 2 or 3 columns
+    Paper:
+      - A4 / LEGAL / SHORT (Short bond = Letter)
+    """
+    if not copy_ids:
+        raise HTTPException(status_code=400, detail="copy_ids is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                bc.copy_id,
+                bc.barcode,
+                b.title
+            FROM book_copy bc
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE bc.copy_id = ANY(%s)
+            ORDER BY b.title ASC, bc.copy_id ASC
+            """,
+            (copy_ids,),
+        )
+        rows = cur.fetchall()
+
+        labels = [{"title": r["title"], "barcode": r["barcode"]} for r in rows]
+        pdf_bytes = build_title_barcode_labels_pdf(labels, paper=paper, columns=columns)
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": 'attachment; filename="barcode_labels.pdf"'},
+        )
+    finally:
+        cur.close()
+        conn.close()

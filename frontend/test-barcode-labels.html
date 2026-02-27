@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Golden Key OPAC - Barcode Label PDF Tester</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 18px; max-width: 780px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin: 12px 0; }
+    label { display: block; font-weight: 600; margin: 10px 0 6px; }
+    input, select, textarea, button {
+      width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px;
+      box-sizing: border-box; font-size: 14px;
+    }
+    textarea { min-height: 90px; }
+    button { cursor: pointer; border: none; background: #00BE67; color: #fff; font-weight: 700; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hint { color: #666; font-size: 12px; margin-top: 6px; }
+    .status { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Barcode Label PDF Tester (Title + Barcode only)</h1>
+
+  <div class="card">
+    <label>Backend Base URL</label>
+    <input id="baseUrl" value="http://127.0.0.1:8000" />
+
+    <label>Bearer Token (Librarian Login Token)</label>
+    <textarea id="token" placeholder="Paste token here..."></textarea>
+    <div class="hint">No login here — paste the token you got from your /login endpoint.</div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Paper Size</label>
+        <select id="paper">
+          <option value="A4">A4</option>
+          <option value="LEGAL">Legal</option>
+          <option value="SHORT">Short Bond (Letter)</option>
+        </select>
+      </div>
+      <div>
+        <label>Columns</label>
+        <select id="columns">
+          <option value="3">3 Columns</option>
+          <option value="2">2 Columns</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Copy IDs (comma-separated)</label>
+    <input id="copyIds" placeholder="e.g. 1000651,1000652,1000653" />
+
+    <div class="hint">
+      Tip: get copy_ids from your copy list endpoint, then paste them here.
+    </div>
+
+    <label style="margin-top:14px;">Actions</label>
+    <button id="btnDownload">Generate & Download PDF</button>
+
+    <p class="status" id="status"></p>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(msg) {
+      $("status").textContent = msg;
+    }
+
+    function parseCopyIds(raw) {
+      return raw
+        .split(",")
+        .map(x => x.trim())
+        .filter(Boolean)
+        .map(x => Number(x))
+        .filter(n => Number.isFinite(n) && n > 0);
+    }
+
+    async function downloadBarcodePDF() {
+      const baseUrl = $("baseUrl").value.trim().replace(/\/+$/, "");
+      const token = $("token").value.trim();
+      const paper = $("paper").value;
+      const columns = Number($("columns").value);
+      const ids = parseCopyIds($("copyIds").value);
+
+      if (!baseUrl) return setStatus("❌ Base URL is required.");
+      if (!token) return setStatus("❌ Bearer token is required.");
+      if (ids.length === 0) return setStatus("❌ Please enter at least one valid copy_id.");
+
+      $("btnDownload").disabled = true;
+      setStatus("⏳ Generating PDF...");
+
+      try {
+        const url = `${baseUrl}/api/barcodes/labels/pdf?paper=${encodeURIComponent(paper)}&columns=${encodeURIComponent(columns)}`;
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ copy_ids: ids })
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status}\n${text}`);
+        }
+
+        const blob = await res.blob();
+        const filename = "barcode_labels.pdf";
+
+        // Trigger download
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setStatus(`✅ Downloaded ${filename}\nPaper: ${paper}\nColumns: ${columns}\nCopy IDs: ${ids.join(", ")}`);
+      } catch (err) {
+        setStatus(`❌ Error:\n${err.message}`);
+      } finally {
+        $("btnDownload").disabled = false;
+      }
+    }
+
+    $("btnDownload").addEventListener("click", downloadBarcodePDF);
+  </script>
+</body>
+</html>
