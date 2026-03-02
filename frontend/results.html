@@ -1,0 +1,779 @@
+<!-- results.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Results</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
+  <!-- Reuse landing page styles -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* ===== Results Page Background ===== */
+    .results-hero{
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .results-hero__bg{
+      position: absolute;
+      inset: 0;
+      background-image: url("assets/bg.png");
+      background-size: cover;
+      background-position: center;
+      filter: blur(2px) saturate(1.05) contrast(1.05);
+      transform: scale(1.04);
+    }
+    .results-hero__overlay{
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.35));
+    }
+
+    .results-wrap{
+      position: relative;
+      z-index: 2;
+      padding: 108px 16px 34px; /* space for fixed header */
+    }
+    .results-shell{
+      width: min(1200px, 92vw);
+      margin: 0 auto;
+    }
+
+    /* ===== Top search row ===== */
+    .results-search{
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .results-search .search__bar{ margin: 0; }
+
+    .results-tools{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .icon-btn{
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      background: var(--brand-yellow);
+      color: #111;
+      transition: transform 160ms ease, opacity 160ms ease;
+    }
+    .icon-btn:hover{ transform: translateY(-1px); opacity: 0.95; }
+    .icon-btn:active{ transform: translateY(1px); }
+
+    /* ===== Progress bar (green track + yellow fill) ===== */
+    .search-progress{
+      height: 4px;
+      width: 100%;
+      background: #005600;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 12px 0 10px;
+    }
+    .search-progress__bar{
+      height: 100%;
+      width: 0%;
+      background: #FFC700;
+      border-radius: 999px;
+      transition: width 200ms ease;
+    }
+
+    /* ===== Filters row (liquid glass) ===== */
+    .filters{
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 10px 0 12px;
+    }
+
+    .filter{
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: rgba(255,255,255,0.92);
+      display: grid;
+      gap: 6px;
+      backdrop-filter: blur(12px) saturate(140%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+    }
+
+    .filter label{
+      font-size: 12px;
+      font-weight: 800;
+      opacity: 0.85;
+      color: rgba(255,255,255,0.88);
+    }
+
+    .filter select, .filter input{
+      width: 100%;
+      border: 0;
+      outline: none;
+      background: rgba(0,0,0,0.18);
+      color: rgba(255,255,255,0.92);
+      font-size: 14px;
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    .filter select option{ color: #111; }
+
+    .filters-actions{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 16px;
+    }
+
+    .btn-secondary{
+      background: rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.92);
+      border: 1px solid rgba(255,255,255,0.16);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-weight: 800;
+      cursor: pointer;
+      backdrop-filter: blur(12px) saturate(140%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      transition: transform 160ms ease, opacity 160ms ease;
+    }
+    .btn-secondary:hover{ transform: translateY(-1px); opacity: 0.95; }
+    .btn-secondary:active{ transform: translateY(1px); }
+
+    /* ===== Results panel (NO internal scrolling; page scroll only) ===== */
+    .results-panel{
+      position: relative;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 18px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .results-meta{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .results-count{
+      font-weight: 800;
+      color: rgba(255,255,255,0.92);
+    }
+
+    .results-hint{
+      font-size: 13px;
+      opacity: 0.85;
+      color: rgba(255,255,255,0.85);
+    }
+
+    /* Grid */
+    .book-grid{
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .book-card{
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(0,0,0,0.25);
+      aspect-ratio: 2 / 3;
+      border: 1px solid rgba(255,255,255,0.10);
+      transform: translateY(0);
+      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+      cursor: pointer;
+    }
+
+    .book-card:hover{
+      transform: translateY(-3px);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.35);
+      border-color: rgba(255,199,0,0.35);
+    }
+
+    .book-card img{
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: saturate(1.02) contrast(1.02);
+    }
+
+    /* Hover overlay */
+    .book-overlay{
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-content: end;
+      padding: 12px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.68));
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .book-card:hover .book-overlay{
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .book-title{
+      color: #fff;
+      font-weight: 900;
+      font-size: 13px;
+      line-height: 1.25;
+      text-shadow: 0 10px 22px rgba(0,0,0,0.45);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .book-sub{
+      margin-top: 4px;
+      color: rgba(255,255,255,0.86);
+      font-size: 12px;
+      opacity: 0.95;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ===== Loading state: make panel content taller + center dots ===== */
+    .panel-body{
+      position: relative;
+    }
+
+    .panel-body.is-loading{
+      min-height: 520px; /* makes the box bigger while loading */
+    }
+
+    .loading-center{
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: opacity 180ms ease, transform 180ms ease;
+    }
+
+    .loading-center.is-on{
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .dots{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .dot{
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #FFC700; /* all yellow */
+      animation: dotBounce 850ms infinite ease-in-out;
+    }
+    .dot:nth-child(1){ animation-delay: 0ms; }
+    .dot:nth-child(2){ animation-delay: 160ms; }
+    .dot:nth-child(3){ animation-delay: 320ms; }
+
+    @keyframes dotBounce{
+      0%, 100%{ transform: translateY(0); opacity: 0.55; }
+      50%{ transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* Empty state */
+    .result-empty{
+      background: rgba(255,255,255,0.96);
+      color: #111;
+      padding: 18px 20px;
+      border-radius: 12px;
+      margin-top: 10px;
+      border: 1px solid rgba(0,0,0,0.05);
+      text-align: left;
+      animation: fadeInResult 200ms ease;
+    }
+    .result-empty-title{
+      font-weight: 900;
+      font-size: 17px;
+      margin-bottom: 6px;
+    }
+    .result-empty-sub{
+      font-size: 14px;
+      opacity: 0.75;
+      line-height: 1.5;
+    }
+    @keyframes fadeInResult{
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px){
+      .book-grid{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
+    @media (max-width: 980px){
+      .filters{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .book-grid{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .panel-body.is-loading{ min-height: 520px; }
+    }
+    @media (max-width: 680px){
+      .book-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .results-search{ grid-template-columns: 1fr; }
+      .results-tools{ justify-content: flex-start; }
+    }
+    @media (max-width: 420px){
+      .book-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Fixed header -->
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span>
+          Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Online Public Access Catalogue</div>
+      </div>
+    </div>
+
+    <!-- ✅ Removed is-active from Home (no yellow indicator) -->
+    <nav class="nav" aria-label="Primary">
+      <a href="index.html#top" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+    </nav>
+  </div>
+
+  <main class="results-hero" id="top">
+    <div class="results-hero__bg" aria-hidden="true"></div>
+    <div class="results-hero__overlay" aria-hidden="true"></div>
+
+    <section class="results-wrap">
+      <div class="results-shell">
+
+        <!-- Search bar + tools -->
+        <div class="results-search">
+          <div class="search__bar">
+            <span class="search__icon" aria-hidden="true">
+              <img src="assets/search_icon.png" alt="Search" />
+            </span>
+            <input id="q" type="text" placeholder="Search title, author, section, ISBN..." autocomplete="off" />
+            <button id="searchBtn" type="button">Search</button>
+          </div>
+
+          <div class="results-tools">
+            <button class="icon-btn" id="toggleFilters" title="Filters" aria-label="Filters">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .8 1.6l-6.2 8.27V19a1 1 0 0 1-1.45.9l-3-1.5A1 1 0 0 1 9 17.5v-3.63L3.2 5.6A1 1 0 0 1 3 5z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="search-progress" id="progressWrap" style="display:none;">
+          <div class="search-progress__bar" id="progressBar"></div>
+        </div>
+
+        <!-- Filters (liquid glass, subject removed) -->
+        <div class="filters" id="filters">
+          <div class="filter">
+            <label for="field">Search field</label>
+            <select id="field">
+              <option value="all" selected>All</option>
+              <option value="title">Title</option>
+              <option value="author">Author</option>
+              <option value="isbn">ISBN</option>
+              <option value="section">Section</option>
+            </select>
+          </div>
+
+          <div class="filter">
+            <label for="genre">Genre</label>
+            <select id="genre">
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div class="filter">
+            <label for="section">Section</label>
+            <select id="section">
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div class="filter">
+            <label for="availability">Availability</label>
+            <select id="availability">
+              <option value="">Any</option>
+              <option value="available">Available only</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </div>
+
+          <div class="filter">
+            <label for="sort">Sort</label>
+            <select id="sort">
+              <option value="az" selected>A–Z (Title)</option>
+              <option value="newest">Newest</option>
+              <option value="most_borrowed">Most Borrowed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filters-actions">
+          <button class="btn-secondary" id="clearBtn" type="button">Clear</button>
+          <button class="btn-secondary" id="applyBtn" type="button">Apply filters</button>
+        </div>
+
+        <!-- Results panel -->
+        <div class="results-panel">
+          <div class="results-meta">
+            <div class="results-count" id="countText">Results</div>
+            <div class="results-hint" id="hintText">Hover a book to see the title.</div>
+          </div>
+
+          <!-- panel body (used for loading height + centered dots) -->
+          <div class="panel-body" id="panelBody">
+            <!-- Centered yellow dots -->
+            <div class="loading-center" id="loadingCenter" aria-hidden="true">
+              <div class="dots" aria-label="Loading results">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+            </div>
+
+            <div class="book-grid" id="grid"></div>
+            <div id="emptySlot"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">About Golden Key OPAC</h3>
+        <p class="site-footer__text">
+          Golden Key OPAC helps students and staff search books, check availability,
+          and locate shelf sections in one simple catalogue.
+        </p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+
+        <div class="site-footer__row" style="margin-top:14px;">
+          <a class="site-footer__social" href="https://www.facebook.com/people/Golden-Key-Integrated-School-of-St-Joseph/100054202103739/" target="_blank" rel="noopener">Facebook</a>
+          <span class="site-footer__dot">•</span>
+          <a class="site-footer__social" href="https://goldenkey.school/" target="_blank" rel="noopener">Official Website</a>
+        </div>
+      </section>
+    </div>
+  </footer>
+
+  <script>
+    // ===== Config =====
+    const BASE_URL = "http://127.0.0.1:8000";
+    const pageSize = 60; // load many; page scroll only
+
+    // ===== Elements =====
+    const header = document.getElementById("siteHeader");
+    const contactLink = document.getElementById("contactLink");
+
+    const qEl = document.getElementById("q");
+    const fieldEl = document.getElementById("field");
+    const genreEl = document.getElementById("genre");
+    const sectionEl = document.getElementById("section");
+    const availabilityEl = document.getElementById("availability");
+    const sortEl = document.getElementById("sort");
+
+    const toggleFiltersBtn = document.getElementById("toggleFilters");
+    const filters = document.getElementById("filters");
+
+    const applyBtn = document.getElementById("applyBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const searchBtn = document.getElementById("searchBtn");
+
+    const grid = document.getElementById("grid");
+    const countText = document.getElementById("countText");
+    const emptySlot = document.getElementById("emptySlot");
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+
+    const panelBody = document.getElementById("panelBody");
+    const loadingCenter = document.getElementById("loadingCenter");
+
+    // ===== State =====
+    let progressTimer = null;
+    let progress = 0;
+
+    // ===== Helpers =====
+    const escapeHtml = (s) => String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    function startProgress(){
+      progressWrap.style.display = "";
+      progressBar.style.width = "0%";
+      progress = 0;
+
+      if (progressTimer) clearInterval(progressTimer);
+      progressTimer = setInterval(() => {
+        if (progress < 85) {
+          progress += 3;
+          progressBar.style.width = progress + "%";
+        }
+      }, 120);
+    }
+
+    function finishProgress(){
+      if (progressTimer) clearInterval(progressTimer);
+      progressTimer = null;
+
+      progressBar.style.width = "100%";
+      setTimeout(() => {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+      }, 220);
+    }
+
+    function setLoading(on){
+      panelBody.classList.toggle("is-loading", !!on);
+      loadingCenter.classList.toggle("is-on", !!on);
+      // hide grid while loading to keep focus on centered animation
+      grid.style.opacity = on ? "0" : "1";
+      grid.style.transition = "opacity 180ms ease";
+      emptySlot.style.opacity = on ? "0" : "1";
+      emptySlot.style.transition = "opacity 180ms ease";
+    }
+
+    function updateHeaderGlass(){
+      if (!header) return;
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+    }
+    window.addEventListener("scroll", updateHeaderGlass, { passive: true });
+    updateHeaderGlass();
+
+    // Contact scroll with offset
+    contactLink?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const footer = document.getElementById("footer");
+      if (!footer) return;
+      const headerH = header?.getBoundingClientRect().height ?? 0;
+      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+
+    // Footer year
+    const yEl = document.getElementById("footerYear");
+    if (yEl) yEl.textContent = String(new Date().getFullYear());
+
+    function buildParams(){
+      const params = new URLSearchParams();
+
+      const q = qEl.value.trim();
+      if (q) params.set("q", q);
+
+      params.set("page_size", String(pageSize));
+
+      const field = fieldEl.value;
+      if (field && field !== "all") params.set("field", field);
+
+      if (genreEl.value) params.set("genre", genreEl.value);
+      if (sectionEl.value) params.set("section", sectionEl.value);
+
+      if (availabilityEl.value) params.set("availability", availabilityEl.value);
+      if (sortEl.value) params.set("sort", sortEl.value);
+
+      return params;
+    }
+
+    function renderEmpty(query){
+      const q = escapeHtml(query || "");
+      emptySlot.innerHTML = `
+        <div class="result-empty">
+          <div class="result-empty-title">No books found${q ? ` for "${q}"` : ""}</div>
+          <div class="result-empty-sub">Try searching by title, author, or ISBN.</div>
+        </div>
+      `;
+    }
+
+    function clearEmpty(){
+      emptySlot.innerHTML = "";
+    }
+
+  function cardHtml(book){
+  const title = escapeHtml(book.title ?? "");
+  const author = escapeHtml(book.author ?? "");
+  const coverUrl = book.cover_url ?? book.coverUrl ?? book.cover ?? "";
+  const bookId = book.book_id ?? book.id ?? "";
+
+  const safeCover = escapeHtml(coverUrl);
+  const img = coverUrl
+    ? `<img src="${safeCover}" alt="${title} cover" loading="lazy"
+         onerror="this.style.display='none';this.parentElement.style.background='rgba(0,0,0,0.25)';">`
+    : "";
+
+  return `
+    <a class="book-card"
+       href="details.html?book_id=${encodeURIComponent(bookId)}&q=${encodeURIComponent(qEl.value.trim())}"
+       aria-label="${title}"
+       style="text-decoration:none;">
+      ${img}
+      <div class="book-overlay">
+        <div class="book-title">${title}</div>
+        <div class="book-sub">${author}</div>
+      </div>
+    </a>
+  `;
+}
+
+    async function load(){
+      clearEmpty();
+      grid.innerHTML = "";
+      countText.textContent = "Results";
+
+      setLoading(true);
+      startProgress();
+
+      try{
+        const params = buildParams();
+        const res = await fetch(`${BASE_URL}/api/opac/books?${params.toString()}`);
+        if (!res.ok) throw new Error("Request failed");
+
+        const data = await res.json();
+
+        finishProgress();
+        setLoading(false);
+
+        const list = data?.results ?? [];
+        const total = data?.total ?? list.length;
+        countText.textContent = `${total} result${total === 1 ? "" : "s"}`;
+
+        if (!list.length){
+          renderEmpty(qEl.value.trim());
+          return;
+        }
+
+        grid.innerHTML = list.map(cardHtml).join("");
+
+      } catch(err){
+        finishProgress();
+        setLoading(false);
+        renderEmpty(qEl.value.trim());
+        countText.textContent = "Results";
+      }
+    }
+
+    // ===== Events =====
+    toggleFiltersBtn.addEventListener("click", () => {
+      const isHidden = filters.style.display === "none";
+      filters.style.display = isHidden ? "" : "none";
+    });
+
+    applyBtn.addEventListener("click", () => {
+      updateUrlFromState();
+      load();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      qEl.value = "";
+      fieldEl.value = "all";
+      genreEl.value = "";
+      sectionEl.value = "";
+      availabilityEl.value = "";
+      sortEl.value = "az";
+      updateUrlFromState();
+      load();
+    });
+
+    searchBtn.addEventListener("click", () => {
+      updateUrlFromState();
+      load();
+    });
+
+    qEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        updateUrlFromState();
+        load();
+      }
+    });
+
+    // ===== URL sync =====
+    function updateUrlFromState(){
+      const params = buildParams();
+      history.replaceState(null, "", `results.html?${params.toString()}`);
+    }
+
+    function loadFromUrl(){
+      const params = new URLSearchParams(location.search);
+      qEl.value = params.get("q") ?? "";
+
+      const field = params.get("field") ?? "all";
+      fieldEl.value = field;
+
+      genreEl.value = params.get("genre") ?? "";
+      sectionEl.value = params.get("section") ?? "";
+
+      availabilityEl.value = params.get("availability") ?? "";
+      sortEl.value = params.get("sort") ?? "az";
+    }
+
+    // init
+    loadFromUrl();
+    load();
+  </script>
+
+
+</body>
+</html>

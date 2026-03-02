@@ -10,7 +10,7 @@ import io
 from fastapi import UploadFile, File
 import csv
 import io
-
+import re
 import os
 from fastapi import Body
 
@@ -3627,8 +3627,26 @@ def opac_search(
     params = []
 
     if q_clean:
-        where.append("(b.title ILIKE %s OR b.author ILIKE %s OR COALESCE(b.subject,'') ILIKE %s)")
-        params += [like, like, like]
+    # Normalize possible ISBN (remove hyphens/spaces/etc; keep digits and X)
+        isbn_norm = re.sub(r"[^0-9Xx]", "", q_clean).upper()
+
+    where.append("""
+      (
+        b.title ILIKE %s
+        OR b.author ILIKE %s
+        OR COALESCE(b.subject,'') ILIKE %s
+        OR EXISTS (
+          SELECT 1
+          FROM book_identifier bi
+          WHERE bi.book_id = b.book_id
+            AND (
+              bi.id_value ILIKE %s
+              OR regexp_replace(upper(bi.id_value), '[^0-9X]', '', 'g') = %s
+            )
+        )
+      )
+    """)
+    params += [like, like, like, like, isbn_norm]
 
     if genre and genre.strip():
         where.append("COALESCE(b.genre,'') ILIKE %s")

@@ -138,26 +138,46 @@ body{
   color: var(--brand-yellow);
 }
 
-/* NAV */
+/* ===== NAV LINKS ===== */
 .nav__link{
   color: rgba(255,255,255,0.92);
   text-decoration: none;
   font-weight: 700;
   margin-left: 24px;
   position: relative;
+
+  transition: color 180ms ease;
 }
 
-.nav__link:hover{ opacity: 1; }
+/* Hover color */
+.nav__link:hover{
+  color: var(--brand-yellow);
+}
 
-.nav__link.is-active::after{
+/* Underline animation base */
+.nav__link::after{
   content:"";
   position:absolute;
   left:0;
   right:0;
   bottom:-8px;
   height:3px;
-  border-radius: 999px;
+  border-radius:999px;
   background: var(--brand-yellow);
+
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease;
+}
+
+/* Show underline on hover */
+.nav__link:hover::after{
+  transform: scaleX(1);
+}
+
+/* Keep underline when active */
+.nav__link.is-active::after{
+  transform: scaleX(1);
 }
 
 /* CONTENT */
@@ -441,4 +461,127 @@ body{
   font-weight: 700;
   color: #bababa;
   margin-bottom: 2px;
+}
+
+/* ===== Search loading bar (thin, yellow -> green) ===== */
+.search-loader{
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.25);
+  margin-top: 10px;
+}
+
+.search-loader__bar{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #FFC700, #005600);
+  animation: searchFill 0.9s ease-in-out infinite;
+}
+
+/* ===== Search Progress Bar (Green Track + Yellow Fill) ===== */
+.search-progress{
+  height: 4px;
+  width: 100%;
+  background: #8dd959;      /* green track */
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.search-progress__bar{
+  height: 100%;
+  width: 0%;
+  background: #f4e32f;      /* yellow progress */
+  border-radius: 999px;
+  transition: width 200ms ease;
+}
+/* ===== Result cards w/ cover ===== */
+.result-card{
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 12px;
+  align-items: center;
+
+  background: rgba(255,255,255,0.96);
+  color: #111;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(0,0,0,0.05);
+
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.result-card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+}
+
+.result-cover{
+  width: 52px;
+  height: 70px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(15,23,42,0.08);
+  border: 1px solid rgba(15,23,42,0.10);
+}
+
+.result-cover img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.result-title{
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.result-meta{
+  font-size: 13px;
+  opacity: 0.78;
+}
+
+/* ===== Empty State (Text Only) ===== */
+.result-empty{
+  background: rgba(255,255,255,0.96);
+  color: #111;
+  padding: 16px 18px;
+  border-radius: 12px;
+  margin-top: 10px;
+  border: 1px solid rgba(0,0,0,0.05);
+
+  animation: fadeIn 220ms ease;
+}
+
+.result-empty-title{
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.result-empty-sub{
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+@keyframes fadeIn{
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+@keyframes fadeIn{
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+
+@keyframes fadeIn{
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
