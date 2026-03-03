@@ -1,0 +1,501 @@
+<!-- login.html (Librarian Login — Liquid Glass, no header/footer) -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Librarian Login</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --yellow:#f4e32f;
+      --green:#8dd959;
+
+      --glass: rgba(255,255,255,0.16);
+      --glass2: rgba(255,255,255,0.10);
+      --stroke: rgba(255,255,255,0.22);
+      --shadow: 0 26px 60px rgba(0,0,0,0.38);
+
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.72);
+    }
+
+    *{ box-sizing: border-box; }
+    html,body{ height: 100%; }
+    body{
+      margin: 0;
+      font-family: "Google Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Background like OPAC */
+    .bg{
+      position: fixed;
+      inset: 0;
+      background-image: url("assets/bg.png");
+      background-size: cover;
+      background-position: center;
+      filter: blur(2px) saturate(1.05) contrast(1.05);
+      transform: scale(1.04);
+      z-index: -2;
+    }
+    .overlay{
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(rgba(0,0,0,0.58), rgba(0,0,0,0.40));
+      z-index: -1;
+    }
+
+    /* Center layout */
+    .wrap{
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 34px 16px;
+    }
+
+    /* Liquid glass card */
+    .card{
+      width: min(520px, 92vw);
+      border-radius: 26px;
+      background: linear-gradient(135deg, var(--glass), var(--glass2));
+      border: 1px solid var(--stroke);
+      backdrop-filter: blur(18px) saturate(150%);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      box-shadow: var(--shadow);
+      padding: 26px 28px 24px;
+      position: relative;
+      overflow: hidden;
+      animation: cardIn 220ms ease both;
+    }
+
+    /* subtle shine */
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-60px;
+      background:
+        radial-gradient(closest-side at 20% 10%, rgba(255,255,255,0.26), transparent 55%),
+        radial-gradient(closest-side at 90% 30%, rgba(255,199,0,0.16), transparent 60%);
+      pointer-events:none;
+    }
+
+    @keyframes cardIn{
+      from{ opacity: 0; transform: translateY(12px) scale(0.98); }
+      to{ opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .logo{
+      display: grid;
+      place-items: center;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+    .logo img{
+      width: 62px;
+      height: 62px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 16px rgba(0,0,0,0.25));
+    }
+
+    .title{
+      text-align: center;
+      font-size: 34px;
+      font-weight: 900;
+      margin: 6px 0 8px;
+      color: rgba(255,255,255,0.95);
+      position: relative;
+      z-index: 1;
+    }
+
+    .divider{
+  height: 1px;
+  width: 100%;
+  background: rgba(255,255,255,0.18);
+  margin: 18px 0 22px;
+}
+    
+
+    /* Progress bar (green track, yellow fill) */
+    .login-progress{
+      height: 6px;
+      width: 100%;
+      border-radius: 999px;
+      background: rgba(141,217,89,0.28); /* green track */
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      margin: 10px 0 18px;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 180ms ease, transform 180ms ease;
+      position: relative;
+      z-index: 1;
+    }
+    .login-progress.is-on{
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .login-progress__bar{
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: var(--yellow); /* yellow fill */
+      transition: width 180ms ease;
+    }
+
+    .form{
+      display: grid;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .field label{
+      display: block;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      color: rgba(255,255,255,0.88);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .input-wrap{
+      position: relative;
+    }
+
+    .input{
+      width: 100%;
+      padding: 14px 46px 14px 14px; /* room for eye icon */
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.20);
+      background: rgba(0,0,0,0.20);
+      color: rgba(255,255,255,0.92);
+      outline: none;
+      font-size: 15px;
+      font-weight: 700;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+    .input::placeholder{ color: rgba(255,255,255,0.55); font-weight: 600; }
+    .input:focus{
+      border-color: rgba(255,199,0,0.55);
+      box-shadow: 0 0 0 4px rgba(255,199,0,0.12);
+      background: rgba(0,0,0,0.24);
+      transform: translateY(-1px);
+    }
+
+    /* Eye button: NOT enclosed in a circle */
+    .toggle{
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        background: transparent;
+        color: rgba(255,255,255,0.9);
+        display: grid;
+        place-items: center;
+        opacity: 0.9;
+    }
+    .toggle:hover{
+      opacity: 1;
+      transform: translateY(-50%) translateY(-1px);
+    }
+    .toggle:active{
+      transform: translateY(-50%) translateY(1px);
+    }
+
+    .btn{
+      margin-top: 10px;
+      width: 160px;
+      justify-self: center;
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      background: var(--yellow);
+      color: #111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.25);
+      transition: transform 170ms ease, opacity 170ms ease, filter 170ms ease;
+    }
+    .btn:hover{ transform: translateY(-2px); opacity: 0.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{
+      cursor: not-allowed;
+      opacity: 0.75;
+      filter: grayscale(0.15);
+      transform: none;
+    }
+
+    .hint{
+      margin-top: 14px;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+      line-height: 1.5;
+      position: relative;
+      z-index: 1;
+    }
+
+    .error{
+      display:none;
+      background: rgba(176,0,0,0.16);
+      border: 1px solid rgba(176,0,0,0.22);
+      color: rgba(255,255,255,0.92);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      position: relative;
+      z-index: 1;
+    }
+    .error.is-on{ display:block; }
+
+    /* Mobile */
+    @media (max-width: 420px){
+      .card{ padding: 22px 18px 20px; border-radius: 22px; }
+      .title{ font-size: 30px; }
+      .btn{ width: 100%; }
+      .input{ padding-right: 44px; }
+    }
+
+    /* Hide native browser password reveal icon (Edge/Chrome) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none !important;
+}
+
+/* Edge Chromium */
+input::-ms-reveal {
+  display: none;
+}
+
+/* Hide native password reveal / clear buttons (Edge/Chromium) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Newer Chromium/Edge internal controls */
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none !important;
+}
+
+/* Extra Edge safeguard */
+input::-ms-reveal {
+  display: none;
+}
+  </style>
+</head>
+
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="overlay" aria-hidden="true"></div>
+
+  <main class="wrap">
+    <section class="card" aria-label="Librarian Login">
+      <div class="logo">
+        <img src="assets/school_logo.png" alt="Golden Key Logo">
+      </div>
+
+      <h1 class="title">Login</h1>
+      <div class="divider" aria-hidden="true"></div>
+
+      <!-- Progress bar (hidden until loading) -->
+      <div class="login-progress" id="loginProgress" aria-hidden="true">
+        <div class="login-progress__bar" id="loginProgressBar"></div>
+      </div>
+
+      <div id="err" class="error" role="alert"></div>
+
+      <form class="form" id="loginForm" autocomplete="on">
+        <div class="field">
+          <label for="username">Username</label>
+          <div class="input-wrap">
+            <input class="input" id="username" name="username" type="text" placeholder="Enter your username" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-wrap">
+            <input class="input" id="password" name="password" type="password" placeholder="Enter your password" required>
+            <button class="toggle" type="button" id="togglePw" aria-label="Show password">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn" type="submit" id="loginBtn">LOGIN</button>
+      </form>
+
+      <div class="hint">
+        For Librarian access only. If you don’t have an account, contact the library administrator.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+
+    const form = document.getElementById("loginForm");
+    const pw = document.getElementById("password");
+    const username = document.getElementById("username");
+    const toggle = document.getElementById("togglePw");
+    const err = document.getElementById("err");
+    const loginBtn = document.getElementById("loginBtn");
+
+    const loginProgress = document.getElementById("loginProgress");
+    const loginProgressBar = document.getElementById("loginProgressBar");
+
+    let progressInterval = null;
+    let currentProgress = 0;
+
+    function showError(message) {
+      err.textContent = message;
+      err.classList.add("is-on");
+    }
+    function clearError() {
+      err.textContent = "";
+      err.classList.remove("is-on");
+    }
+
+    function startProgress(){
+      loginProgress.classList.add("is-on");
+      currentProgress = 0;
+      loginProgressBar.style.width = "0%";
+
+      if (progressInterval) clearInterval(progressInterval);
+
+      progressInterval = setInterval(() => {
+        // Fill up to 85% while waiting
+        if (currentProgress < 85) {
+          currentProgress += 3;
+          loginProgressBar.style.width = currentProgress + "%";
+        }
+      }, 120);
+    }
+
+    function finishProgress(){
+      if (progressInterval) clearInterval(progressInterval);
+      progressInterval = null;
+      loginProgressBar.style.width = "100%";
+    }
+
+    function stopProgress(){
+      if (progressInterval) clearInterval(progressInterval);
+      progressInterval = null;
+      loginProgress.classList.remove("is-on");
+      loginProgressBar.style.width = "0%";
+    }
+
+    async function fetchMe(token) {
+      const res = await fetch(`${BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Invalid token");
+      return res.json();
+    }
+
+    // Show/hide password
+    toggle.addEventListener("click", () => {
+    const isPw = pw.type === "password";
+    pw.type = isPw ? "text" : "password";
+
+    toggle.innerHTML = isPw
+        ? `
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+            stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a21.72 21.72 0 0 1 5.06-6.94"/>
+            <path d="M1 1l22 22"/>
+        </svg>
+        `
+        : `
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+            stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+        </svg>
+        `;
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const u = (username.value || "").trim();
+      const p = pw.value || "";
+      if (!u || !p) return;
+
+      loginBtn.disabled = true;
+      startProgress();
+
+      try {
+        // Your backend currently accepts username/password as query params
+        const url = `${BASE_URL}/auth/login?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`;
+        const res = await fetch(url, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          stopProgress();
+          loginBtn.disabled = false;
+          showError(data?.detail || "Invalid credentials. Please try again.");
+          return;
+        }
+
+        const token = data?.access_token;
+        if (!token) {
+          stopProgress();
+          loginBtn.disabled = false;
+          showError("Login succeeded but no token returned.");
+          return;
+        }
+
+        // Store token for librarian pages (session-only for now)
+        sessionStorage.setItem("gk_token", token);
+
+        // Verify token
+        await fetchMe(token);
+
+        // Complete bar then redirect (small delay so user sees 100%)
+        finishProgress();
+        setTimeout(() => {
+          window.location.href = "home.html";
+        }, 220);
+
+      } catch (e2) {
+        stopProgress();
+        loginBtn.disabled = false;
+        showError("Server unreachable. Make sure FastAPI is running on 127.0.0.1:8000.");
+      }
+    });
+  </script>
+
+
+</body>
+</html>

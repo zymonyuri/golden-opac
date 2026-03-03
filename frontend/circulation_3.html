@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Checkout Summary</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+
+      --shadow: 0 26px 60px rgba(0,0,0,0.32);
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --ink: #111;
+      --mutedInk: rgba(0,0,0,0.65);
+      --softInk: rgba(0,0,0,0.55);
+      --line: rgba(0,0,0,0.10);
+    }
+
+   
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 34px; }
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: var(--ink);
+    }
+
+    .tabs{
+      position:relative; display:flex; gap:10px;
+      padding:14px 16px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+    }
+    .tabs::after{
+      content:"";
+      position:absolute; left:16px; right:16px; bottom:-1px;
+      height:14px;
+      background: rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius: 0 0 14px 14px;
+      z-index:0; pointer-events:none;
+    }
+    .tab{
+      position:relative; z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000; letter-spacing:.06em; text-transform:uppercase;
+      font-size:13px; text-decoration:none;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .tab::before{
+      content:""; position:absolute; inset:0;
+      border-radius:14px 14px 0 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0));
+      opacity:.65; pointer-events:none;
+    }
+    .tab.is-active{
+      background: var(--brand-yellow);
+      color:#111;
+      transform: translateY(1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+    .tab.is-active::before{ opacity:.22; }
+
+    .content{ padding:18px 18px 20px; }
+    .title{ margin:0 0 14px; font-size:26px; font-weight:1000; letter-spacing:.01em; color:#111; }
+    .title .accent{ color: var(--brand-yellow); }
+
+    .box{
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.02);
+      padding: 14px;
+      margin-top: 12px;
+    }
+    .rows{ display:grid; gap:8px; }
+    .row{ display:grid; grid-template-columns: 160px 1fr; gap:10px; align-items:baseline; }
+    .k{ font-weight:1000; text-transform:uppercase; letter-spacing:.06em; font-size:12px; color: rgba(0,0,0,0.65); }
+    .v{ font-weight:1000; color: rgba(0,0,0,0.85); }
+    .mono{ font-feature-settings:"tnum" 1; font-variant-numeric: tabular-nums; }
+
+    .list{
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.10);
+      overflow:hidden;
+      background: rgba(255,255,255,0.70);
+    }
+    .head{
+      padding: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.10);
+      display:flex; justify-content:space-between; align-items:center;
+      background: rgba(0,0,0,0.02);
+    }
+    .head .t{
+      font-size:12px; font-weight:1000; letter-spacing:.08em; text-transform:uppercase;
+      color: rgba(0,0,0,0.70);
+    }
+    .items{ display:grid; }
+    .item{
+      display:grid;
+      grid-template-columns: 180px 1fr 120px;
+      gap: 12px;
+      padding: 12px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      align-items:center;
+    }
+    .item:first-child{ border-top:0; }
+    .badge{
+      justify-self:end;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 1000;
+      font-size: 12px;
+      background: rgba(141,217,89,0.20);
+      border: 1px solid rgba(141,217,89,0.55);
+      color: rgba(0,0,0,0.78);
+    }
+    .badge.err{
+      background: rgba(176,0,0,0.10);
+      border-color: rgba(176,0,0,0.25);
+      color: rgba(176,0,0,0.78);
+    }
+
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .btn{
+      border:0;
+      border-radius:999px;
+      padding:12px 26px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      letter-spacing:.02em;
+      background: var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.20);
+      transition: transform 170ms ease, opacity 170ms ease;
+    }
+    .btn:hover{ transform: translateY(-2px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn-ghost{
+      border-radius:999px;
+      padding:12px 18px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.03);
+      cursor:pointer;
+      font-weight:1000;
+      color: rgba(0,0,0,0.75);
+    }
+
+    @media (max-width: 980px){
+      .shell{ grid-template-columns: 74px 1fr; }
+      .row{ grid-template-columns: 1fr; }
+      .item{ grid-template-columns: 1fr; }
+      .badge{ justify-self:start; }
+    }
+
+    /* Modal */
+.modal{ position: fixed; inset: 0; display: none; z-index: 9999; }
+.modal.is-open{ display: block; }
+
+.modal__backdrop{
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal__card{
+  position: absolute;
+  left: 50%; top: 18%;
+  transform: translateX(-50%);
+  width: min(620px, calc(100vw - 32px));
+  border-radius: 18px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(0,0,0,0.10);
+  box-shadow: 0 30px 70px rgba(0,0,0,0.35);
+  overflow: hidden;
+}
+
+.modal__top{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+}
+
+.modal__title{
+  font-weight: 1000;
+  font-size: 18px;
+  color: #111;
+}
+
+.modal__pill{
+  display:inline-flex;
+  align-items:center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-weight: 1000;
+  font-size: 12px;
+  border: 1px solid rgba(141,217,89,0.60);
+  background: rgba(141,217,89,0.22);
+  color: rgba(0,0,0,0.78);
+}
+
+.modal__body{
+  padding: 16px;
+  font-weight: 900;
+  color: rgba(0,0,0,0.78);
+}
+
+.modal__actions{
+  display:flex;
+  justify-content:flex-end;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(0,0,0,0.10);
+}
+
+.modal__btn{
+  border:0;
+  border-radius:999px;
+  padding: 12px 22px;
+  cursor:pointer;
+  font-weight: 1000;
+  background: var(--brand-yellow);
+  color:#111;
+  box-shadow: 0 16px 34px rgba(0,0,0,0.20);
+}
+.modal__btn:hover{ opacity: .96; transform: translateY(-1px); }
+.modal__btn:active{ transform: translateY(1px); }
+
+/* Sticky liquid-glass header (same behavior as other pages) */
+.topbar{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+}
+
+.topbar{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;            /* solid */
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: background 200ms ease,
+              border-color 200ms ease,
+              box-shadow 200ms ease,
+              backdrop-filter 200ms ease;
+}
+
+/* HEADER WHEN SCROLLED (LIQUID GLASS ACTIVATES) */
+.topbar.is-scrolled{
+  background: rgba(255,255,255,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.20);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+}
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item is-active" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs">
+            <a class="tab is-active" href="circulation.html">Check Out</a>
+            <a class="tab" href="circulation_4.html">Check In</a>
+          </div>
+
+          <div class="content">
+            <h1 class="title"><span class="accent">CHECKOUT</span> — SUMMARY</h1>
+
+            <div class="box">
+              <div class="rows" id="studentRows"></div>
+            </div>
+
+            <div class="list">
+              <div class="head">
+                <div class="t">Books Checked Out</div>
+                <div class="mono" id="count">0</div>
+              </div>
+              <div class="items" id="items"></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn-ghost" id="backBtn" type="button">Back to Scanning</button>
+              <button class="btn" id="finishBtn" type="button">Finish Transaction</button>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal" aria-hidden="true">
+  <div class="modal__backdrop"></div>
+
+  <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal__top">
+      <div class="modal__title" id="modalTitle">Checkout Complete</div>
+      <div class="modal__pill">✓ Success</div>
+    </div>
+
+    <div class="modal__body">
+      <div id="modalMsg">Books checked out!</div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="modal__btn" id="modalOkBtn" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+  <script>
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    function safeJSON(s){ try{ return s ? JSON.parse(s) : null; }catch{ return null; } }
+    function fmtISOToMDY(iso){
+      if (!iso) return "—";
+      const [y,m,d] = String(iso).split("-");
+      if (!y || !m || !d) return String(iso);
+      return `${m}/${d}/${y}`;
+    }
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    const sc = sessionStorage.getItem("gk_student_code");
+    const s = safeJSON(sessionStorage.getItem("gk_student_lookup"));
+    const p = safeJSON(sessionStorage.getItem("gk_precheck"));
+    const items = safeJSON(sessionStorage.getItem("gk_checkout_items")) || [];
+
+    if (!sc || !s || !p){
+      window.location.href = "circulation.html";
+    }
+
+    const studentRows = document.getElementById("studentRows");
+    studentRows.innerHTML = `
+      <div class="row"><div class="k">Student Code</div><div class="v mono">${escapeHtml(sc)}</div></div>
+      <div class="row"><div class="k">Name</div><div class="v">${escapeHtml((s.last_name || "") + ", " + (s.first_name || ""))}</div></div>
+      <div class="row"><div class="k">Grade &amp; Section</div><div class="v">${escapeHtml(s.grade_section || `${s.grade || ""}${s.section ? (" - " + s.section) : ""}`.trim())}</div></div>
+      <div class="row"><div class="k">Date Borrowed</div><div class="v mono">${escapeHtml(fmtISOToMDY(p.date_borrowed))}</div></div>
+      <div class="row"><div class="k">Due Date</div><div class="v mono">${escapeHtml(fmtISOToMDY(p.due_date))}</div></div>
+    `;
+
+    document.getElementById("count").textContent = `${items.length} item(s)`;
+
+    const itemsEl = document.getElementById("items");
+    itemsEl.innerHTML = "";
+    if (!items.length){
+      itemsEl.innerHTML = `
+        <div class="item">
+          <div class="mono">
+            <div class="v">—</div>
+            <div class="k">No items</div>
+          </div>
+          <div class="v">No books were added.</div>
+          <div class="badge err">Empty</div>
+        </div>
+      `;
+    } else {
+      for (const it of items){
+        const ok = it.ok === true;
+        itemsEl.insertAdjacentHTML("beforeend", `
+          <div class="item">
+            <div class="mono">
+              <div class="v">${escapeHtml(it.barcode || "—")}</div>
+              <div class="k">${escapeHtml(it.isbn || "")}</div>
+            </div>
+            <div>
+              <div class="v">${escapeHtml(it.title || "—")}</div>
+              <div class="k">${escapeHtml(it.author || "")}</div>
+            </div>
+            <div class="badge ${ok ? "" : "err"}">${ok ? "✓ Added" : "⚠ Failed"}</div>
+          </div>
+        `);
+      }
+    }
+
+    document.getElementById("backBtn").addEventListener("click", () => {
+      window.location.href = "circulation_2.html";
+    });
+
+    const modal = document.getElementById("successModal");
+const modalOk = document.getElementById("modalOkBtn");
+
+function openModal(){
+  modal.classList.add("is-open");
+  modal.setAttribute("aria-hidden", "false");
+  modalOk.focus();
+}
+
+function closeModalAndFinish(){
+  modal.classList.remove("is-open");
+  modal.setAttribute("aria-hidden", "true");
+
+  // Clear everything for next transaction
+  sessionStorage.removeItem("gk_student_code");
+  sessionStorage.removeItem("gk_student_lookup");
+  sessionStorage.removeItem("gk_precheck");
+  sessionStorage.removeItem("gk_checkout_items");
+  sessionStorage.removeItem("gk_checkout_session_started_at");
+  sessionStorage.removeItem("gk_book_lookup");
+
+  window.location.href = "circulation.html";
+}
+
+document.getElementById("finishBtn").addEventListener("click", () => {
+  openModal();
+});
+
+modalOk.addEventListener("click", closeModalAndFinish);
+
+// allow click outside to close
+modal.querySelector(".modal__backdrop").addEventListener("click", closeModalAndFinish);
+
+// ESC to close
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modal.classList.contains("is-open")){
+    closeModalAndFinish();
+  }
+});
+    
+// Sticky header glass on scroll
+const header = document.getElementById("siteHeader");
+function syncHeader(){
+  if (!header) return;
+  header.classList.toggle("is-scrolled", window.scrollY > 8);
+}
+syncHeader();
+window.addEventListener("scroll", syncHeader, { passive: true });
+
+  </script>
+</body>
+</html>

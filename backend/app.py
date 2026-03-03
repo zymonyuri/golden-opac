@@ -42,6 +42,39 @@ from reportlab.lib.pagesizes import A4, letter, legal
 
 from reportlab.graphics.barcode import code128
 
+from pydantic import BaseModel
+
+class CheckoutRequest(BaseModel):
+    barcode: str
+    student_code: str
+
+import re
+from fastapi import HTTPException
+
+def normalize_grade(raw: str) -> str:
+    """
+    Converts inputs like:
+      'GR. 8', 'Grade 8', '8', 'G8', 'gr 08'  -> '8'
+    Returns '1'..'12' as strings.
+    """
+    if raw is None:
+        raise HTTPException(status_code=400, detail="grade is required")
+
+    s = str(raw).strip().upper()
+    if not s:
+        raise HTTPException(status_code=400, detail="grade is required")
+
+    # extract the first number found
+    m = re.search(r'(\d{1,2})', s)
+    if not m:
+        raise HTTPException(status_code=400, detail=f"Invalid grade: {raw}")
+
+    g = int(m.group(1))
+    if g < 1 or g > 12:
+        raise HTTPException(status_code=400, detail=f"Grade must be 1-12 (got {g})")
+
+    return str(g)
+
 # Path to logo file 
 SCHOOL_LOGO_PATH = "assets/school_logo.png"
 
@@ -308,6 +341,42 @@ def cataloging_preview(isbn: str):
     Frontend then allows librarian to edit missing values before final submit.
     """
     return lookup_isbn(isbn)
+
+
+@app.get("/api/students/lookup")
+def student_lookup(student_code: str, current=Depends(get_current_librarian)):
+    code = (student_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="student_code is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT student_id, student_code, last_name, first_name, grade, section, status
+            FROM student
+            WHERE student_code = %s
+            """,
+            (code,),
+        )
+        s = cur.fetchone()
+        if not s:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        return {
+            "student_id": s["student_id"],
+            "student_code": s["student_code"],
+            "last_name": s["last_name"],
+            "first_name": s["first_name"],
+            "grade": s["grade"],
+            "section": s["section"],
+            "status": s["status"],
+            "grade_section": f"{s['grade']} - {s['section']}" if s["grade"] or s["section"] else "",
+        }
+    finally:
+        cur.close()
+        conn.close()
 
 # -----------------------------
 # CATALOGING: ADD BOOK BY ISBN (Librarian Only)
@@ -934,11 +1003,9 @@ def get_student(student_id: int, current=Depends(get_current_librarian)):
 # CIRCULATION: CHECK OUT (Librarian Only)
 # -----------------------------
 @app.post("/api/circulation/checkout")
-def checkout_book(
-    barcode: str,
-    student_code: str,
-    current=Depends(get_current_librarian),
-):
+def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
+    barcode = req.barcode
+    student_code = req.student_code
     """
     Librarian-only checkout.
 
@@ -1000,22 +1067,30 @@ def checkout_book(
             raise HTTPException(status_code=400, detail=f"Student is not active (status={student['status']})")
 
         student_id = student["student_id"]
-        grade = student["grade"]
+        grade_raw = student["grade"]
+        grade = normalize_grade(grade_raw)   # <— normalize to "12"
 
-        # --- 3) Load grade rule (due date & limits) ---
-        cur.execute(
-            """
-            SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
-            FROM grade_rule
-            WHERE grade = %s
-            ORDER BY updated_at DESC NULLS LAST
-            LIMIT 1
-            """,
-            (grade,),
-        )
+        cur.execute("""
+        SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
+        FROM grade_rule
+        WHERE grade = %s
+        ORDER BY updated_at DESC NULLS LAST
+        LIMIT 1
+        """, (grade,))
         rule = cur.fetchone()
+
+        # Fallback to global defaults if no per-grade rule exists
         if not rule:
-            raise HTTPException(status_code=400, detail=f"No grade rule configured for grade={grade}")
+            cur.execute("""
+            SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
+            FROM system_settings
+            ORDER BY updated_at DESC, settings_id DESC
+            LIMIT 1
+            """)
+            rule = cur.fetchone()
+
+        if not rule:
+            raise HTTPException(status_code=400, detail=f"No grade_rule for grade={grade} and no system_settings found")
 
         loan_period_days = rule["loan_period_days"]
         max_borrow_limit = rule["max_borrow_limit"]
@@ -1188,7 +1263,15 @@ def renew_loan(
         )
         rule = cur.fetchone()
         if not rule:
-            raise HTTPException(status_code=400, detail=f"No grade rule configured for grade={grade}")
+            cur.execute("""
+            SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
+            FROM system_settings
+            ORDER BY updated_at DESC, settings_id DESC
+            LIMIT 1
+            """)
+            rule = cur.fetchone()
+        if not rule:
+            raise HTTPException(status_code=400, detail="No grade_rule and no system_settings found")
 
         loan_period_days = int(rule["loan_period_days"])
         max_renewals = int(rule["max_renewals"] or 0)
@@ -1244,104 +1327,78 @@ def renew_loan(
         cur.close()
         conn.close()
 
+
 # -----------------------------
 # CIRCULATION: CHECK IN (Librarian Only)
 # -----------------------------
-@app.post("/api/circulation/checkin")
-def checkin_book(
+@app.get("/api/circulation/checkin/lookup")
+def checkin_lookup(
     barcode: str,
-    student_code: str,
-    is_damaged: bool = False,
-    severity: str | None = None,
-    notes: str | None = None,
     current=Depends(get_current_librarian),
 ):
-    """
-    Checks in a borrowed copy.
-
-    Behavior:
-      1) Find student by student_code
-      2) Find copy by barcode
-      3) Find active loan for (student_id, copy_id) where returned_at IS NULL
-      4) Set returned_at = NOW()
-      5) If overdue:
-          - compute overdue_days
-          - compute fine amount from grade_rule.fine_per_day
-          - create fine record (status = 'unpaid')
-      6) If damaged:
-          - create damage_report (severity + notes)
-          - set copy status to 'damaged'
-        Else:
-          - set copy status to 'available'
-    """
-
     conn = get_connection()
     cur = conn.cursor()
-
     try:
-        librarian_id = current["librarian_id"]
-
-        # --- 1) Find student ---
+        # Copy + Book (REMOVED ISBN)
         cur.execute(
             """
-            SELECT student_id, grade, status
-            FROM student
-            WHERE student_code = %s
-            """,
-            (student_code,),
-        )
-        student = cur.fetchone()
-        if not student:
-            raise HTTPException(status_code=404, detail="Student not found")
-
-        student_id = student["student_id"]
-        grade = student["grade"]
-
-        # --- 2) Find copy ---
-        cur.execute(
-            """
-            SELECT copy_id, status
-            FROM book_copy
-            WHERE barcode = %s
+            SELECT
+              bc.copy_id, bc.barcode, bc.status AS copy_status,
+              b.book_id, b.title, b.author
+            FROM book_copy bc
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE bc.barcode = %s
             """,
             (barcode,),
         )
-        copy_row = cur.fetchone()
-        if not copy_row:
+        row = cur.fetchone()
+        if not row:
             raise HTTPException(status_code=404, detail="Copy barcode not found")
 
-        copy_id = copy_row["copy_id"]
-
-        # --- 3) Find active loan for this student and copy ---
+        # Active loan (if borrowed)
         cur.execute(
             """
-            SELECT loan_id, borrowed_at, due_at, returned_at
-            FROM loan
-            WHERE student_id = %s AND copy_id = %s AND returned_at IS NULL
-            ORDER BY borrowed_at DESC
+            SELECT
+              l.loan_id, l.borrowed_at, l.due_at,
+              s.student_id, s.student_code, s.last_name, s.first_name, s.grade, s.section
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE l.copy_id = %s AND l.returned_at IS NULL
+            ORDER BY l.borrowed_at DESC
             LIMIT 1
             """,
-            (student_id, copy_id),
+            (row["copy_id"],),
         )
         loan = cur.fetchone()
+
+        # Base book payload
+        book_payload = {
+            "book_id": row["book_id"],
+            "title": row["title"],
+            "author": row["author"],
+            # IMPORTANT: always include this key so frontend won't crash
+            "student": None,
+        }
+
         if not loan:
-            raise HTTPException(status_code=400, detail="No active loan found for this student and copy")
+            return {
+                "barcode": row["barcode"],
+                "copy_status": row["copy_status"],
+                "book": book_payload,
+                "has_active_loan": False,
+                "message": "No active loan for this barcode (already returned or never borrowed).",
+            }
 
-        loan_id = loan["loan_id"]
+        # Overdue calc + projected fine
+        cur.execute("SELECT (NOW() > %s) AS is_overdue", (loan["due_at"],))
+        is_overdue = bool(cur.fetchone()["is_overdue"])
 
-        # --- 4) Mark loan returned ---
         cur.execute(
-            """
-            UPDATE loan
-            SET returned_at = NOW(), status = 'returned'
-            WHERE loan_id = %s
-            RETURNING returned_at
-            """,
-            (loan_id,),
+            "SELECT GREATEST(0, (DATE(NOW()) - DATE(%s))) AS overdue_days",
+            (loan["due_at"],),
         )
-        returned = cur.fetchone()
+        overdue_days = int(cur.fetchone()["overdue_days"])
 
-        # --- 5) Load grade rule for fine computation ---
         cur.execute(
             """
             SELECT fine_per_day
@@ -1350,99 +1407,76 @@ def checkin_book(
             ORDER BY updated_at DESC NULLS LAST
             LIMIT 1
             """,
-            (grade,),
+            (loan["grade"],),
         )
         rule = cur.fetchone()
-        fine_per_day = float(rule["fine_per_day"] or 0) if rule else 0.0
 
-        # Compute overdue days safely (Postgres date math)
-        # overdue_days = max(0, (returned_date - due_date))
+        # Use grade_rule if present, otherwise fallback to system_settings
+        if rule and rule.get("fine_per_day") is not None and float(rule["fine_per_day"]) > 0:
+            fine_per_day = float(rule["fine_per_day"])
+        else:
+            cur.execute(
+                """
+                SELECT fine_per_day
+                FROM system_settings
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            )
+            settings = cur.fetchone()
+            fine_per_day = float(settings["fine_per_day"]) if settings and settings.get("fine_per_day") is not None else 0.0
+
+        projected_fine = round(overdue_days * fine_per_day, 2) if overdue_days > 0 else 0.0
+
+        # Unpaid fines list
         cur.execute(
             """
-            SELECT GREATEST(0, (DATE(NOW()) - DATE(%s))) AS overdue_days
+            SELECT
+              fine_id, amount, amount_paid,
+              (amount - amount_paid) AS outstanding,
+              status, reason, assessed_at
+            FROM fine
+            WHERE student_id = %s AND status = 'unpaid'
+            ORDER BY assessed_at DESC
             """,
-            (loan["due_at"],),
+            (loan["student_id"],),
         )
-        overdue_days = int(cur.fetchone()["overdue_days"])
+        unpaid = cur.fetchall()
 
-        fine_created = None
-        if overdue_days > 0 and fine_per_day > 0:
-            amount = round(overdue_days * fine_per_day, 2)
+        full_name = f"{(loan.get('last_name') or '').strip()}, {(loan.get('first_name') or '').strip()}".strip(", ").strip()
 
-            # Create fine record (unpaid by default)
-            cur.execute(
-                """
-                INSERT INTO fine (loan_id, student_id, amount, amount_paid, status, reason, assessed_at)
-                VALUES (%s, %s, %s, 0, 'unpaid', %s, NOW())
-                RETURNING fine_id, amount, status
-                """,
-                (loan_id, student_id, amount, f"Overdue {overdue_days} day(s)"),
-            )
-            fine_row = cur.fetchone()
-            fine_created = {
-                "fine_id": fine_row["fine_id"],
-                "amount": float(fine_row["amount"]),
-                "status": fine_row["status"],
-                "overdue_days": overdue_days,
-                "fine_per_day": fine_per_day,
-            }
-
-        # --- 6) Damage reporting + copy status update ---
-        if is_damaged:
-            # Validate severity if damaged
-            if severity is None or severity.strip() not in ["Minor", "Major"]:
-                raise HTTPException(status_code=400, detail="severity must be 'Minor' or 'Major' when is_damaged=true")
-
-            cur.execute(
-                """
-                INSERT INTO damage_report (copy_id, student_id, recorded_by, severity, notes, reported_at)
-                VALUES (%s, %s, %s, %s, %s, NOW())
-                RETURNING damage_id
-                """,
-                (copy_id, student_id, librarian_id, severity.strip(), notes),
-            )
-            damage_id = cur.fetchone()["damage_id"]
-
-            cur.execute(
-                """
-                UPDATE book_copy
-                SET status = 'damaged'
-                WHERE copy_id = %s
-                """,
-                (copy_id,),
-            )
-
-            copy_new_status = "damaged"
-        else:
-            # Normal return sets copy back to available
-            cur.execute(
-                """
-                UPDATE book_copy
-                SET status = 'available'
-                WHERE copy_id = %s
-                """,
-                (copy_id,),
-            )
-            damage_id = None
-            copy_new_status = "available"
-
-        conn.commit()
-
-        return {
-            "message": "Check-in successful",
-            "loan_id": loan_id,
-            "returned_at": str(returned["returned_at"]),
-            "copy_status": copy_new_status,
-            "fine": fine_created,
-            "damage_report_id": damage_id,
+        # Student payload
+        student_payload = {
+            "student_id": loan["student_id"],
+            "student_code": loan["student_code"],
+            "name": full_name,
+            "last_name": loan["last_name"],
+            "first_name": loan["first_name"],
+            "grade": loan["grade"],
+            "section": loan["section"],
         }
 
-    except HTTPException:
-        conn.rollback()
-        raise
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Check-in failed: {str(e)}")
+        # IMPORTANT: also embed inside book for frontend compatibility
+        book_payload["student"] = {"name": full_name}
+
+        return {
+            "barcode": row["barcode"],
+            "copy_status": row["copy_status"],
+            "book": book_payload,
+            "has_active_loan": True,
+            "loan": {
+                "loan_id": loan["loan_id"],
+                "borrowed_at": loan["borrowed_at"].isoformat() if loan.get("borrowed_at") else None,
+                "due_at": loan["due_at"].isoformat() if loan.get("due_at") else None,
+                "is_overdue": is_overdue,
+                "overdue_days": overdue_days,
+                "fine_per_day": fine_per_day,
+                "projected_fine": projected_fine,
+            },
+            "student": student_payload,
+            "unpaid_fines": unpaid,
+        }
+
     finally:
         cur.close()
         conn.close()
@@ -2914,6 +2948,95 @@ async def import_students_csv(
         conn.close()
 
 # -----------------------------
+# CIRCULATION: LOOKUP BY COPY BARCODE (Librarian Only)
+# -----------------------------
+@app.get("/api/circulation/lookup")
+def circulation_lookup(barcode: str, current=Depends(get_current_librarian)):
+    barcode_clean = (barcode or "").strip()
+    if not barcode_clean:
+        raise HTTPException(status_code=400, detail="barcode is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        # 1) Find the copy + its book (barcode is from book_copy.barcode)
+        cur.execute(
+            """
+            SELECT
+                bc.copy_id,
+                bc.barcode,
+                bc.status AS copy_status,
+
+                b.book_id,
+                b.title,
+                b.author,
+                b.publisher,
+                b.pub_year,
+                b.genre,
+                b.subject,
+                b.section,
+                b.cover_url,
+
+                (
+                    SELECT bi.id_value
+                    FROM book_identifier bi
+                    WHERE bi.book_id = b.book_id
+                      AND bi.id_type = 'isbn'
+                    ORDER BY bi.is_primary DESC, bi.created_at ASC
+                    LIMIT 1
+                ) AS isbn
+            FROM book_copy bc
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE bc.barcode = %s
+            """,
+            (barcode_clean,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Barcode not found")
+
+        book_id = row["book_id"]
+
+        # 2) Availability counts for that book_id
+        # (same idea you already use elsewhere: total + available counts) :contentReference[oaicite:2]{index=2}
+        cur.execute(
+            """
+            SELECT
+                COUNT(*)::int AS total_copies,
+                COALESCE(SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END), 0)::int AS available_copies
+            FROM book_copy
+            WHERE book_id = %s
+            """,
+            (book_id,),
+        )
+        counts = cur.fetchone()
+
+        return {
+            "copy_id": row["copy_id"],
+            "barcode": row["barcode"],
+            "copy_status": row["copy_status"],
+
+            "book_id": row["book_id"],
+            "title": row["title"],
+            "author": row["author"],
+            "publisher": row["publisher"],
+            "pub_year": row["pub_year"],
+            "genre": row["genre"],
+            "subject": row["subject"],
+            "section": row["section"],
+            "cover_url": row.get("cover_url"),
+            "isbn": row.get("isbn"),
+
+            "total_copies": counts["total_copies"],
+            "available_copies": counts["available_copies"],
+        }
+
+    finally:
+        cur.close()
+        conn.close()
+
+# -----------------------------
 # STUDENTS: BULK PROMOTE GRADE (Librarian Only)
 # -----------------------------
 @app.post("/api/students/bulk-promote")
@@ -3168,7 +3291,248 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
+from fastapi import HTTPException, Depends
 
+
+from datetime import date, timedelta
+
+def _get_settings_for_grade(cur, grade: str | None):
+    # Try grade_rule first
+    if grade:
+        cur.execute(
+            """
+            SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
+            FROM grade_rule
+            WHERE grade = %s
+            ORDER BY updated_at DESC NULLS LAST, rule_id DESC
+            LIMIT 1
+            """,
+            (grade,),
+        )
+        r = cur.fetchone()
+        if r:
+            return r
+
+    # Fallback to system_settings (latest row)
+    cur.execute(
+        """
+        SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
+        FROM system_settings
+        ORDER BY updated_at DESC, settings_id DESC
+        LIMIT 1
+        """
+    )
+    s = cur.fetchone()
+    if not s:
+        # Absolute fallback if table is empty
+        return {
+            "loan_period_days": 7,
+            "max_borrow_limit": 3,
+            "fine_per_day": 5.00,
+            "max_renewals": 1,
+            "block_renew_if_overdue": True,
+        }
+    return s
+
+@app.get("/api/circulation/precheck")
+def circulation_precheck(student_code: str, current=Depends(get_current_librarian)):
+    code = (student_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="student_code is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # 1) Student
+        cur.execute(
+            """
+            SELECT student_id, student_code, last_name, first_name, grade, section, status
+            FROM student
+            WHERE student_code = %s
+            """,
+            (code,),
+        )
+        st = cur.fetchone()
+        if not st:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        # 2) Get settings (grade_rule -> system_settings)
+        settings = _get_settings_for_grade(cur, st["grade"])
+        loan_days = int(settings["loan_period_days"] or 7)
+        borrow_limit = int(settings["max_borrow_limit"] or 3)
+
+        today = date.today()
+        due = today + timedelta(days=loan_days)
+
+        student_id = st["student_id"]
+
+        # 3) Unpaid fines (balance)
+        cur.execute(
+            """
+            SELECT COALESCE(SUM((amount - amount_paid)), 0) AS balance
+            FROM fine
+            WHERE student_id = %s
+              AND COALESCE(status,'') NOT IN ('paid','void','waived')
+              AND (amount - amount_paid) > 0
+            """,
+            (student_id,),
+        )
+        fine_row = cur.fetchone()
+        fine_balance = float(fine_row["balance"] or 0)
+
+        # 4) Overdue loans count (not returned and due_at < now)
+        cur.execute(
+            """
+            SELECT COUNT(*)::int AS overdue_count
+            FROM loan
+            WHERE student_id = %s
+              AND returned_at IS NULL
+              AND due_at IS NOT NULL
+              AND due_at < NOW()
+            """,
+            (student_id,),
+        )
+        overdue_count = int(cur.fetchone()["overdue_count"] or 0)
+
+        # 5) Active borrowed count
+        cur.execute(
+            """
+            SELECT COUNT(*)::int AS borrowed_count
+            FROM loan
+            WHERE student_id = %s
+              AND returned_at IS NULL
+            """,
+            (student_id,),
+        )
+        borrowed_count = int(cur.fetchone()["borrowed_count"] or 0)
+
+        # 6) Damage history (optional: treat as warning)
+        cur.execute(
+            """
+            SELECT COUNT(*)::int AS damage_count
+            FROM damage_report
+            WHERE student_id = %s
+            """,
+            (student_id,),
+        )
+        damage_count = int(cur.fetchone()["damage_count"] or 0)
+
+        # 7) Build reasons list (frontend displays this)
+        reasons = []
+
+        # Student inactive blocks checkout
+        if (st["status"] or "active").lower() != "active":
+            reasons.append({
+                "type": "student_inactive",
+                "label": "Student account is not active",
+                "blocking": True
+            })
+
+        if fine_balance > 0:
+            reasons.append({
+                "type": "unpaid_fines",
+                "label": "Unpaid fines",
+                "amount": fine_balance,
+                "blocking": True
+            })
+
+        if overdue_count > 0:
+            reasons.append({
+                "type": "overdue_books",
+                "label": "Overdue books",
+                "count": overdue_count,
+                "blocking": True
+            })
+
+        if borrowed_count >= borrow_limit:
+            reasons.append({
+                "type": "borrow_limit",
+                "label": "Borrow limit reached",
+                "current": borrowed_count,
+                "limit": borrow_limit,
+                "blocking": True
+            })
+
+        if damage_count > 0:
+            reasons.append({
+                "type": "damage_history",
+                "label": "Has damage history",
+                "count": damage_count,
+                "blocking": False
+            })
+
+        ok = not any(r.get("blocking") for r in reasons)
+
+        return {
+            "ok": ok,
+            "student": {
+                "student_id": st["student_id"],
+                "student_code": st["student_code"],
+                "last_name": st["last_name"],
+                "first_name": st["first_name"],
+                "grade": st["grade"],
+                "section": st["section"],
+                "status": st["status"],
+                "grade_section": f"{st['grade']} - {st['section']}" if st["grade"] or st["section"] else "",
+            },
+            "rules": {
+                "loan_period_days": loan_days,
+                "max_borrow_limit": borrow_limit,
+                "fine_per_day": float(settings["fine_per_day"] or 0),
+                "max_renewals": int(settings["max_renewals"] or 0),
+                "block_renew_if_overdue": bool(settings["block_renew_if_overdue"]),
+            },
+            "stats": {
+                "borrowed_count": borrowed_count,
+                "overdue_count": overdue_count,
+                "fine_balance": fine_balance,
+                "damage_count": damage_count,
+            },
+            "date_borrowed": today.isoformat(),
+            "due_date": due.isoformat(),
+            "reasons": reasons,
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/circulation/overdue")
+def overdue_list(student_code: str, current=Depends(get_current_librarian)):
+    code = (student_code or "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="student_code is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT student_id FROM student WHERE student_code=%s", (code,))
+        st = cur.fetchone()
+        if not st:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        cur.execute(
+            """
+            SELECT
+              l.loan_id,
+              l.borrowed_at,
+              l.due_at,
+              bc.barcode,
+              b.title
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE l.student_id = %s
+              AND l.returned_at IS NULL
+              AND l.due_at IS NOT NULL
+              AND l.due_at < NOW()
+            ORDER BY l.due_at ASC
+            """,
+            (st["student_id"],),
+        )
+        return {"items": cur.fetchall()}
+    finally:
+        cur.close()
+        conn.close()
 
 @app.put("/api/settings/circulation")
 def update_circulation_settings(
@@ -3959,6 +4323,350 @@ def build_title_barcode_labels_pdf(
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
+
+# -----------------------------
+# CIRCULATION: CHECK IN (Librarian Only)  ✅ NEW ENDPOINT
+# -----------------------------
+@app.post("/api/circulation/checkin")
+def checkin_book(
+    barcode: str,
+    student_code: str,
+    is_damaged: bool = False,
+    severity: str | None = None,
+    notes: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # 1) Find copy + book
+        cur.execute(
+            """
+            SELECT
+              bc.copy_id, bc.barcode, bc.status AS copy_status,
+              b.book_id, b.title, b.author
+            FROM book_copy bc
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE bc.barcode = %s
+            """,
+            (barcode,),
+        )
+        copy_row = cur.fetchone()
+        if not copy_row:
+            raise HTTPException(status_code=404, detail="Copy barcode not found")
+
+        # 2) Find active loan for this copy (not yet returned)
+        cur.execute(
+            """
+            SELECT
+              l.loan_id, l.student_id, l.borrowed_at, l.due_at, l.returned_at, l.status,
+              s.student_code, s.last_name, s.first_name, s.grade, s.section
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE l.copy_id = %s AND l.returned_at IS NULL
+            ORDER BY l.borrowed_at DESC
+            LIMIT 1
+            """,
+            (copy_row["copy_id"],),
+        )
+        loan = cur.fetchone()
+        if not loan:
+            # Copy exists, but there is no active loan to close
+            raise HTTPException(status_code=404, detail="No active loan found for this barcode")
+
+        # 3) Safety check: student_code must match the borrower of the active loan
+        if (loan["student_code"] or "").strip() != (student_code or "").strip():
+            raise HTTPException(status_code=400, detail="Student code does not match the active borrower")
+
+        # 4) Overdue + fine calculation
+        cur.execute(
+            "SELECT GREATEST(0, (DATE(NOW()) - DATE(%s))) AS overdue_days",
+            (loan["due_at"],),
+        )
+        overdue_days = int(cur.fetchone()["overdue_days"])
+
+        # Try grade_rule first
+        cur.execute(
+            """
+            SELECT fine_per_day
+            FROM grade_rule
+            WHERE grade = %s
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+            """,
+            (loan["grade"],),
+        )
+        rule = cur.fetchone()
+
+        fine_per_day = None
+        if rule and rule.get("fine_per_day") is not None:
+            fine_per_day = float(rule["fine_per_day"])
+        else:
+            # fallback to system_settings
+            cur.execute(
+                """
+                SELECT fine_per_day
+                FROM system_settings
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            )
+            settings = cur.fetchone()
+            fine_per_day = float(settings["fine_per_day"]) if settings and settings.get("fine_per_day") is not None else 0.0
+
+        projected_fine = round(overdue_days * fine_per_day, 2) if (overdue_days > 0 and fine_per_day > 0) else 0.0
+
+        fine_created = None
+        if projected_fine > 0:
+            # Create a fine record as unpaid (you can change reason text as you like)
+            cur.execute(
+                """
+                INSERT INTO fine (loan_id, student_id, amount, amount_paid, status, reason, assessed_at)
+                VALUES (%s, %s, %s, 0, 'unpaid', %s, NOW())
+                RETURNING fine_id, amount, status
+                """,
+                (loan["loan_id"], loan["student_id"], projected_fine, f"Overdue ({overdue_days} day/s)"),
+            )
+            fine_created = cur.fetchone()
+
+        # 5) Close the loan
+        cur.execute(
+            """
+            UPDATE loan
+            SET returned_at = NOW(),
+                status = 'returned'
+            WHERE loan_id = %s
+            """,
+            (loan["loan_id"],),
+        )
+
+        # 6) Update copy status
+        new_copy_status = "available"
+        if is_damaged:
+            new_copy_status = "damaged"
+
+            # Optional validation
+            if severity is None or str(severity).strip() == "":
+                severity_val = "unspecified"
+            else:
+                severity_val = str(severity).strip()
+
+            cur.execute(
+                """
+                INSERT INTO damage_report (copy_id, student_id, recorded_by, severity, notes, reported_at)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+                """,
+                (copy_row["copy_id"], loan["student_id"], int(current["librarian_id"]), severity_val, notes),
+            )
+
+        cur.execute(
+            """
+            UPDATE book_copy
+            SET status = %s
+            WHERE copy_id = %s
+            """,
+            (new_copy_status, copy_row["copy_id"]),
+        )
+
+        conn.commit()
+
+        full_name = f"{(loan.get('last_name') or '').strip()}, {(loan.get('first_name') or '').strip()}".strip(", ").strip()
+
+        return {
+            "message": "Check-in successful",
+            "barcode": copy_row["barcode"],
+            "copy_status": new_copy_status,
+            "book": {
+                "book_id": copy_row["book_id"],
+                "title": copy_row["title"],
+                "author": copy_row["author"],
+            },
+            "student": {
+                "student_id": loan["student_id"],
+                "student_code": loan["student_code"],
+                "name": full_name,
+                "grade": loan["grade"],
+                "section": loan["section"],
+            },
+            "loan": {
+                "loan_id": loan["loan_id"],
+                "borrowed_at": loan["borrowed_at"].isoformat() if loan.get("borrowed_at") else None,
+                "due_at": loan["due_at"].isoformat() if loan.get("due_at") else None,
+                "returned_at": datetime.utcnow().isoformat(),
+                "overdue_days": overdue_days,
+                "fine_per_day": fine_per_day,
+                "projected_fine": projected_fine,
+            },
+            "fine_created": fine_created,
+            "damage_logged": bool(is_damaged),
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Check-in failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/circulation/checkin/lookup")
+def checkin_lookup(
+    barcode: str,
+    current=Depends(get_current_librarian),
+):
+    """
+    Lookup for Check-in screen.
+    Scan ONE book barcode -> returns:
+      - copy + book info
+      - active loan (if any)
+      - borrower student info
+      - overdue status + projected fine (based on grade_rule)
+      - current unpaid fines list (for quick payment)
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # 1) Copy + Book
+        cur.execute("""
+            SELECT
+                b.title,
+                b.author,
+                bi.id_value AS isbn,
+                s.first_name,
+                s.last_name,
+                l.loan_id
+            FROM book_copy bc
+            JOIN book b ON b.book_id = bc.book_id
+            LEFT JOIN book_identifier bi ON bi.book_id = b.book_id AND bi.is_primary = TRUE
+            LEFT JOIN loan l ON l.copy_id = bc.copy_id AND l.status = 'borrowed'
+            LEFT JOIN student s ON s.student_id = l.student_id
+            WHERE bc.barcode = %s
+        """, (barcode,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Copy barcode not found")
+
+        # 2) Active loan (if borrowed)
+        cur.execute(
+            """
+            SELECT
+              l.loan_id, l.borrowed_at, l.due_at,
+              s.student_id, s.student_code, s.last_name, s.first_name, s.grade, s.section
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE l.copy_id = %s AND l.returned_at IS NULL
+            ORDER BY l.borrowed_at DESC
+            LIMIT 1
+            """,
+            (row["copy_id"],),
+        )
+        loan = cur.fetchone()
+
+        if not loan:
+            return {
+                "barcode": row["barcode"],
+                "copy_status": row["copy_status"],
+                "book": {
+                    "book_id": row["book_id"],
+                    "title": row["title"],
+                    "author": row["author"],
+                    "isbn": row["isbn"],
+                },
+                "has_active_loan": False,
+                "message": "No active loan for this barcode (already returned or never borrowed).",
+            }
+
+        # 3) Overdue calc + projected fine
+        cur.execute("SELECT (NOW() > %s) AS is_overdue", (loan["due_at"],))
+        is_overdue = bool(cur.fetchone()["is_overdue"])
+
+        cur.execute(
+            "SELECT GREATEST(0, (DATE(NOW()) - DATE(%s))) AS overdue_days",
+            (loan["due_at"],),
+        )
+        overdue_days = int(cur.fetchone()["overdue_days"])
+
+        cur.execute(
+            """
+            SELECT fine_per_day
+            FROM grade_rule
+            WHERE grade = %s
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1
+            """,
+            (loan["grade"],),
+        )
+        
+        rule = cur.fetchone()
+
+# If grade_rule exists and fine_per_day is set, use it
+        if rule and rule.get("fine_per_day") is not None and float(rule["fine_per_day"]) > 0:
+            fine_per_day = float(rule["fine_per_day"])
+        else:
+            # Fallback to global system_settings
+            cur.execute(
+                """
+                SELECT fine_per_day
+                FROM system_settings
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """
+            )
+            settings = cur.fetchone()
+            fine_per_day = float(settings["fine_per_day"]) if settings and settings.get("fine_per_day") is not None else 0.0
+
+        projected_fine = round(overdue_days * fine_per_day, 2) if overdue_days > 0 else 0.0
+
+        # 4) Unpaid fines list (for quick pay)
+        cur.execute(
+            """
+            SELECT
+              fine_id, amount, amount_paid,
+              (amount - amount_paid) AS outstanding,
+              status, reason, assessed_at
+            FROM fine
+            WHERE student_id = %s AND status = 'unpaid'
+            ORDER BY assessed_at DESC
+            """,
+            (loan["student_id"],),
+        )
+        unpaid = cur.fetchall()
+
+        return {
+            "barcode": row["barcode"],
+            "copy_status": row["copy_status"],
+            "book": {
+                "book_id": row["book_id"],
+                "title": row["title"],
+                "author": row["author"],
+                "isbn": row["isbn"],
+            },
+            "has_active_loan": True,
+            "loan": {
+                "loan_id": loan["loan_id"],
+                "borrowed_at": str(loan["borrowed_at"]),
+                "due_at": str(loan["due_at"]),
+                "is_overdue": is_overdue,
+                "overdue_days": overdue_days,
+                "fine_per_day": fine_per_day,
+                "projected_fine": projected_fine,
+            },
+            "student": {
+                "student_id": loan["student_id"],
+                "student_code": loan["student_code"],
+                "last_name": loan["last_name"],
+                "first_name": loan["first_name"],
+                "grade": loan["grade"],
+                "section": loan["section"],
+            },
+            "unpaid_fines": unpaid,
+        }
+
+    finally:
+        cur.close()
+        conn.close()
 # -----------------------------
 # BARCODE LABELS: TITLE + BARCODE PDF (Librarian Only)
 # -----------------------------

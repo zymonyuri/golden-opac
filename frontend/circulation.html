@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Circulation</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+
+      --shadow: 0 26px 60px rgba(0,0,0,0.32);
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --ink: #111;
+      --mutedInk: rgba(0,0,0,0.65);
+      --softInk: rgba(0,0,0,0.55);
+      --line: rgba(0,0,0,0.10);
+    }
+
+    
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 34px; }
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: var(--ink);
+    }
+
+    /* Folder tabs */
+    .tabs{
+      position:relative;
+      display:flex;
+      gap:10px;
+      padding:14px 16px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+    }
+    .tabs::after{
+      content:"";
+      position:absolute;
+      left:16px; right:16px; bottom:-1px;
+      height:14px;
+      background: rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius: 0 0 14px 14px;
+      z-index:0;
+      pointer-events:none;
+    }
+    .tab{
+      position:relative;
+      z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:13px;
+      text-decoration:none;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .tab::before{
+      content:"";
+      position:absolute; inset:0;
+      border-radius:14px 14px 0 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0));
+      opacity:.65; pointer-events:none;
+    }
+    .tab:hover{ background: rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .tab.is-active{
+      background: var(--brand-yellow);
+      color:#111;
+      transform: translateY(1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+    .tab.is-active::before{ opacity:.22; }
+    .tab.is-active:hover{ transform: translateY(1px); }
+
+    .content{ padding:18px 18px 20px; }
+
+    .title{ margin:0 0 14px; font-size:26px; font-weight:1000; letter-spacing:.01em; color:#111; }
+    .title .accent{ color: var(--brand-yellow); }
+
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px 18px; align-items:end; }
+    .field{ display:grid; gap:8px; }
+    .field--full{ grid-column: 1 / -1; }
+
+    .label{
+      font-size:13px; font-weight:900;
+      letter-spacing:.06em; text-transform:uppercase;
+      color: var(--mutedInk);
+    }
+
+    .input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:700;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+    .input::placeholder{ color: rgba(0,0,0,0.45); }
+    .input:focus{
+      border-color: rgba(244,227,47,0.85);
+      box-shadow: 0 0 0 4px rgba(244,227,47,0.25);
+      background: rgba(0,0,0,0.02);
+      transform: translateY(-1px);
+    }
+    .input[readonly]{ opacity:.92; }
+
+    .progress-wrap{
+      display:none;
+      height:4px;
+      width:100%;
+      border-radius:999px;
+      overflow:hidden;
+      background: var(--brand-green);
+      margin-top:10px;
+    }
+    .progress-bar{
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background: var(--brand-yellow);
+      transition: width 200ms ease;
+    }
+
+    .hint{ margin-top:8px; font-size:12px; font-weight:800; color: var(--softInk); }
+    .hint.is-error{ color: rgba(176,0,0,0.78); }
+
+    .checks{
+      margin-top:16px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.02);
+      padding:12px;
+    }
+    .checks__top{
+      display:flex; justify-content:space-between; align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .checks__title{
+      font-size:12px; font-weight:1000; letter-spacing:.08em; text-transform:uppercase;
+      color: rgba(0,0,0,0.70);
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:1000; font-size:12px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.70);
+      color:#111;
+    }
+    .pill.ok{ border-color: rgba(141,217,89,0.55); background: rgba(141,217,89,0.22); }
+    .pill.block{ border-color: rgba(176,0,0,0.35); background: rgba(176,0,0,0.10); color: rgba(176,0,0,0.78); }
+
+    .checklist{ display:grid; gap:8px; }
+    .check{
+      display:flex; justify-content:space-between; gap:10px;
+      padding:10px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.07);
+      background: rgba(255,255,255,0.65);
+    }
+    .check__left{ display:flex; gap:10px; }
+    .dot{ width:10px; height:10px; border-radius:999px; margin-top:4px; background: rgba(0,0,0,0.25); }
+    .dot.ok{ background: var(--brand-green); }
+    .dot.warn{ background: rgba(255,199,0,0.95); }
+    .dot.block{ background: rgba(176,0,0,0.75); }
+    .check__text{ display:grid; gap:2px; }
+    .check__label{ font-weight:1000; color: rgba(0,0,0,0.82); font-size:13px; }
+    .check__sub{ font-weight:800; color: rgba(0,0,0,0.55); font-size:12px; line-height:1.4; }
+
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:12px;
+      margin-top:16px;
+    }
+    .btn{
+      border:0;
+      border-radius:999px;
+      padding:12px 26px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      letter-spacing:.02em;
+      background: var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.20);
+      transition: transform 170ms ease, opacity 170ms ease, filter 170ms ease;
+    }
+    .btn:hover{ transform: translateY(-2px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; filter:saturate(.7); transform:none !important; }
+
+    .btn-ghost{
+      border-radius:999px;
+      padding:12px 18px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.03);
+      cursor:pointer;
+      font-weight:1000;
+      color: rgba(0,0,0,0.75);
+    }
+
+    @media (max-width: 980px){
+      .shell{ grid-template-columns: 74px 1fr; }
+      .grid{ grid-template-columns:1fr; }
+      .actions{ justify-content:space-between; }
+    }
+
+  /* HEADER DEFAULT (NOT SCROLLED) */
+.topbar{
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;            /* solid */
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: background 200ms ease,
+              border-color 200ms ease,
+              box-shadow 200ms ease,
+              backdrop-filter 200ms ease;
+}
+
+/* HEADER WHEN SCROLLED (LIQUID GLASS ACTIVATES) */
+.topbar.is-scrolled{
+  background: rgba(255,255,255,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.20);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+}
+/* scrolled state */
+.topbar.is-scrolled{
+  background: rgba(0,0,0,0.22);
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+}
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item is-active" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs">
+            <a class="tab is-active" href="circulation.html">Check Out</a>
+            <a class="tab" href="circulation_4.html">Check In</a>
+          </div>
+
+          <div class="content">
+            <h1 class="title"><span class="accent">CIRCULATION</span> — CHECK OUT</h1>
+
+            <div class="grid">
+              <div class="field field--full">
+                <div class="label">Student Code</div>
+                <input id="studentCode" class="input" type="text" placeholder="Scan student barcode..." autocomplete="off" autofocus />
+                <div class="progress-wrap" id="progressWrap" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+                <div class="hint" id="hint">Scan/enter a student code to load details and restrictions.</div>
+              </div>
+
+              <div class="field">
+                <div class="label">Last Name</div>
+                <input id="lastName" class="input" type="text" readonly />
+              </div>
+
+              <div class="field">
+                <div class="label">First Name</div>
+                <input id="firstName" class="input" type="text" readonly />
+              </div>
+
+              <div class="field field--full">
+                <div class="label">Grade &amp; Section</div>
+                <input id="gradeSection" class="input" type="text" readonly />
+              </div>
+
+              <div class="field">
+                <div class="label">Date Borrowed</div>
+                <input id="dateBorrowed" class="input" type="text" readonly placeholder="MM/DD/YYYY" />
+              </div>
+
+              <div class="field">
+                <div class="label">Due Date</div>
+                <input id="dueDate" class="input" type="text" readonly placeholder="MM/DD/YYYY" />
+              </div>
+            </div>
+
+            <div class="checks">
+              <div class="checks__top">
+                <div class="checks__title">Restrictions / Validation</div>
+                <div class="pill" id="pill">Waiting…</div>
+              </div>
+              <div class="checklist" id="checklist"></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn-ghost" id="clearBtn" type="button">Clear</button>
+              <button class="btn" id="startBtn" type="button" disabled>Start Scanning Books</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    const studentCodeEl = document.getElementById("studentCode");
+    const lastNameEl = document.getElementById("lastName");
+    const firstNameEl = document.getElementById("firstName");
+    const gradeSectionEl = document.getElementById("gradeSection");
+    const dateBorrowedEl = document.getElementById("dateBorrowed");
+    const dueDateEl = document.getElementById("dueDate");
+
+    const hintEl = document.getElementById("hint");
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+
+    const pill = document.getElementById("pill");
+    const checklist = document.getElementById("checklist");
+
+    const startBtn = document.getElementById("startBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    let debounceTimer = null;
+    let progressTimer = null;
+    let lastLookup = "";
+
+    function authHeaders(){
+      return { "Authorization": `Bearer ${token}` };
+    }
+
+    function fmtISOToMDY(iso){
+      if (!iso) return "";
+      const [y,m,d] = String(iso).split("-");
+      if (!y || !m || !d) return String(iso);
+      return `${m}/${d}/${y}`;
+    }
+
+    function setHint(text, isError=false){
+      hintEl.textContent = text;
+      hintEl.classList.toggle("is-error", !!isError);
+    }
+
+    function showProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      clearInterval(progressTimer);
+      let w = 0;
+      progressTimer = setInterval(() => {
+        w = Math.min(88, w + 7);
+        progressBar.style.width = w + "%";
+      }, 80);
+    }
+
+    function hideProgressAfterComplete(){
+      clearInterval(progressTimer);
+      progressBar.style.width = "100%";
+      setTimeout(() => {
+        progressBar.style.width = "0%";
+        progressWrap.style.display = "none";
+      }, 300);
+    }
+
+    function resetAll(){
+      studentCodeEl.value = "";
+      lastNameEl.value = "";
+      firstNameEl.value = "";
+      gradeSectionEl.value = "";
+      dateBorrowedEl.value = "";
+      dueDateEl.value = "";
+      startBtn.disabled = true;
+      setHint("Scan/enter a student code to load details and restrictions.");
+      progressWrap.style.display = "none";
+      renderChecklist({ ok: null, reasons: [] });
+
+      // clear session
+      sessionStorage.removeItem("gk_student_code");
+      sessionStorage.removeItem("gk_student_lookup");
+      sessionStorage.removeItem("gk_precheck");
+      sessionStorage.removeItem("gk_checkout_items");
+      sessionStorage.removeItem("gk_checkout_session_started_at");
+      sessionStorage.removeItem("gk_book_lookup");
+    }
+
+    function renderChecklist(payload){
+      const ok = payload?.ok;
+
+      pill.classList.remove("ok","block");
+      if (ok === true){
+        pill.textContent = "Cleared";
+        pill.classList.add("ok");
+      } else if (ok === false){
+        pill.textContent = "Blocked";
+        pill.classList.add("block");
+      } else {
+        pill.textContent = "Waiting…";
+      }
+
+      const reasons = Array.isArray(payload?.reasons) ? payload.reasons : [];
+      checklist.innerHTML = "";
+
+      if (!reasons.length && ok !== false){
+        checklist.innerHTML = `
+          <div class="check">
+            <div class="check__left">
+              <div class="dot ok"></div>
+              <div class="check__text">
+                <div class="check__label">Ready</div>
+                <div class="check__sub">Scan a student code to validate restrictions.</div>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      for (const r of reasons){
+        const status = (r?.status || r?.level || (ok === false ? "block" : "ok")).toLowerCase();
+        const dotClass = status === "block" ? "block" : (status === "warn" ? "warn" : "ok");
+
+        const label = r?.label || r?.title || r?.message || "Check";
+        const sub = r?.detail || r?.description || "";
+
+        checklist.insertAdjacentHTML("beforeend", `
+          <div class="check">
+            <div class="check__left">
+              <div class="dot ${dotClass}"></div>
+              <div class="check__text">
+                <div class="check__label">${escapeHtml(label)}</div>
+                <div class="check__sub">${escapeHtml(sub)}</div>
+              </div>
+            </div>
+          </div>
+        `);
+      }
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    async function lookupStudentAndPrecheck(code){
+      // clear any previous student session but keep UI working
+      startBtn.disabled = true;
+
+      if (!code || code.trim().length < 3){
+        setHint("Scan/enter a student code to load details and restrictions.");
+        progressWrap.style.display = "none";
+        return;
+      }
+
+      showProgress();
+      setHint("Looking up student…");
+      renderChecklist({ ok: null, reasons: [] });
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/students/lookup?student_code=${encodeURIComponent(code)}`, { headers: authHeaders() });
+        if (!res.ok) throw new Error("Student not found");
+        const s = await res.json();
+
+        // save student
+        sessionStorage.setItem("gk_student_code", code);
+        sessionStorage.setItem("gk_student_lookup", JSON.stringify(s));
+
+        lastNameEl.value = s.last_name || "";
+        firstNameEl.value = s.first_name || "";
+        gradeSectionEl.value = s.grade_section || `${s.grade || ""}${s.section ? (" - " + s.section) : ""}`.trim();
+
+        const pre = await fetch(`${BASE_URL}/api/circulation/precheck?student_code=${encodeURIComponent(code)}`, { headers: authHeaders() });
+        if (!pre.ok) throw new Error("Precheck failed");
+        const p = await pre.json();
+
+        sessionStorage.setItem("gk_precheck", JSON.stringify(p));
+
+        dateBorrowedEl.value = fmtISOToMDY(p.date_borrowed);
+        dueDateEl.value = fmtISOToMDY(p.due_date);
+
+        renderChecklist(p);
+
+        if (p?.ok === true){
+          setHint("Cleared. Click Start Scanning Books.");
+          startBtn.disabled = false;
+
+          // initialize checkout list
+          if (!sessionStorage.getItem("gk_checkout_items")){
+            sessionStorage.setItem("gk_checkout_items", JSON.stringify([]));
+          }
+          if (!sessionStorage.getItem("gk_checkout_session_started_at")){
+            sessionStorage.setItem("gk_checkout_session_started_at", String(Date.now()));
+          }
+        } else {
+          setHint("Blocked. Resolve restrictions first.", true);
+          startBtn.disabled = true;
+        }
+
+        hideProgressAfterComplete();
+      }catch(err){
+        hideProgressAfterComplete();
+        setHint(err?.message || "Lookup failed.", true);
+        startBtn.disabled = true;
+      }
+    }
+
+    studentCodeEl.addEventListener("input", () => {
+      const v = studentCodeEl.value.trim();
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+
+      if (!v){
+        setHint("Scan/enter a student code to load details and restrictions.");
+        progressWrap.style.display = "none";
+        startBtn.disabled = true;
+        return;
+      }
+
+      debounceTimer = setTimeout(() => {
+        if (v === lastLookup) return;
+        lastLookup = v;
+        lookupStudentAndPrecheck(v);
+      }, 220);
+    });
+
+    studentCodeEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        e.preventDefault();
+        const v = studentCodeEl.value.trim();
+        if (!v) return;
+        lastLookup = v;
+        lookupStudentAndPrecheck(v);
+      }
+    });
+
+    startBtn.addEventListener("click", () => {
+      window.location.href = "circulation_2.html";
+    });
+
+    clearBtn.addEventListener("click", resetAll);
+
+    // If returning and student already locked, auto-fill instantly
+    (function hydrateFromSession(){
+      try{
+        const sc = sessionStorage.getItem("gk_student_code");
+        const s = JSON.parse(sessionStorage.getItem("gk_student_lookup") || "null");
+        const p = JSON.parse(sessionStorage.getItem("gk_precheck") || "null");
+        if (sc && s && p){
+          studentCodeEl.value = sc;
+          lastNameEl.value = s.last_name || "";
+          firstNameEl.value = s.first_name || "";
+          gradeSectionEl.value = s.grade_section || `${s.grade || ""}${s.section ? (" - " + s.section) : ""}`.trim();
+          dateBorrowedEl.value = fmtISOToMDY(p.date_borrowed);
+          dueDateEl.value = fmtISOToMDY(p.due_date);
+          renderChecklist(p);
+          startBtn.disabled = !(p?.ok === true);
+          setHint(p?.ok === true ? "Student locked. Click Start Scanning Books." : "Blocked. Resolve restrictions first.", p?.ok !== true);
+        } else {
+          renderChecklist({ ok: null, reasons: [] });
+        }
+      }catch{
+        renderChecklist({ ok: null, reasons: [] });
+      }
+    })();
+
+// Sticky header glass on scroll
+const header = document.getElementById("siteHeader");
+function syncHeader(){
+  if (!header) return;
+  header.classList.toggle("is-scrolled", window.scrollY > 8);
+}
+syncHeader();
+window.addEventListener("scroll", syncHeader, { passive: true });
+  </script>
+</body>
+</html>

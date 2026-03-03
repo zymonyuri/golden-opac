@@ -1,0 +1,334 @@
+<!-- home.html (Librarian Home) -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Librarian Home</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
+  <!-- Reuse your existing OPAC styles if you want -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --yellow:#f4e32f;
+      --green:#8dd959;
+      --glass: rgba(255,255,255,0.12);
+      --glass2: rgba(255,255,255,0.08);
+      --stroke: rgba(255,255,255,0.16);
+      --shadow: 0 26px 60px rgba(0,0,0,0.30);
+    }
+
+    
+
+    /* Background */
+    .page{
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page__bg{
+      position:absolute;
+      inset:0;
+      background-image:url("assets/bg.png");
+      background-size:cover;
+      background-position:center;
+      filter: blur(2px) saturate(1.05) contrast(1.05);
+      transform: scale(1.04);
+      z-index:-2;
+    }
+    .page__overlay{
+      position:absolute;
+      inset:0;
+      background: linear-gradient(rgba(0,0,0,0.60), rgba(0,0,0,0.35));
+      z-index:-1;
+    }
+
+    /* Header: reuse your .topbar styles from styles.css */
+    .nav__link:hover{
+      color: #f4e32f;
+    }
+
+    /* Main layout */
+    .content{
+      position: relative;
+      z-index: 2;
+      padding: 110px 16px 34px; /* space for fixed header */
+    }
+    .shell{
+      width: min(1280px, 94vw);
+      margin: 0 auto;
+    }
+
+    .welcome{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      color: rgba(255,255,255,0.92);
+    }
+    .welcome h1{
+      margin:0;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+    }
+    .welcome p{
+      margin:6px 0 0;
+      font-size: 13px;
+      opacity: 0.75;
+      font-weight: 700;
+    }
+
+    .brand__name{ 
+        font-weight: 800; line-height: 1.15; 
+    }
+    /* Grid */
+        .grid{
+    display:grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 26px;
+    }
+
+    /* Liquid glass tile */
+    .tile{
+        position: relative;
+        border-radius: 22px;
+        background: linear-gradient(135deg, var(--glass), var(--glass2));
+        border: 1px solid var(--stroke);
+        backdrop-filter: blur(18px) saturate(160%);
+        -webkit-backdrop-filter: blur(18px) saturate(160%);
+        box-shadow: var(--shadow);
+        padding: 26px;
+        text-decoration: none;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap: 16px;
+        min-height: 220px; /* increased */
+        transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+        overflow:hidden;
+        will-change: transform;
+        }
+    .tile::before{
+      content:"";
+      position:absolute;
+      inset:-40px;
+      background:
+        radial-gradient(closest-side at 18% 12%, rgba(255,255,255,0.20), transparent 58%),
+        radial-gradient(closest-side at 90% 40%, rgba(255,199,0,0.12), transparent 64%);
+      pointer-events:none;
+    }
+
+    .tile:hover{
+      transform: translateY(-4px);
+      box-shadow: 0 34px 70px rgba(0,0,0,0.34);
+      border-color: rgba(255,255,255,0.22);
+    }
+    .tile:active{
+      transform: translateY(1px);
+    }
+
+    .tile__icon{
+        width: 110px;   /* bigger */
+        height: 110px;  /* bigger */
+        display:grid;
+        place-items:center;
+        border-radius: 22px;
+        background: rgba(0,0,0,0.20);
+        border: 1px solid rgba(255,255,255,0.12);
+        }
+    
+    .tile__icon img{
+        width: 70px;   /* bigger */
+        height: 70px;
+        object-fit: contain;
+        transition: filter 200ms ease, transform 200ms ease;
+        }
+
+    /* Hover = green tint */
+    .tile:hover .tile__icon img{
+      transform: translateY(-1px);
+      /* default: make it yellow-ish */
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+    }
+
+    .tile__label{
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        font-size: 15px;  /* increased */
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.95);
+        }
+
+    /* Responsive */
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 520px){
+      .grid{ grid-template-columns: 1fr; }
+      .tile{ min-height: 150px; }
+    }
+
+    /* Footer: reuse your existing .site-footer in styles.css */
+  </style>
+</head>
+
+<body>
+  <!-- Sticky header (same structure you used) -->
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span>
+          Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page" id="top">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="content">
+      <div class="shell">
+
+        <div class="welcome">
+          <div>
+            <h1>Home</h1>
+            <p>Select a module to begin.</p>
+          </div>
+        </div>
+
+        <div class="grid" aria-label="Modules">
+          <a class="tile" href="circulation.html" aria-label="Circulation">
+            <div class="tile__icon">
+              <img src="assets/icons/circulation.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="tile__label">Circulation</div>
+          </a>
+
+          <a class="tile" href="students.html" aria-label="Students">
+            <div class="tile__icon">
+              <img src="assets/icons/students.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="tile__label">Students</div>
+          </a>
+
+          <a class="tile" href="search-admin.html" aria-label="Search">
+            <div class="tile__icon">
+              <img src="assets/icons/search.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="tile__label">Search</div>
+          </a>
+
+          <a class="tile" href="cataloging.html" aria-label="Cataloging">
+            <div class="tile__icon">
+              <img src="assets/icons/cataloging.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="tile__label">Cataloging</div>
+          </a>
+
+          <a class="tile" href="reports.html" aria-label="Reports">
+            <div class="tile__icon">
+              <img src="assets/icons/reports.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="tile__label">Reports</div>
+          </a>
+
+          <a class="tile" href="settings.html" aria-label="Settings">
+            <div class="tile__icon">
+              <img src="assets/icons/settings.png" alt="" aria-hidden="true" />
+            </div>
+            <div class="tile__label">Settings</div>
+          </a>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer (same as OPAC footer, with your address/phone) -->
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">
+          Librarian portal for cataloging, circulation, student records, and reports.
+        </p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+
+        <div class="site-footer__row" style="margin-top:14px;">
+          <a class="site-footer__social"
+             href="https://www.facebook.com/people/Golden-Key-Integrated-School-of-St-Joseph/100054202103739/"
+             target="_blank" rel="noopener">Facebook</a>
+          <span class="site-footer__dot">•</span>
+          <a class="site-footer__social"
+             href="https://goldenkey.school/"
+             target="_blank" rel="noopener">Official Website</a>
+        </div>
+      </section>
+    </div>
+  </footer>
+
+  <script>
+    // Header glass only when scrolled (same behavior)
+    const header = document.getElementById("siteHeader");
+    function updateHeaderGlass(){
+      if (!header) return;
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+    }
+    window.addEventListener("scroll", updateHeaderGlass, { passive: true });
+    updateHeaderGlass();
+
+    // Contact scroll
+    const contactLink = document.getElementById("contactLink");
+    contactLink?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const footer = document.getElementById("footer");
+      if (!footer) return;
+      const headerH = header?.getBoundingClientRect().height ?? 0;
+      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+
+    // Logout: clear token and redirect to login
+    const logoutLink = document.getElementById("logoutLink");
+    logoutLink?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    // Footer year
+    const yEl = document.getElementById("footerYear");
+    if (yEl) yEl.textContent = String(new Date().getFullYear());
+
+    // Optional: Protect page (redirect if no token)
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+  </script>
+
+</body>
+</html>

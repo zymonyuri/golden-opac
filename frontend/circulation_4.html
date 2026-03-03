@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Check In</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+
+      --shadow: 0 26px 60px rgba(0,0,0,0.32);
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --ink: #111;
+      --mutedInk: rgba(0,0,0,0.65);
+      --softInk: rgba(0,0,0,0.55);
+    }
+
+    /* Header: NO glass until scroll */
+    .topbar{
+      position: fixed; top:0; left:0; right:0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: none;
+      transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
+    }
+    .topbar.is-scrolled{
+      background: rgba(255,255,255,0.18);
+      border-bottom: 1px solid rgba(255,255,255,0.20);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    }
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 34px; }
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: var(--ink);
+    }
+
+    /* Folder tabs */
+    .tabs{
+      position:relative; display:flex; gap:10px;
+      padding:14px 16px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+    }
+    .tabs::after{
+      content:"";
+      position:absolute; left:16px; right:16px; bottom:-1px;
+      height:14px;
+      background: rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius: 0 0 14px 14px;
+      z-index:0; pointer-events:none;
+    }
+    .tab{
+      position:relative; z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000; letter-spacing:.06em; text-transform:uppercase;
+      font-size:13px; text-decoration:none;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .tab.is-active{
+      background: var(--brand-yellow);
+      color:#111;
+      transform: translateY(1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+
+    .content{ padding:18px 18px 20px; }
+
+    .title{ margin:0 0 14px; font-size:26px; font-weight:1000; letter-spacing:.01em; color:#111; }
+    .title .accent{ color: var(--brand-yellow); }
+
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:14px 18px; align-items:end; }
+    .field{ display:grid; gap:8px; }
+    .field--full{ grid-column: 1 / -1; }
+
+    .label{
+      font-size:13px; font-weight:900;
+      letter-spacing:.06em; text-transform:uppercase;
+      color: var(--mutedInk);
+    }
+    .input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .progress-wrap{
+      display:none;
+      height:4px;
+      width:100%;
+      border-radius:999px;
+      overflow:hidden;
+      background: var(--brand-green);
+      margin-top:10px;
+    }
+    .progress-bar{
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background: var(--brand-yellow);
+      transition: width 200ms ease;
+    }
+
+    .hint{ margin-top:8px; font-size:12px; font-weight:800; color: var(--softInk); }
+    .hint.is-error{ color: rgba(176,0,0,0.78); }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:1000; font-size:12px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.70);
+      color:#111;
+      white-space: nowrap;
+    }
+    .pill.ok{ border-color: rgba(141,217,89,0.55); background: rgba(141,217,89,0.22); }
+    .pill.warn{ border-color: rgba(244,227,47,0.70); background: rgba(244,227,47,0.25); }
+    .pill.block{ border-color: rgba(176,0,0,0.35); background: rgba(176,0,0,0.10); color: rgba(176,0,0,0.78); }
+
+    .cards{
+      margin-top: 14px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .card{
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.02);
+      padding: 12px;
+    }
+    .card__title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      font-size:12px; font-weight:1000; letter-spacing:.08em;
+      text-transform:uppercase; color: rgba(0,0,0,0.70);
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .kv{ display:grid; gap:8px; }
+    .kv .row{ display:grid; grid-template-columns: 140px 1fr; gap:10px; }
+    .k{ font-size:12px; font-weight:1000; letter-spacing:.06em; text-transform:uppercase; color: rgba(0,0,0,0.62); }
+    .v{ font-weight:1000; color: rgba(0,0,0,0.85); }
+
+    .footer-row{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn{
+      border:0;
+      border-radius:999px;
+      padding:12px 26px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      background: var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.20);
+      transition: transform 170ms ease, opacity 170ms ease;
+    }
+    .btn:hover{ transform: translateY(-2px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none !important; }
+
+    .btn-ghost{
+      border-radius:999px;
+      padding:12px 18px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.03);
+      cursor:pointer;
+      font-weight:1000;
+      color: rgba(0,0,0,0.75);
+    }
+    .btn-small{
+      padding:10px 14px;
+      font-size:13px;
+    }
+
+    .finebox{
+      margin-top: 14px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.02);
+      padding: 12px;
+      display:none;
+    }
+    .finebox__top{ display:flex; justify-content:space-between; align-items:center; gap: 10px; flex-wrap: wrap; }
+    .finebox__title{ font-size:12px; font-weight:1000; letter-spacing:.08em; text-transform:uppercase; color: rgba(0,0,0,0.70); }
+    .fine-list{ margin-top: 10px; display:grid; gap:10px; }
+    .fine-item{
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.70);
+      padding: 10px;
+      display:grid;
+      gap: 8px;
+    }
+    .fine-item .top{ display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap: wrap; }
+    .mono{ font-feature-settings:"tnum" 1; font-variant-numeric: tabular-nums; }
+    .payrow{ display:flex; gap:10px; flex-wrap: wrap; align-items:center; }
+    .payrow input, .payrow select{
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      font-weight:900;
+    }
+
+    /* Session list */
+    .session{
+      margin-top: 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.02);
+      overflow: hidden;
+    }
+    .session__head{
+      padding: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.10);
+      display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap: wrap;
+      background: rgba(255,255,255,0.60);
+    }
+    .session__title{
+      font-size:12px; font-weight:1000; letter-spacing:.08em; text-transform:uppercase;
+      color: rgba(0,0,0,0.70);
+    }
+    .session__meta{
+      font-size:12px; font-weight:900; color: rgba(0,0,0,0.55);
+    }
+    .session__actions{
+      display:flex; align-items:center; gap:10px; flex-wrap: wrap;
+    }
+    .items{ display:grid; }
+    .item{
+      display:grid;
+      grid-template-columns: 180px 1fr 180px;
+      gap: 12px;
+      padding: 12px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.70);
+      align-items:center;
+    }
+    .item:first-child{ border-top:0; }
+    .i-title{ font-weight:1000; color: rgba(0,0,0,0.86); }
+    .i-sub{ font-size:12px; font-weight:900; color: rgba(0,0,0,0.55); margin-top:2px; line-height:1.35; }
+    .badge{
+      justify-self:end;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 1000;
+      font-size: 12px;
+      background: rgba(141,217,89,0.20);
+      border: 1px solid rgba(141,217,89,0.55);
+      color: rgba(0,0,0,0.78);
+      max-width: 100%;
+    }
+    .badge.err{
+      background: rgba(176,0,0,0.10);
+      border-color: rgba(176,0,0,0.25);
+      color: rgba(176,0,0,0.78);
+    }
+    .badge .ellipsis{
+      overflow:hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+      display:inline-block;
+    }
+
+    /* Modal */
+    .modal{ position: fixed; inset: 0; display: none; z-index: 9999; }
+    .modal.is-open{ display: block; }
+    .modal__backdrop{ position:absolute; inset:0; background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    .modal__card{
+      position:absolute; left:50%; top: 18%;
+      transform: translateX(-50%);
+      width: min(620px, calc(100vw - 32px));
+      border-radius: 18px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 30px 70px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+    .modal__top{
+      display:flex; align-items:center; justify-content:space-between; gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.02);
+    }
+    .modal__title{ font-weight: 1000; font-size: 18px; color:#111; }
+    .modal__body{ padding: 16px; font-weight: 900; color: rgba(0,0,0,0.78); line-height: 1.45; }
+    .modal__actions{
+      display:flex; justify-content:flex-end; gap: 10px;
+      padding: 14px 16px;
+      border-top: 1px solid rgba(0,0,0,0.10);
+    }
+    .modal__btn{
+      border:0; border-radius:999px; padding: 12px 18px; cursor:pointer; font-weight: 1000;
+      background: var(--brand-yellow); color:#111; box-shadow: 0 16px 34px rgba(0,0,0,0.20);
+    }
+    .modal__btn:hover{ opacity:.96; transform: translateY(-1px); }
+    .modal__btn:active{ transform: translateY(1px); }
+    .modal__btn-ghost{
+      border-radius:999px; padding: 12px 18px; cursor:pointer; font-weight: 1000;
+      border:1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.03); color: rgba(0,0,0,0.78);
+    }
+
+    @media (max-width: 980px){
+      .shell{ grid-template-columns: 74px 1fr; }
+      .grid{ grid-template-columns: 1fr; }
+      .cards{ grid-template-columns: 1fr; }
+      .kv .row{ grid-template-columns: 1fr; }
+      .item{ grid-template-columns: 1fr; }
+      .badge{ justify-self:start; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item is-active" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs">
+            <a class="tab" href="circulation.html">Check Out</a>
+            <a class="tab is-active" href="circulation_4.html">Check In</a>
+          </div>
+
+          <div class="content">
+            <h1 class="title"><span class="accent">CIRCULATION</span> — CHECK IN</h1>
+
+            <div class="grid">
+              <div class="field field--full">
+                <div class="label">Book Barcode</div>
+                <input id="barcode" class="input" type="text" placeholder="Scan book barcode..." autocomplete="off" autofocus />
+                <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+                <div class="hint" id="hint">Scan a book barcode. Borrower + overdue fine will auto-load.</div>
+              </div>
+
+              <div class="field">
+                <div class="label">Title</div>
+                <input id="title" class="input" type="text" readonly />
+              </div>
+              <div class="field">
+                <div class="label">Author</div>
+                <input id="author" class="input" type="text" readonly />
+              </div>
+              <div class="field">
+                <div class="label">Student Name</div>
+                <input id="isbn" class="input" type="text" readonly />
+              </div>
+              <div class="field">
+                <div class="label">Borrower (Student Code)</div>
+                <input id="studentCode" class="input" type="text" readonly />
+              </div>
+            </div>
+
+            <div class="cards">
+              <div class="card">
+                <div class="card__title">
+                  <span>Loan Status</span>
+                  <label class="pill" style="gap:10px; cursor:pointer; user-select:none;">
+                    <input id="autoToggle" type="checkbox" style="transform: translateY(1px);" />
+                    Auto-checkin on scan
+                  </label>
+                </div>
+                <div class="kv">
+                  <div class="row"><div class="k">Due Date</div><div class="v mono" id="due">—</div></div>
+                  <div class="row"><div class="k">Overdue</div><div class="v" id="overduePill">—</div></div>
+                  <div class="row"><div class="k">Fine</div><div class="v mono" id="projFine">—</div></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card__title">Return Condition</div>
+
+                <div class="field">
+                  <label class="pill" style="justify-content:flex-start; gap:10px; cursor:pointer;">
+                    <input id="isDamaged" type="checkbox" />
+                    Mark as Damaged
+                  </label>
+                </div>
+
+                <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                  <div class="field">
+                    <div class="label">Severity</div>
+                    <select id="severity" class="input" disabled>
+                      <option value="">Select…</option>
+                      <option value="Minor">Minor</option>
+                      <option value="Major">Major</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <div class="label">Notes</div>
+                    <input id="notes" class="input" type="text" placeholder="Damage notes (optional)" disabled />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="finebox" id="fineBox">
+              <div class="finebox__top">
+                <div>
+                  <div class="finebox__title">Unpaid Fines (Pay Here)</div>
+                  <div class="hint" style="margin-top:6px;">You can pay per fine below, or use “Pay All Outstanding”.</div>
+                </div>
+
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+                  <span class="pill warn" id="fineSummary">—</span>
+                  <select id="payAllMethod" class="input" style="width:auto; padding:10px 10px;">
+                    <option value="cash">cash</option>
+                    <option value="gcash">gcash</option>
+                    <option value="card">card</option>
+                  </select>
+                  <input id="payAllNote" class="input" style="width: 220px; padding:10px 10px;" type="text" placeholder="note (optional)">
+                  <button class="btn" id="payAllBtn" type="button" style="padding:10px 18px;">Pay All Outstanding</button>
+                </div>
+              </div>
+              <div class="fine-list" id="fineList"></div>
+            </div>
+
+            <div class="footer-row">
+              <button class="btn-ghost" id="clearBtn" type="button">Clear</button>
+              <button class="btn" id="checkinBtn" type="button" disabled>Check In Book</button>
+            </div>
+
+            <div class="session">
+              <div class="session__head">
+                <div>
+                  <div class="session__title">Returned in this session</div>
+                  <div class="session__meta"><span id="sessionCount">0</span> item(s)</div>
+                </div>
+
+                <div class="session__actions">
+                  <button class="btn-ghost btn-small" id="finishSessionBtn" type="button">Finish Session</button>
+                </div>
+              </div>
+              <div class="items" id="sessionItems"></div>
+            </div>
+
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <!-- Confirm Modal (for auto-checkin when overdue) -->
+  <div id="confirmModal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop"></div>
+    <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal__top">
+        <div class="modal__title" id="confirmTitle">Confirm Check-in</div>
+        <span class="pill warn">Overdue</span>
+      </div>
+      <div class="modal__body" id="confirmBody">This book is overdue. A fine may be created. Proceed?</div>
+      <div class="modal__actions">
+        <button class="modal__btn-ghost" id="confirmCancel" type="button">Cancel</button>
+        <button class="modal__btn" id="confirmOk" type="button">Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Finish Session Modal -->
+  <div id="finishModal" class="modal" aria-hidden="true">
+    <div class="modal__backdrop" id="finishBackdrop"></div>
+    <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
+      <div class="modal__top">
+        <div class="modal__title" id="finishTitle">Finish Session</div>
+        <span class="pill warn">Confirm</span>
+      </div>
+      <div class="modal__body" id="finishBody">
+        This will clear “Returned in this session” for this librarian on this tab. Continue?
+      </div>
+      <div class="modal__actions">
+        <button class="modal__btn-ghost" id="finishCancel" type="button">Cancel</button>
+        <button class="modal__btn" id="finishOk" type="button">Clear Session</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    // header scroll -> glass only after scroll
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive:true });
+
+    // Make session storage user-specific so it won't leak across accounts
+    const SESSION_KEY = `gk_checkin_items_${String(token).slice(0, 16)}`;
+
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      // IMPORTANT: clear the session list on logout
+      sessionStorage.removeItem(SESSION_KEY);
+
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    function authHeaders(){ return { "Authorization": `Bearer ${token}` }; }
+
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    function fmtDateTime(dt){
+      if (!dt) return "—";
+      return String(dt).replace("T"," ").slice(0,19);
+    }
+
+    function safeJSON(s){ try{ return s ? JSON.parse(s) : null; }catch{ return null; } }
+
+    // Session list storage
+    function getSessionItems(){ return safeJSON(sessionStorage.getItem(SESSION_KEY)) || []; }
+    function setSessionItems(items){ sessionStorage.setItem(SESSION_KEY, JSON.stringify(items)); renderSessionItems(); }
+    function pushSessionItem(item){
+      const items = getSessionItems();
+      items.unshift(item);
+      setSessionItems(items.slice(0, 25));
+    }
+    function clearSessionItems(){
+      sessionStorage.removeItem(SESSION_KEY);
+      renderSessionItems();
+    }
+
+    // UI refs
+    const barcodeEl = document.getElementById("barcode");
+    const titleEl = document.getElementById("title");
+    const authorEl = document.getElementById("author");
+    const isbnEl = document.getElementById("isbn"); // (used as Student Name display)
+    const studentCodeEl = document.getElementById("studentCode");
+    const dueEl = document.getElementById("due");
+    const overduePillEl = document.getElementById("overduePill");
+    const projFineEl = document.getElementById("projFine");
+    const hintEl = document.getElementById("hint");
+
+    const autoToggle = document.getElementById("autoToggle");
+
+    const isDamagedEl = document.getElementById("isDamaged");
+    const severityEl = document.getElementById("severity");
+    const notesEl = document.getElementById("notes");
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+
+    const fineBox = document.getElementById("fineBox");
+    const fineSummary = document.getElementById("fineSummary");
+    const fineList = document.getElementById("fineList");
+    const payAllBtn = document.getElementById("payAllBtn");
+    const payAllMethod = document.getElementById("payAllMethod");
+    const payAllNote = document.getElementById("payAllNote");
+
+    const checkinBtn = document.getElementById("checkinBtn");
+    const clearBtn = document.getElementById("clearBtn");
+
+    const sessionItemsEl = document.getElementById("sessionItems");
+    const sessionCountEl = document.getElementById("sessionCount");
+
+    // Confirm modal (overdue auto-checkin)
+    const confirmModal = document.getElementById("confirmModal");
+    const confirmOk = document.getElementById("confirmOk");
+    const confirmCancel = document.getElementById("confirmCancel");
+    const confirmBackdrop = confirmModal.querySelector(".modal__backdrop");
+    const confirmBody = document.getElementById("confirmBody");
+
+    // Finish session modal
+    const finishSessionBtn = document.getElementById("finishSessionBtn");
+    const finishModal = document.getElementById("finishModal");
+    const finishOk = document.getElementById("finishOk");
+    const finishCancel = document.getElementById("finishCancel");
+    const finishBackdrop = document.getElementById("finishBackdrop");
+
+    let debounceTimer = null;
+    let progressTimer = null;
+    let payload = null; // lookup payload
+    let pendingAuto = false;
+
+    function setHint(text, isError=false){
+      hintEl.textContent = text;
+      hintEl.classList.toggle("is-error", !!isError);
+    }
+
+    function showProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      clearInterval(progressTimer);
+      let w = 0;
+      progressTimer = setInterval(() => {
+        w = Math.min(88, w + 7);
+        progressBar.style.width = w + "%";
+      }, 80);
+    }
+
+    function hideProgressAfterComplete(){
+      clearInterval(progressTimer);
+      progressBar.style.width = "100%";
+      setTimeout(() => {
+        progressBar.style.width = "0%";
+        progressWrap.style.display = "none";
+      }, 300);
+    }
+
+    function resetAll(){
+      barcodeEl.value = "";
+      titleEl.value = "";
+      authorEl.value = "";
+      isbnEl.value = "";
+      studentCodeEl.value = "";
+      dueEl.textContent = "—";
+      overduePillEl.innerHTML = "—";
+      projFineEl.textContent = "—";
+      checkinBtn.disabled = true;
+      setHint("Scan a book barcode. Borrower + overdue fine will auto-load.");
+
+      fineBox.style.display = "none";
+      fineList.innerHTML = "";
+      fineSummary.textContent = "—";
+
+      isDamagedEl.checked = false;
+      severityEl.value = "";
+      notesEl.value = "";
+      severityEl.disabled = true;
+      notesEl.disabled = true;
+
+      payload = null;
+      pendingAuto = false;
+      progressWrap.style.display = "none";
+      barcodeEl.focus();
+    }
+
+    function renderOverduePill(loan){
+      overduePillEl.innerHTML = "";
+      if (!loan){
+        overduePillEl.textContent = "—";
+        return;
+      }
+      if (loan.is_overdue){
+        overduePillEl.innerHTML = `<span class="pill block">Overdue • ${Number(loan.overdue_days || 0)} day(s)</span>`;
+      } else {
+        overduePillEl.innerHTML = `<span class="pill ok">On time</span>`;
+      }
+    }
+
+    function sumOutstanding(unpaid){
+      return (unpaid || []).reduce((a,x) => a + Number(x.outstanding || 0), 0);
+    }
+
+    function normalizeDetailToString(data){
+      if (!data) return "Request failed.";
+      if (typeof data.detail === "string") return data.detail;
+      if (typeof data.detail === "object" && data.detail !== null){
+        return data.detail.message || data.detail.error || JSON.stringify(data.detail);
+      }
+      if (typeof data.message === "string") return data.message;
+      return JSON.stringify(data);
+    }
+
+    function renderUnpaidFines(unpaid){
+      if (!unpaid || !unpaid.length){
+        fineBox.style.display = "none";
+        fineList.innerHTML = "";
+        fineSummary.textContent = "—";
+        return;
+      }
+
+      fineBox.style.display = "block";
+      const total = sumOutstanding(unpaid);
+      fineSummary.textContent = `Outstanding: ₱${total.toFixed(2)}`;
+
+      fineList.innerHTML = "";
+      for (const f of unpaid){
+        const outstanding = Number(f.outstanding || 0);
+        fineList.insertAdjacentHTML("beforeend", `
+          <div class="fine-item">
+            <div class="top">
+              <div class="v mono">Fine #${escapeHtml(f.fine_id)} • ₱${outstanding.toFixed(2)}</div>
+              <span class="pill warn">Unpaid</span>
+            </div>
+            <div class="k">${escapeHtml(f.reason || "—")} • ${escapeHtml(fmtDateTime(f.assessed_at))}</div>
+
+            <div class="payrow">
+              <input class="mono" type="number" step="0.01" min="0.01" max="${outstanding}" value="${outstanding}" data-pay-amount="${f.fine_id}">
+              <select data-pay-method="${f.fine_id}">
+                <option value="cash">cash</option>
+                <option value="gcash">gcash</option>
+                <option value="card">card</option>
+              </select>
+              <input type="text" placeholder="note (optional)" data-pay-note="${f.fine_id}">
+              <button class="btn" style="padding:10px 18px;" data-pay-btn="${f.fine_id}">Pay</button>
+            </div>
+          </div>
+        `);
+      }
+
+      // wire pay buttons
+      for (const f of unpaid){
+        const btn = fineList.querySelector(`[data-pay-btn="${f.fine_id}"]`);
+        btn.addEventListener("click", async () => {
+          const amtEl = fineList.querySelector(`[data-pay-amount="${f.fine_id}"]`);
+          const methodEl = fineList.querySelector(`[data-pay-method="${f.fine_id}"]`);
+          const noteEl = fineList.querySelector(`[data-pay-note="${f.fine_id}"]`);
+
+          const amount = Number(amtEl.value || 0);
+          const method = methodEl.value || "cash";
+          const note = noteEl.value || "";
+
+          if (!amount || amount <= 0){
+            alert("Enter a valid amount.");
+            return;
+          }
+
+          btn.disabled = true;
+          try{
+            const url = new URL(`${BASE_URL}/api/fines/pay`);
+            url.searchParams.set("fine_id", String(f.fine_id));
+            url.searchParams.set("amount", String(amount));
+            url.searchParams.set("method", method);
+            if (note) url.searchParams.set("note", note);
+
+            const res = await fetch(url.toString(), { method: "POST", headers: authHeaders() });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok){
+              alert(normalizeDetailToString(data));
+              btn.disabled = false;
+              return;
+            }
+
+            alert("Payment recorded.");
+            await refreshLookupKeepingBarcode();
+          }catch(err){
+            alert(err?.message || "Network error.");
+            btn.disabled = false;
+          }
+        });
+      }
+    }
+
+    async function payAllOutstanding(){
+      const unpaid = payload?.unpaid_fines || [];
+      if (!unpaid.length){
+        alert("No unpaid fines.");
+        return;
+      }
+
+      const method = payAllMethod.value || "cash";
+      const note = payAllNote.value || "";
+
+      payAllBtn.disabled = true;
+
+      let paid = 0;
+      let failed = 0;
+
+      for (const f of unpaid){
+        const outstanding = Number(f.outstanding || 0);
+        if (outstanding <= 0) continue;
+
+        try{
+          const url = new URL(`${BASE_URL}/api/fines/pay`);
+          url.searchParams.set("fine_id", String(f.fine_id));
+          url.searchParams.set("amount", String(outstanding));
+          url.searchParams.set("method", method);
+          if (note) url.searchParams.set("note", note);
+
+          const res = await fetch(url.toString(), { method: "POST", headers: authHeaders() });
+          if (!res.ok) failed++;
+          else paid++;
+        }catch{
+          failed++;
+        }
+      }
+
+      alert(`Pay All done.\nPaid: ${paid}\nFailed: ${failed}`);
+      payAllBtn.disabled = false;
+
+      await refreshLookupKeepingBarcode();
+    }
+
+    function renderSessionItems(){
+      const items = getSessionItems();
+      sessionCountEl.textContent = String(items.length);
+      sessionItemsEl.innerHTML = "";
+
+      if (!items.length){
+        sessionItemsEl.innerHTML = `
+          <div class="item">
+            <div>
+              <div class="i-title">No returns yet</div>
+              <div class="i-sub">Scan a book barcode to begin.</div>
+            </div>
+            <div></div>
+            <div class="badge"><span class="ellipsis">Waiting</span></div>
+          </div>
+        `;
+        return;
+      }
+
+      for (const it of items){
+        const ok = it.ok === true;
+        sessionItemsEl.insertAdjacentHTML("beforeend", `
+          <div class="item">
+            <div class="mono">
+              <div class="i-title">${escapeHtml(it.barcode || "—")}</div>
+              <div class="i-sub">${escapeHtml(it.student_code ? ("Student: " + it.student_code) : "")}</div>
+            </div>
+            <div>
+              <div class="i-title">${escapeHtml(it.title || "—")}</div>
+              <div class="i-sub">
+                ${escapeHtml(it.author || "")}
+                ${it.flags ? (" • " + escapeHtml(it.flags)) : ""}
+              </div>
+            </div>
+            <div class="badge ${ok ? "" : "err"}">
+              <span class="ellipsis">${escapeHtml(ok ? it.status_text : (it.error || "Failed"))}</span>
+            </div>
+          </div>
+        `);
+      }
+    }
+
+    function openConfirmModal(message){
+      confirmBody.textContent = message;
+      confirmModal.classList.add("is-open");
+      confirmModal.setAttribute("aria-hidden", "false");
+      confirmOk.focus();
+    }
+    function closeConfirmModal(){
+      confirmModal.classList.remove("is-open");
+      confirmModal.setAttribute("aria-hidden", "true");
+    }
+
+    function openFinishModal(){
+      finishModal.classList.add("is-open");
+      finishModal.setAttribute("aria-hidden", "false");
+      finishOk.focus();
+    }
+    function closeFinishModal(){
+      finishModal.classList.remove("is-open");
+      finishModal.setAttribute("aria-hidden", "true");
+    }
+
+    async function refreshLookupKeepingBarcode(){
+      const bc = barcodeEl.value.trim();
+      if (!bc) return;
+      await doLookup(bc, false);
+    }
+
+    async function doLookup(barcode, allowAuto=true){
+      payload = null;
+      pendingAuto = false;
+
+      if (!barcode || barcode.length < 2){
+        progressWrap.style.display = "none";
+        return;
+      }
+
+      showProgress();
+      setHint("Looking up loan…");
+      checkinBtn.disabled = true;
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/circulation/checkin/lookup?barcode=${encodeURIComponent(barcode)}`, {
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok){
+          hideProgressAfterComplete();
+          setHint(normalizeDetailToString(data), true);
+          // clear fields but keep barcode
+          titleEl.value = ""; authorEl.value = ""; isbnEl.value = ""; studentCodeEl.value = "";
+          dueEl.textContent = "—"; renderOverduePill(null); projFineEl.textContent = "—";
+          renderUnpaidFines([]);
+          return;
+        }
+
+        // fill book
+        titleEl.value = data.book?.title || "";
+        authorEl.value = data.book?.author || "";
+        // FIX: your backend returns student.name (not full_name)
+        isbnEl.value = data.student?.name || "";
+
+        if (!data.has_active_loan){
+          studentCodeEl.value = "";
+          dueEl.textContent = "—";
+          renderOverduePill(null);
+          projFineEl.textContent = "—";
+          renderUnpaidFines([]);
+          setHint(data.message || "No active loan for this barcode.", true);
+          hideProgressAfterComplete();
+          return;
+        }
+
+        // fill student + loan
+        studentCodeEl.value = data.student?.student_code || "";
+        dueEl.textContent = fmtDateTime(data.loan?.due_at);
+        renderOverduePill(data.loan);
+        projFineEl.textContent = `₱${Number(data.loan?.projected_fine || 0).toFixed(2)}`;
+        renderUnpaidFines(data.unpaid_fines || []);
+
+        payload = data;
+        checkinBtn.disabled = false;
+        setHint("Ready to check in. Mark damage if needed, then click Check In Book.");
+        hideProgressAfterComplete();
+
+        // AUTO-CHECKIN mode (book-first, multiple returns)
+        const autoOn = !!autoToggle.checked;
+        const isDamaged = !!isDamagedEl.checked;
+        const projectedFine = Number(data.loan?.projected_fine || 0);
+        const isOverdue = !!data.loan?.is_overdue;
+
+        if (allowAuto && autoOn && !isDamaged){
+          if (isOverdue || projectedFine > 0){
+            pendingAuto = true;
+            openConfirmModal(`This book is overdue. A fine may be created (Projected: ₱${projectedFine.toFixed(2)}). Proceed with auto check-in?`);
+          } else {
+            await submitCheckin("auto");
+          }
+        }
+
+      }catch(err){
+        hideProgressAfterComplete();
+        setHint(err?.message || "Lookup failed.", true);
+      }
+    }
+
+    async function submitCheckin(mode="manual"){
+      if (!payload?.has_active_loan){
+        setHint("Scan a borrowed book first.", true);
+        return;
+      }
+
+      const barcode = barcodeEl.value.trim();
+      const student_code = payload.student?.student_code;
+
+      const is_damaged = isDamagedEl.checked;
+      const severity = severityEl.value;
+      const notes = notesEl.value;
+
+      if (is_damaged && !severity){
+        setHint("Select severity (Minor/Major).", true);
+        return;
+      }
+
+      checkinBtn.disabled = true;
+      showProgress();
+      setHint(mode === "auto" ? "Auto check-in…" : "Checking in…");
+
+      try{
+        const url = new URL(`${BASE_URL}/api/circulation/checkin`);
+        url.searchParams.set("barcode", barcode);
+        url.searchParams.set("student_code", student_code);
+        url.searchParams.set("is_damaged", String(is_damaged));
+        if (is_damaged){
+          url.searchParams.set("severity", severity);
+          if (notes) url.searchParams.set("notes", notes);
+        }
+
+        const res = await fetch(url.toString(), {
+          method: "POST",
+          headers: authHeaders()
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok){
+          const msg = normalizeDetailToString(data);
+          hideProgressAfterComplete();
+          setHint(msg || "Check-in failed.", true);
+
+          pushSessionItem({
+            ok: false,
+            barcode,
+            student_code,
+            title: payload?.book?.title || titleEl.value,
+            author: payload?.book?.author || authorEl.value,
+            error: msg || "Failed"
+          });
+
+          checkinBtn.disabled = false;
+          return;
+        }
+
+        hideProgressAfterComplete();
+
+        // Your backend may return fine_created OR fine; support both
+        const fineId = data?.fine?.fine_id ?? data?.fine_created?.fine_id ?? null;
+        const fineAmt = Number(data?.fine?.amount ?? data?.fine_created?.amount ?? 0);
+        const fineCreated = !!fineId;
+
+        const flags = [
+          is_damaged ? `Damaged (${severity || "—"})` : "",
+          fineCreated ? `Fine ₱${fineAmt.toFixed(2)}` : ""
+        ].filter(Boolean).join(" • ");
+
+        pushSessionItem({
+          ok: true,
+          barcode,
+          student_code,
+          title: payload?.book?.title || titleEl.value,
+          author: payload?.book?.author || authorEl.value,
+          flags,
+          status_text: fineCreated ? `Returned + Fine ₱${fineAmt.toFixed(2)}` : "Returned"
+        });
+
+        // prepare for next scan
+        setHint("Returned. Scan next book.");
+        barcodeEl.value = "";
+        titleEl.value = "";
+        authorEl.value = "";
+        isbnEl.value = "";
+        studentCodeEl.value = "";
+        dueEl.textContent = "—";
+        overduePillEl.innerHTML = "—";
+        projFineEl.textContent = "—";
+        renderUnpaidFines([]);
+        payload = null;
+
+        // reset damage fields
+        isDamagedEl.checked = false;
+        severityEl.value = "";
+        notesEl.value = "";
+        severityEl.disabled = true;
+        notesEl.disabled = true;
+
+        progressWrap.style.display = "none";
+        barcodeEl.focus();
+
+      }catch(err){
+        hideProgressAfterComplete();
+        setHint(err?.message || "Network error.", true);
+
+        pushSessionItem({
+          ok: false,
+          barcode,
+          student_code: payload?.student?.student_code,
+          title: payload?.book?.title || titleEl.value,
+          author: payload?.book?.author || authorEl.value,
+          error: err?.message || "Network error"
+        });
+
+        checkinBtn.disabled = false;
+      }
+    }
+
+    barcodeEl.addEventListener("input", () => {
+      const v = barcodeEl.value.trim();
+
+      if (debounceTimer) clearTimeout(debounceTimer);
+
+      if (!v){
+        setHint("Scan a book barcode. Borrower + overdue fine will auto-load.");
+        progressWrap.style.display = "none";
+        return;
+      }
+
+      debounceTimer = setTimeout(() => doLookup(v, true), 220);
+    });
+
+    barcodeEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        e.preventDefault();
+        const v = barcodeEl.value.trim();
+        if (v) doLookup(v, true);
+      }
+    });
+
+    isDamagedEl.addEventListener("change", () => {
+      const on = isDamagedEl.checked;
+      severityEl.disabled = !on;
+      notesEl.disabled = !on;
+      if (!on){
+        severityEl.value = "";
+        notesEl.value = "";
+      }
+    });
+
+    checkinBtn.addEventListener("click", async () => {
+      await submitCheckin("manual");
+    });
+
+    clearBtn.addEventListener("click", resetAll);
+    payAllBtn.addEventListener("click", payAllOutstanding);
+
+    // Confirm modal actions
+    confirmOk.addEventListener("click", async () => {
+      closeConfirmModal();
+      if (pendingAuto){
+        pendingAuto = false;
+        await submitCheckin("auto");
+      }
+    });
+
+    function cancelPendingAuto(){
+      pendingAuto = false;
+      closeConfirmModal();
+      setHint("Auto-checkin cancelled. Review details, then click Check In Book.");
+    }
+
+    confirmCancel.addEventListener("click", cancelPendingAuto);
+    confirmBackdrop.addEventListener("click", cancelPendingAuto);
+
+    // Finish session actions
+    finishSessionBtn.addEventListener("click", () => {
+      const items = getSessionItems();
+      if (!items.length){
+        alert("No returns to clear yet.");
+        return;
+      }
+      openFinishModal();
+    });
+
+    finishOk.addEventListener("click", () => {
+      closeFinishModal();
+      clearSessionItems();
+      resetAll();
+      setHint("Session cleared. Scan a book barcode to begin.");
+    });
+
+    function cancelFinish(){
+      closeFinishModal();
+    }
+    finishCancel.addEventListener("click", cancelFinish);
+    finishBackdrop.addEventListener("click", cancelFinish);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && confirmModal.classList.contains("is-open")){
+        cancelPendingAuto();
+      }
+      if (e.key === "Escape" && finishModal.classList.contains("is-open")){
+        cancelFinish();
+      }
+    });
+
+    // initial session list render
+    renderSessionItems();
+  </script>
+</body>
+</html>
