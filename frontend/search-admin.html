@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Librarian Search</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --shadow: 0 26px 60px rgba(0,0,0,0.30);
+      --ink:#111;
+      --okGreen:#0e5b18;
+      --danger:#b00000;
+    }
+    *{ box-sizing:border-box; }
+
+    .topbar{
+      position: fixed; top:0; left:0; right:0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+    }
+    .topbar.is-scrolled{
+      background: rgba(255,255,255,0.18);
+      border-bottom: 1px solid rgba(255,255,255,0.20);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    }
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 26px; }
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: var(--ink);
+
+      height: calc(100vh - 170px);
+      display:flex;
+      flex-direction:column;
+      min-height: 420px;
+    }
+    .content{
+      padding:18px 18px 16px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      flex:1;
+    }
+
+    .titleRow{
+      display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+      margin-bottom: 10px;
+      flex:0 0 auto;
+    }
+    .titleRow h1{
+      margin:0;
+      font-size: 28px;
+      font-weight: 1000;
+      letter-spacing: 0.01em;
+      color:#111;
+    }
+    .titleRow h1 .accent{ color: var(--brand-yellow); }
+
+    .tools{ display:grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px; flex:0 0 auto; }
+    .searchWrap{
+      height: 46px; display:flex; align-items:center; gap: 10px;
+      border-radius: 14px; border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04); padding: 0 12px;
+    }
+    .searchWrap svg{ width: 20px; height: 20px; opacity: .75; flex:0 0 auto; }
+    .searchWrap input{ border:0; outline:0; background: transparent; width:100%; font-size: 14px; font-weight: 700; color: #111; font-family: inherit; }
+
+    .search-progress{ height: 4px; width: 100%; background: rgba(0,0,0,0.08); border-radius: 999px; overflow: hidden; display:none; }
+    .search-progress__bar{ height: 100%; width: 0%; background: var(--brand-yellow); border-radius: 999px; transition: width 200ms ease; }
+
+    .hint{ margin-top: 2px; font-size: 13px; font-weight: 800; color: rgba(0,0,0,0.58); flex:0 0 auto; }
+
+    .list{ margin-top: 10px; display:flex; flex-direction:column; gap:12px; flex:1; overflow-y:auto; padding-right:6px; min-height:0; }
+    .list::-webkit-scrollbar{ width: 10px; }
+    .list::-webkit-scrollbar-track{ background: rgba(0,0,0,0.06); border-radius: 999px; }
+    .list::-webkit-scrollbar-thumb{ background: rgba(0,0,0,0.18); border-radius: 999px; }
+
+    .list-loader{
+      border-radius: 16px; border: 1px dashed rgba(0,0,0,0.18); background: rgba(0,0,0,0.02);
+      padding: 20px; display:flex; align-items:center; justify-content:center; min-height: 92px;
+    }
+    .dots{ display:inline-flex; align-items:center; gap:8px; padding: 12px 14px; border-radius: 999px; background: rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.08); }
+    .dot{ width: 9px; height: 9px; border-radius: 999px; background: var(--brand-yellow); animation: dotBounce 850ms infinite ease-in-out; }
+    .dot:nth-child(1){ animation-delay: 0ms; } .dot:nth-child(2){ animation-delay: 160ms; } .dot:nth-child(3){ animation-delay: 320ms; }
+    @keyframes dotBounce{ 0%,100%{ transform: translateY(0); opacity: 0.55; } 50%{ transform: translateY(-5px); opacity: 1; } }
+
+    @keyframes cardIn{ from{ opacity:0; transform: translateY(10px);} to{ opacity:1; transform: translateY(0);} }
+
+    .card{
+      border-radius: 16px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.78);
+      padding: 14px 16px; display:grid; grid-template-columns: 84px 1fr auto; gap: 14px; align-items:center;
+      cursor:pointer; animation: cardIn 260ms ease both; transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+    .card:hover{ transform: translateY(-2px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); background: rgba(255,255,255,0.86); }
+
+    .cover{ width:84px; height:108px; border-radius:14px; border: 1px solid rgba(0,0,0,0.10); background: rgba(0,0,0,0.04); overflow:hidden; display:grid; place-items:center; color: rgba(0,0,0,0.38); font-weight: 1000; font-size: 12px; }
+    .cover img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    .title{ font-size: 18px; font-weight: 1000; color: #111; line-height: 1.15; margin: 0; }
+    .sub{ margin-top: 6px; font-size: 13px; font-weight: 800; color: rgba(0,0,0,0.55); display:flex; gap:10px; flex-wrap:wrap; }
+
+    .right{ text-align:right; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap: 4px; min-width: 260px; }
+    .codeLabel{ font-size: 12px; font-weight: 800; color: rgba(0,0,0,0.50); letter-spacing: .02em; }
+    .code{ font-size: 16px; font-weight: 1000; color: rgba(0,0,0,0.70); font-variant-numeric: tabular-nums; line-height: 1.15; }
+
+    .pill{ border-radius:999px; border:1px solid rgba(0,0,0,0.10); background: rgba(0,0,0,0.03); padding: 4px 10px; font-weight: 1000; font-size: 12px; color: rgba(0,0,0,0.66); }
+    .empty{ border-radius: 16px; border: 1px dashed rgba(0,0,0,0.18); background: rgba(0,0,0,0.02); padding: 16px; color: rgba(0,0,0,0.55); font-weight: 900; display:none; }
+    .error{ margin-top: 8px; font-size: 12px; font-weight: 900; color: rgba(176,0,0,0.82); display:none; }
+
+    /* Main modal */
+    .modalOverlay{ position:fixed; inset:0; background: rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index: 3000; padding: 18px; }
+    .modal{
+      width: min(980px, 96vw); max-height: 86vh; border-radius: 18px;
+      background: rgba(255,255,255,0.98); border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35); overflow:hidden; display:flex; flex-direction:column; position:relative;
+    }
+    .modalTop{ padding: 16px 16px 12px; border-bottom: 1px solid rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:space-between; gap: 12px; }
+    .modalTop h2{ margin:0; font-size: 18px; font-weight: 1000; color:#111; }
+    .closeX{ width:38px; height:38px; border-radius:12px; border:1px solid rgba(0,0,0,0.10); background: rgba(0,0,0,0.03); cursor:pointer; font-weight:1000; }
+
+    .modalBody{ padding: 14px 16px 12px; overflow:auto; position:relative; min-height: 180px; }
+    .modalLoading{
+      display:none; position:absolute; inset:0; background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      align-items:center; justify-content:center; z-index: 5;
+    }
+
+    .editorGrid{
+  display:grid;
+  grid-template-columns: 180px 1fr;   /* cover + details */
+  gap: 16px;
+  align-items:start;
+}
+
+.bigCover{
+  width:180px;
+  height:240px;
+  border-radius:16px;
+  border:1px solid rgba(0,0,0,0.10);
+  overflow:hidden;
+  background: rgba(0,0,0,0.04);
+  display:grid;
+  place-items:center;
+  color: rgba(0,0,0,0.35);
+  font-weight:1000;
+}
+
+/* right side becomes a dense form grid */
+.detailsGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;  /* two columns beside cover */
+  gap: 12px;
+}
+
+.detailsGrid .field{
+  min-width: 0;
+}
+
+.detailsGrid .span2{
+  grid-column: 1 / -1; /* full width row */
+}
+    .bigCover img{ width:100%; height:100%; object-fit:cover; display:block; }
+
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .field label{ font-size: 12px; font-weight: 1000; color: var(--okGreen); letter-spacing: .02em; }
+    .field input{
+      width:100%; border-radius: 12px; border:1px solid rgba(0,0,0,0.14);
+      background: rgba(0,0,0,0.03); padding: 10px 12px; font-weight: 900; outline:none; font-family: inherit;
+    }
+
+    .mutedRow{ margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap; font-weight: 900; font-size: 13px; align-items:center; }
+
+    /* Availability dropdown */
+    .availTrigger{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
+    .caret{
+      width: 10px; height: 10px; display:inline-block;
+      border-right: 2px solid rgba(0,0,0,0.55);
+      border-bottom: 2px solid rgba(0,0,0,0.55);
+      transform: rotate(45deg);
+      transition: transform 180ms ease;
+      margin-top: -2px;
+    }
+    .availOpen .caret{ transform: rotate(-135deg); margin-top: 2px; }
+
+    .availDrop{ margin-top: 10px; border-radius: 16px; border: 1px solid rgba(0,0,0,0.10); background: rgba(0,0,0,0.02); padding: 12px; display:none; }
+    .availDrop.is-on{ display:block; }
+
+    .damagedHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .damagedTitle{ font-weight: 1000; font-size: 14px; color: rgba(0,0,0,0.82); }
+    .damagedHint{ margin-top: 6px; font-size: 12px; font-weight: 900; color: rgba(0,0,0,0.55); }
+    .damagedErr{ margin-top: 8px; font-size: 12px; font-weight: 1000; color: rgba(176,0,0,0.85); display:none; }
+    .damagedList{ margin-top: 10px; display:flex; flex-direction:column; gap:10px; }
+    .damagedRow{
+      border-radius: 14px; border: 1px solid rgba(0,0,0,0.10); background: rgba(255,255,255,0.80);
+      padding: 10px 12px; display:flex; align-items:flex-start; justify-content:space-between; gap: 12px; flex-wrap:wrap;
+    }
+    .damagedLeft{ display:flex; flex-direction:column; gap:4px; min-width: 260px; flex: 1; }
+    .damagedBarcode{ font-weight: 1000; color:#111; font-variant-numeric: tabular-nums; }
+    .damagedMeta{ font-weight: 900; font-size: 12px; color: rgba(0,0,0,0.58); line-height: 1.35; }
+    .damagedActions{ display:flex; gap:8px; align-items:center; }
+
+    /* Buttons */
+    .modalActions{
+      padding: 12px 16px 14px; border-top: 1px solid rgba(0,0,0,0.06);
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .actionsLeft, .actionsRight{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    .btn, .btnGhost, .btnDanger{
+      height:46px; display:inline-flex; align-items:center; justify-content:center;
+      border-radius:999px; padding: 0 18px; cursor:pointer;
+      font-weight: 1000; font-size: 14px; white-space: nowrap;
+      transition: transform 160ms ease, opacity 160ms ease; min-width: 160px;
+    }
+    .btn{ border:0; background: var(--brand-yellow); color:#111; box-shadow: 0 16px 34px rgba(0,0,0,0.14); }
+    .btnGhost{ border:1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.03); color:#111; }
+    .btnDanger{ border:0; background: rgba(176,0,0,0.92); color:#fff; box-shadow: 0 16px 34px rgba(176,0,0,0.18); }
+    .btn:hover, .btnGhost:hover, .btnDanger:hover{ transform: translateY(-1px); opacity:.96; }
+    .btn:active, .btnGhost:active, .btnDanger:active{ transform: translateY(1px); }
+    .btn:disabled, .btnGhost:disabled, .btnDanger:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .miniBtn{ height: 38px; min-width: unset; padding: 0 14px; border-radius: 999px; font-weight: 1000; font-size: 13px; }
+    .modalErr{ display:none; font-weight:1000; color: rgba(176,0,0,0.85); font-size: 13px; }
+    .modalOk{ display:none; font-weight:1000; color: var(--okGreen); font-size: 13px; }
+
+    /* Delete confirmation */
+    .confirmOverlay{
+      position:fixed; inset:0; background: rgba(0,0,0,0.55);
+      display:none; align-items:center; justify-content:center; z-index: 4000; padding: 18px;
+    }
+    .confirmModal{
+      width: min(560px, 96vw); border-radius: 18px; background: rgba(255,255,255,0.98);
+      border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 30px 80px rgba(0,0,0,0.35); overflow:hidden;
+    }
+    .confirmTop{ padding: 16px 16px 12px; border-bottom: 1px solid rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:space-between; gap: 12px; }
+    .confirmTop h3{ margin:0; font-size: 16px; font-weight: 1000; color:#111; }
+    .confirmBody{ padding: 14px 16px 12px; }
+    .confirmText{ font-weight: 900; color: rgba(0,0,0,0.72); line-height: 1.45; font-size: 13px; }
+    .confirmActions{ padding: 12px 16px 14px; border-top: 1px solid rgba(0,0,0,0.06); display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
+
+    /* Restore confirmation (custom, designed) */
+    .restoreOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 4500;
+      padding: 18px;
+    }
+    .restoreModal{
+      width: min(520px, 96vw);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.98);
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+    .restoreTop{
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .restoreTop h3{
+      margin:0;
+      font-size: 16px;
+      font-weight: 1000;
+      color:#111;
+    }
+    .restoreBody{ padding: 14px 16px 12px; }
+    .restoreText{
+      font-weight: 900;
+      color: rgba(0,0,0,0.72);
+      line-height: 1.5;
+      font-size: 13px;
+    }
+    .restoreBadge{
+  margin-top: 10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+
+  /* stronger contrast */
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.12);
+
+  /* FORCE readable text */
+  color: #111 !important;
+  font-weight: 1000;
+  font-variant-numeric: tabular-nums;
+}
+
+.restoreBadgeText,
+#restoreBadgeText{
+  color: #111 !important;
+  opacity: 1 !important;
+}
+.restoreModal *{
+  color: #111;
+}
+.restoreText{
+  color: rgba(0,0,0,0.72) !important;
+}
+    .restoreBadge .dotOk{
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(14,91,24,0.9);
+      box-shadow: 0 0 0 3px rgba(14,91,24,0.15);
+    }
+    .restoreActions{
+      padding: 12px 16px 14px;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    @media (max-width: 1100px){
+      .editorGrid{ grid-template-columns: 140px 1fr; }
+      .bigCover{ width:140px; height:190px; }
+      .card{ grid-template-columns: 84px 1fr; }
+      .right{ grid-column: 1 / -1; align-items:flex-start; text-align:left; min-width:0; }
+      .btn, .btnGhost, .btnDanger{ width:100%; min-width:unset; }
+      .actionsLeft, .actionsRight{ width:100%; justify-content:stretch; }
+    }
+    @media (max-width: 860px){
+      .shell{ grid-template-columns:74px 1fr; }
+      .editorGrid{ grid-template-columns: 1fr; }
+      .bigCover{ width: 100%; height: 220px; }
+      .damagedActions{ width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item is-active" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="content">
+            <div class="titleRow">
+              <h1><span class="accent">LIBRARIAN</span> SEARCH</h1>
+            </div>
+
+            <div class="tools">
+              <div class="searchWrap" title="Search any keyword (title, author, section, subject, ISBN, barcode, etc.)">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2.2" opacity=".75"/>
+                  <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".75"/>
+                </svg>
+                <input id="q" autocomplete="off" placeholder="Search books by any keyword (title, author, section, subject, ISBN...)">
+              </div>
+
+              <div class="search-progress" id="progressWrap" aria-hidden="true">
+                <div class="search-progress__bar" id="progressBar"></div>
+              </div>
+            </div>
+
+            <div class="hint">
+              Type any keyword to search. Click a book to open details and edit.
+            </div>
+
+            <div class="error" id="err"></div>
+            <div class="empty" id="empty">No books found. Try a different keyword.</div>
+
+            <div class="list" id="list">
+              <div class="list-loader" id="listLoader" style="display:none;">
+                <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <!-- BOOK DETAILS MODAL -->
+  <div class="modalOverlay" id="detailsOverlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+      <div class="modalTop">
+        <h2 id="detailsTitle">Book Details</h2>
+        <button class="closeX" id="closeDetails" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="modalLoading" id="detailsLoading" aria-label="Loading details">
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        </div>
+
+        <div class="modalErr" id="detailsErr"></div>
+        <div class="modalOk" id="detailsOk"></div>
+
+        <div class="editorGrid" id="editor" style="display:none;">
+  <div class="bigCover" id="bigCover">No Cover</div>
+
+  <div class="detailsGrid">
+    <div class="field span2">
+      <label>TITLE</label>
+      <input id="e_title" autocomplete="off">
+    </div>
+
+    <div class="field span2">
+      <label>AUTHOR</label>
+      <input id="e_author" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>PUBLISHER</label>
+      <input id="e_publisher" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>PUBLICATION YEAR</label>
+      <input id="e_pub_year" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>GENRE</label>
+      <input id="e_genre" autocomplete="off" placeholder="e.g., Fiction, Mystery, Romance">
+    </div>
+
+    <div class="field">
+      <label>SUBJECT</label>
+      <input id="e_subject" autocomplete="off" placeholder="e.g., Science, Biology, Chemistry">
+    </div>
+
+    <div class="field">
+      <label>SECTION</label>
+      <input id="e_section" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>COVER URL</label>
+      <input id="e_cover_url" autocomplete="off">
+    </div>
+  </div>
+</div>
+
+        <div class="mutedRow" id="countsRow" style="display:none;">
+          <span class="pill availTrigger" id="pillAvailTrigger" title="Click to expand availability">
+            <span id="pillAvailText">—</span>
+            <span class="caret" aria-hidden="true"></span>
+          </span>
+          <span class="pill" id="pillTotal">Total copies: —</span>
+          <span class="pill" id="pillAvail">Available: —</span>
+        </div>
+
+        <div class="availDrop" id="availDrop">
+          <div class="damagedHead">
+            <div class="damagedTitle">Damaged Copies</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btnGhost miniBtn" id="refreshDamaged" type="button">Refresh</button>
+              <button class="btnGhost miniBtn" id="closeAvailDrop" type="button">Hide</button>
+            </div>
+          </div>
+          <div class="damagedHint">Restore = set status back to <b>available</b>.</div>
+          <div class="damagedErr" id="damagedErr"></div>
+          <div class="damagedList" id="damagedList"></div>
+        </div>
+      </div>
+
+      <div class="modalActions">
+        <div class="actionsLeft">
+          <button class="btnDanger" id="deleteBookBtn" type="button">Delete Book</button>
+        </div>
+        <div class="actionsRight">
+          <button class="btnGhost" id="refreshDetails" type="button">Refresh</button>
+          <button class="btn" id="saveDetails" type="button">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation -->
+  <div class="confirmOverlay" id="confirmOverlay">
+    <div class="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirmTop">
+        <h3 id="confirmTitle">Delete book record</h3>
+        <button class="closeX" id="closeConfirm" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="confirmBody">
+        <div class="confirmText">
+          This will permanently delete the <b>book record</b> and all related copies/identifiers.
+          <br><br>
+          Type <b>DELETE</b> to confirm.
+        </div>
+        <div class="field">
+          <label style="color:var(--danger);">CONFIRMATION</label>
+          <input id="confirmInput" autocomplete="off" placeholder="Type DELETE">
+        </div>
+        <div class="modalErr" id="confirmErr" style="display:none;"></div>
+      </div>
+      <div class="confirmActions">
+        <button class="btnGhost" id="cancelConfirm" type="button">Cancel</button>
+        <button class="btnDanger" id="confirmDelete" type="button" disabled>Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Restore confirmation (DESIGNED) -->
+  <div class="restoreOverlay" id="restoreOverlay">
+    <div class="restoreModal" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
+      <div class="restoreTop">
+        <h3 id="restoreTitle">Restore damaged copy</h3>
+        <button class="closeX" id="closeRestore" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="restoreBody">
+        <div class="restoreText">
+          This will mark the copy as <b>AVAILABLE</b> again.
+        </div>
+        <div class="restoreBadge" id="restoreBadge">
+          <span class="dotOk" aria-hidden="true"></span>
+          <span id="restoreBadgeText">Copy —</span>
+        </div>
+        <div class="modalErr" id="restoreErr" style="display:none; margin-top:10px;"></div>
+      </div>
+      <div class="restoreActions">
+        <button class="btnGhost" id="cancelRestore" type="button">Cancel</button>
+        <button class="btn" id="confirmRestore" type="button">Restore</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive:true });
+
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    function authHeaders(extra = {}) {
+      return Object.assign({ "Authorization": `Bearer ${token}` }, extra);
+    }
+
+    const qEl = document.getElementById("q");
+    const listEl = document.getElementById("list");
+    const listLoader = document.getElementById("listLoader");
+    const empty = document.getElementById("empty");
+    const err = document.getElementById("err");
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+
+    const detailsOverlay = document.getElementById("detailsOverlay");
+    const closeDetails = document.getElementById("closeDetails");
+    const detailsErr = document.getElementById("detailsErr");
+    const detailsOk = document.getElementById("detailsOk");
+    const detailsLoading = document.getElementById("detailsLoading");
+    const editor = document.getElementById("editor");
+    const bigCover = document.getElementById("bigCover");
+
+    const e_title = document.getElementById("e_title");
+    const e_author = document.getElementById("e_author");
+    const e_publisher = document.getElementById("e_publisher");
+    const e_pub_year = document.getElementById("e_pub_year");
+    const e_genre = document.getElementById("e_genre");
+    const e_subject = document.getElementById("e_subject");
+    const e_section = document.getElementById("e_section");
+    const e_cover_url = document.getElementById("e_cover_url");
+
+    const countsRow = document.getElementById("countsRow");
+    const pillAvailTrigger = document.getElementById("pillAvailTrigger");
+    const pillAvailText = document.getElementById("pillAvailText");
+    const pillTotal = document.getElementById("pillTotal");
+    const pillAvail = document.getElementById("pillAvail");
+
+    const availDrop = document.getElementById("availDrop");
+    const refreshDamaged = document.getElementById("refreshDamaged");
+    const closeAvailDrop = document.getElementById("closeAvailDrop");
+    const damagedErr = document.getElementById("damagedErr");
+    const damagedList = document.getElementById("damagedList");
+
+    const refreshDetails = document.getElementById("refreshDetails");
+    const saveDetails = document.getElementById("saveDetails");
+    const deleteBookBtn = document.getElementById("deleteBookBtn");
+
+    // Delete confirm
+    const confirmOverlay = document.getElementById("confirmOverlay");
+    const closeConfirm = document.getElementById("closeConfirm");
+    const cancelConfirm = document.getElementById("cancelConfirm");
+    const confirmInput = document.getElementById("confirmInput");
+    const confirmDelete = document.getElementById("confirmDelete");
+    const confirmErr = document.getElementById("confirmErr");
+
+    // Restore confirm (custom)
+    const restoreOverlay = document.getElementById("restoreOverlay");
+    const closeRestore = document.getElementById("closeRestore");
+    const cancelRestore = document.getElementById("cancelRestore");
+    const confirmRestore = document.getElementById("confirmRestore");
+    const restoreBadgeText = document.getElementById("restoreBadgeText");
+    const restoreErr = document.getElementById("restoreErr");
+
+    let activeBookId = null;
+    let pendingRestoreCopyId = null;
+
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    function showErr(msg){ err.style.display = "block"; err.textContent = msg || "Something went wrong."; }
+    function clearErr(){ err.style.display = "none"; err.textContent = ""; }
+
+    let progTimer = null;
+    function startProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "10%";
+      let w = 10;
+      clearInterval(progTimer);
+      progTimer = setInterval(() => {
+        w = Math.min(90, w + Math.max(1, Math.round((90 - w) * 0.12)));
+        progressBar.style.width = w + "%";
+      }, 120);
+    }
+    function endProgress(){
+      clearInterval(progTimer);
+      progressBar.style.width = "100%";
+      setTimeout(() => {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+      }, 220);
+    }
+
+    function showListLoader(on){ listLoader.style.display = on ? "flex" : "none"; }
+
+    function normalizeCoverUrl(url){
+      let u = String(url || "").trim();
+      if (!u) return "";
+      if (location.protocol === "https:" && u.startsWith("http://")) u = "https://" + u.slice("http://".length);
+      if (u.startsWith("http://") || u.startsWith("https://")) return u;
+      if (u.startsWith("/")) return BASE_URL + u;
+      return u;
+    }
+
+    function makeCoverEl(coverUrl, title){
+      const wrap = document.createElement("div");
+      wrap.className = "cover";
+      const u = normalizeCoverUrl(coverUrl);
+      if (!u){ wrap.textContent = "No Cover"; return wrap; }
+      const img = document.createElement("img");
+      img.src = u; img.alt = title ? `Cover of ${title}` : "Cover";
+      img.loading = "lazy";
+      img.onerror = () => { wrap.textContent = "No Cover"; };
+      wrap.appendChild(img);
+      return wrap;
+    }
+
+    function clearListCards(){
+      [...listEl.children].forEach(child => { if (child !== listLoader) listEl.removeChild(child); });
+    }
+
+    function fmtAvail(available, total){
+      const a = Number.isFinite(Number(available)) ? Number(available) : null;
+      const t = Number.isFinite(Number(total)) ? Number(total) : null;
+      if (a === null || t === null) return "—";
+      return `${a} of ${t} copies available`;
+    }
+
+    function renderList(results){
+      clearListCards();
+      const q = qEl.value.trim();
+      empty.style.display = (!results.length && q) ? "block" : "none";
+
+      for (const b of results){
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const cover = makeCoverEl(b.cover_url, b.title || "");
+        const mid = document.createElement("div");
+        mid.innerHTML = `
+          <div class="title">${escapeHtml(b.title || "")}</div>
+          <div class="sub">
+            <span class="pill">${escapeHtml(b.author || "—")}</span>
+            <span class="pill">${escapeHtml(b.section || "—")}</span>
+          </div>
+        `;
+
+        const right = document.createElement("div");
+        right.className = "right";
+        right.innerHTML = `
+          <div class="codeLabel">AVAILABILITY</div>
+          <div class="code">${escapeHtml(fmtAvail(b.available_copies, b.total_copies))}</div>
+        `;
+
+        card.appendChild(cover);
+        card.appendChild(mid);
+        card.appendChild(right);
+        card.addEventListener("click", () => openDetails(b.book_id));
+        listEl.appendChild(card);
+      }
+    }
+
+    let t = null;
+    function extractResults(payload){
+      if (Array.isArray(payload)) return payload;
+      if (payload && Array.isArray(payload.results)) return payload.results;
+      return [];
+    }
+
+    async function searchNow(){
+      const q = qEl.value.trim();
+      clearErr();
+      empty.style.display = "none";
+      if (!q){ clearListCards(); return; }
+
+      showListLoader(true);
+      startProgress();
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/librarian/books?q=${encodeURIComponent(q)}&page=1&page_size=100&sort=title_asc`, {
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok) throw new Error(data?.detail || `Search failed (${res.status})`);
+        renderList(extractResults(data));
+      }catch(e){
+        showErr(e?.message || "Search failed.");
+      }finally{
+        showListLoader(false);
+        endProgress();
+      }
+    }
+
+    function scheduleSearch(){ clearTimeout(t); t = setTimeout(searchNow, 240); }
+    qEl.addEventListener("input", scheduleSearch);
+
+    function openModal(){
+      detailsOverlay.style.display = "flex";
+      detailsOk.style.display = "none";
+      detailsErr.style.display = "none";
+      detailsErr.textContent = "";
+      detailsOk.textContent = "";
+
+      availDrop.classList.remove("is-on");
+      pillAvailTrigger.classList.remove("availOpen");
+      damagedErr.style.display = "none";
+      damagedErr.textContent = "";
+      damagedList.innerHTML = "";
+    }
+
+    function closeModal(){ detailsOverlay.style.display = "none"; activeBookId = null; }
+
+    closeDetails.addEventListener("click", closeModal);
+    detailsOverlay.addEventListener("click", (e) => { if (e.target === detailsOverlay) closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && detailsOverlay.style.display === "flex") closeModal(); });
+
+    function setBigCover(url){
+      bigCover.innerHTML = "";
+      const u = normalizeCoverUrl(url);
+      if (u){
+        const img = document.createElement("img");
+        img.src = u;
+        img.alt = "Cover";
+        img.onerror = () => { bigCover.textContent = "No Cover"; };
+        bigCover.appendChild(img);
+      } else bigCover.textContent = "No Cover";
+    }
+
+    function setModalLoading(on){ detailsLoading.style.display = on ? "flex" : "none"; }
+
+    function normalizeCommaList(s){
+      const raw = String(s || "");
+      const parts = raw.split(",").map(x => x.trim()).filter(Boolean);
+      return parts.join(", ");
+    }
+
+    async function openDetails(bookId){
+      activeBookId = bookId;
+      openModal();
+
+      editor.style.display = "none";
+      countsRow.style.display = "none";
+
+      setModalLoading(true);
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/books/${bookId}`, { headers: authHeaders() });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Failed to load details (${res.status})`);
+
+        e_title.value = data.title ?? "";
+        e_author.value = data.author ?? "";
+        e_publisher.value = data.publisher ?? "";
+        e_pub_year.value = (data.pub_year ?? "") === null ? "" : String(data.pub_year ?? "");
+        e_genre.value = normalizeCommaList(data.genre ?? "");
+        e_subject.value = normalizeCommaList(data.subject ?? "");
+        e_section.value = data.section ?? "";
+        e_cover_url.value = data.cover_url ?? "";
+
+        setBigCover(data.cover_url || "");
+        editor.style.display = "grid";
+        countsRow.style.display = "flex";
+
+        const total = Number.isFinite(Number(data.total_copies)) ? Number(data.total_copies) : null;
+        const avail = Number.isFinite(Number(data.available_copies)) ? Number(data.available_copies) : null;
+
+        pillAvailText.textContent = (total !== null && avail !== null)
+          ? `${avail} of ${total} copies available`
+          : "Availability: —";
+
+        pillTotal.textContent = `Total copies: ${total !== null ? total : "—"}`;
+        pillAvail.textContent = `Available: ${avail !== null ? avail : "—"}`;
+
+      }catch(e){
+        detailsErr.style.display = "block";
+        detailsErr.textContent = e?.message || "Failed to load details.";
+        bigCover.textContent = "No Cover";
+      }finally{
+        setModalLoading(false);
+      }
+    }
+
+    refreshDetails.addEventListener("click", () => { if (activeBookId) openDetails(activeBookId); });
+
+    // Availability dropdown
+    function showDamagedError(msg){ damagedErr.style.display = "block"; damagedErr.textContent = msg || "Failed to load damaged copies."; }
+    function clearDamagedError(){ damagedErr.style.display = "none"; damagedErr.textContent = ""; }
+
+    // ---- Restore confirmation modal helpers ----
+    function openRestoreConfirm(copyId, labelText){
+      pendingRestoreCopyId = copyId;
+      restoreErr.style.display = "none";
+      restoreErr.textContent = "";
+      restoreBadgeText.textContent = labelText || `Copy #${copyId}`;
+      restoreOverlay.style.display = "flex";
+    }
+    function closeRestoreConfirm(){
+      restoreOverlay.style.display = "none";
+      pendingRestoreCopyId = null;
+    }
+
+    closeRestore.addEventListener("click", closeRestoreConfirm);
+    cancelRestore.addEventListener("click", closeRestoreConfirm);
+    restoreOverlay.addEventListener("click", (e) => { if (e.target === restoreOverlay) closeRestoreConfirm(); });
+
+    async function doRestore(copyId){
+      clearDamagedError();
+      setModalLoading(true);
+      confirmRestore.disabled = true;
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/book-copies/${encodeURIComponent(copyId)}/restore`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ note: "Restored via librarian search" })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Restore failed (${res.status})`);
+
+        closeRestoreConfirm();
+
+        if (activeBookId) await openDetails(activeBookId);
+        await loadDamagedCopies();
+        scheduleSearch();
+
+      }catch(e){
+        restoreErr.style.display = "block";
+        restoreErr.textContent = e?.message || "Restore failed.";
+      }finally{
+        setModalLoading(false);
+        confirmRestore.disabled = false;
+      }
+    }
+
+    confirmRestore.addEventListener("click", () => {
+      if (!pendingRestoreCopyId) return;
+      doRestore(pendingRestoreCopyId);
+    });
+
+    function renderDamagedList(items){
+      damagedList.innerHTML = "";
+
+      if (!items || !items.length){
+        damagedList.innerHTML = `
+          <div class="damagedRow">
+            <div class="damagedLeft">
+              <div class="damagedBarcode">No damaged copies</div>
+              <div class="damagedMeta">This book currently has no copies marked as damaged.</div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      for (const it of items){
+        const last = it.last_damage || null;
+        const stu = last?.student || null;
+
+        const metaParts = [];
+        if (last?.severity) metaParts.push(`Severity: ${last.severity}`);
+        if (stu?.student_code) metaParts.push(`Last borrower: ${stu.student_code} (${(stu.last_name||"").toUpperCase()}, ${stu.first_name||""})`);
+        if (last?.reported_at) metaParts.push(`Reported: ${new Date(last.reported_at).toLocaleString()}`);
+        if (last?.notes) metaParts.push(`Notes: ${last.notes}`);
+
+        const row = document.createElement("div");
+        row.className = "damagedRow";
+
+        const label = `Copy #${it.copy_id} — ${it.barcode || "—"}`;
+
+        row.innerHTML = `
+          <div class="damagedLeft">
+            <div class="damagedBarcode">${escapeHtml(label)}</div>
+            <div class="damagedMeta">${escapeHtml(metaParts.join(" • ") || "No damage report details found.")}</div>
+          </div>
+          <div class="damagedActions">
+            <button class="btn miniBtn" data-restore="${escapeHtml(it.copy_id)}" data-label="${escapeHtml(label)}">Restore</button>
+          </div>
+        `;
+        damagedList.appendChild(row);
+      }
+
+      damagedList.querySelectorAll("[data-restore]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const copyId = btn.getAttribute("data-restore");
+          const label = btn.getAttribute("data-label") || "";
+          if (!copyId) return;
+          openRestoreConfirm(copyId, label);
+        });
+      });
+    }
+
+    async function loadDamagedCopies(){
+      if (!activeBookId) return;
+
+      damagedList.innerHTML = `
+        <div class="list-loader" style="display:flex;">
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        </div>
+      `;
+      clearDamagedError();
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/books/${activeBookId}/damaged-copies`, { headers: authHeaders() });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Failed to load (${res.status})`);
+        renderDamagedList(data?.damaged || []);
+      }catch(e){
+        showDamagedError(e?.message || "Failed to load damaged copies.");
+        damagedList.innerHTML = "";
+      }
+    }
+
+    function setAvailDrop(open){
+      const willOpen = (typeof open === "boolean") ? open : !availDrop.classList.contains("is-on");
+      availDrop.classList.toggle("is-on", willOpen);
+      pillAvailTrigger.classList.toggle("availOpen", willOpen);
+      if (willOpen) loadDamagedCopies();
+    }
+
+    pillAvailTrigger.addEventListener("click", () => setAvailDrop());
+    closeAvailDrop.addEventListener("click", () => setAvailDrop(false));
+    refreshDamaged.addEventListener("click", () => loadDamagedCopies());
+
+    // Save book
+    saveDetails.addEventListener("click", async () => {
+      if (!activeBookId) return;
+
+      detailsOk.style.display = "none";
+      detailsErr.style.display = "none";
+      detailsErr.textContent = "";
+      detailsOk.textContent = "";
+
+      const payload = {
+        title: e_title.value.trim(),
+        author: e_author.value.trim(),
+        publisher: e_publisher.value.trim() || null,
+        pub_year: e_pub_year.value.trim() ? Number(e_pub_year.value.trim()) : null,
+        genre: normalizeCommaList(e_genre.value.trim()) || null,
+        subject: normalizeCommaList(e_subject.value.trim()) || null,
+        section: e_section.value.trim() || null,
+        cover_url: e_cover_url.value.trim() || null
+      };
+
+      if (!payload.title || !payload.author){
+        detailsErr.style.display = "block";
+        detailsErr.textContent = "Title and Author are required.";
+        return;
+      }
+
+      saveDetails.disabled = true;
+      setModalLoading(true);
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/books/${activeBookId}`, {
+          method: "PUT",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Save failed (${res.status}).`);
+
+        detailsOk.style.display = "block";
+        detailsOk.textContent = "Saved successfully.";
+        setBigCover(payload.cover_url || "");
+        scheduleSearch();
+      }catch(e){
+        detailsErr.style.display = "block";
+        detailsErr.textContent = e?.message || "Save failed.";
+      }finally{
+        setModalLoading(false);
+        saveDetails.disabled = false;
+      }
+    });
+
+    // Delete confirmation
+    function openConfirm(){
+      confirmOverlay.style.display = "flex";
+      confirmInput.value = "";
+      confirmDelete.disabled = true;
+      confirmErr.style.display = "none";
+      confirmErr.textContent = "";
+      confirmInput.focus();
+    }
+    function closeConfirmModal(){ confirmOverlay.style.display = "none"; }
+
+    deleteBookBtn.addEventListener("click", () => { if (activeBookId) openConfirm(); });
+
+    closeConfirm.addEventListener("click", closeConfirmModal);
+    cancelConfirm.addEventListener("click", closeConfirmModal);
+    confirmOverlay.addEventListener("click", (e) => { if (e.target === confirmOverlay) closeConfirmModal(); });
+
+    confirmInput.addEventListener("input", () => {
+      confirmDelete.disabled = (confirmInput.value.trim().toUpperCase() !== "DELETE");
+    });
+
+    confirmDelete.addEventListener("click", async () => {
+      if (!activeBookId) return;
+      if (confirmInput.value.trim().toUpperCase() !== "DELETE") return;
+
+      confirmDelete.disabled = true;
+      confirmErr.style.display = "none";
+      confirmErr.textContent = "";
+
+      setModalLoading(true);
+      try{
+        const res = await fetch(`${BASE_URL}/api/books/${activeBookId}`, { method: "DELETE", headers: authHeaders() });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Delete failed (${res.status})`);
+
+        closeConfirmModal();
+        closeModal();
+        scheduleSearch();
+      }catch(e){
+        confirmErr.style.display = "block";
+        confirmErr.textContent = e?.message || "Delete failed.";
+        confirmDelete.disabled = false;
+      }finally{
+        setModalLoading(false);
+      }
+    });
+
+    // initial blank state
+    function showInitial(){ clearListCards(); }
+    showInitial();
+  </script>
+</body>
+</html>

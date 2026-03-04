@@ -1069,11 +1069,9 @@
         const url = new URL(`${BASE_URL}/api/circulation/checkin`);
         url.searchParams.set("barcode", barcode);
         url.searchParams.set("student_code", student_code);
-        url.searchParams.set("is_damaged", String(is_damaged));
-        if (is_damaged){
-          url.searchParams.set("severity", severity);
-          if (notes) url.searchParams.set("notes", notes);
-        }
+        url.searchParams.set("is_damaged", "false");
+        // IMPORTANT: Do not send damage params to /api/circulation/checkin.
+        // We record damage + fee via /api/circulation/damage to avoid duplicate damage records.
 
         const res = await fetch(url.toString(), {
           method: "POST",
@@ -1102,14 +1100,53 @@
 
         hideProgressAfterComplete();
 
+        // If librarian marked the return as damaged, create a damage report + damage fine
+        // via /api/circulation/damage (kept separate from checkin to avoid duplicates).
+        let damageFineId = null;
+        let damageFineAmt = 0;
+        let damageError = "";
+
+        if (is_damaged){
+          const loanId = data?.loan?.loan_id;
+          if (!loanId){
+            damageError = "Missing loan_id for damage recording.";
+          } else {
+            try{
+              const dmgUrl = new URL(`${BASE_URL}/api/circulation/damage`);
+              dmgUrl.searchParams.set("loan_id", String(loanId));
+              dmgUrl.searchParams.set("severity", String(severity || "").trim().toLowerCase());
+              if (notes) dmgUrl.searchParams.set("notes", String(notes));
+
+              const dmgRes = await fetch(dmgUrl.toString(), {
+                method: "POST",
+                headers: authHeaders()
+              });
+              const dmgData = await dmgRes.json().catch(() => ({}));
+
+              if (!dmgRes.ok){
+                damageError = normalizeDetailToString(dmgData) || "Damage recording failed.";
+              } else {
+                damageFineId = dmgData?.fine_id ?? null;
+                damageFineAmt = Number(dmgData?.fee ?? 0) || 0;
+              }
+            }catch(err){
+              damageError = err?.message || "Damage recording failed (network).";
+            }
+          }
+        }
+
         // Your backend may return fine_created OR fine; support both
         const fineId = data?.fine?.fine_id ?? data?.fine_created?.fine_id ?? null;
-        const fineAmt = Number(data?.fine?.amount ?? data?.fine_created?.amount ?? 0);
-        const fineCreated = !!fineId;
+        const overdueFineAmt = Number(data?.fine?.amount ?? data?.fine_created?.amount ?? 0);
+        const overdueFineCreated = !!fineId;
+
+        const anyFine = overdueFineCreated || !!damageFineId;
+        const totalFineAmt = (overdueFineAmt || 0) + (damageFineAmt || 0);
 
         const flags = [
-          is_damaged ? `Damaged (${severity || "—"})` : "",
-          fineCreated ? `Fine ₱${fineAmt.toFixed(2)}` : ""
+          is_damaged ? `Damaged (${severity || "—"})${damageError ? " — NOT RECORDED" : ""}` : "",
+          anyFine ? `Fine ₱${Number(totalFineAmt).toFixed(2)}` : "",
+          damageError ? `Damage error: ${damageError}` : ""
         ].filter(Boolean).join(" • ");
 
         pushSessionItem({
@@ -1119,7 +1156,7 @@
           title: payload?.book?.title || titleEl.value,
           author: payload?.book?.author || authorEl.value,
           flags,
-          status_text: fineCreated ? `Returned + Fine ₱${fineAmt.toFixed(2)}` : "Returned"
+          status_text: anyFine ? `Returned + Fine ₱${Number(totalFineAmt).toFixed(2)}` : "Returned"
         });
 
         // prepare for next scan

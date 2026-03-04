@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Add Student</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --shadow: 0 26px 60px rgba(0,0,0,0.30);
+    }
+
+    /* Header: glass only on scroll */
+    .topbar{
+      position: fixed; top:0; left:0; right:0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+    }
+    .topbar.is-scrolled{
+      background: rgba(255,255,255,0.18);
+      border-bottom: 1px solid rgba(255,255,255,0.20);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    }
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 26px; } /* ✅ smaller bottom padding */
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+
+    /* Sidebar */
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    /* Panel */
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: #111;
+      height: auto;     
+      min-height: 470px;
+      display:flex;
+      flex-direction:column;
+    }
+    .content{
+      padding:18px 18px 8px;           
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+      flex:1;
+    }
+
+    /* Title row: arrow BEFORE text */
+    .titleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .titleLeft{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+    }
+    .titleRow h1{
+      margin:0;
+      font-size: 28px;
+      font-weight: 1000;
+      letter-spacing: 0.01em;
+      color:#111;
+      display:flex;
+      align-items:baseline;
+      gap:8px;
+    }
+    .titleRow h1 .accent{ color: var(--brand-yellow); }
+
+    /* Back icon button */
+    .backBtn{
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      border:0;
+      cursor:pointer;
+      background: var(--brand-yellow);
+      color:#111;
+      display:grid;
+      place-items:center;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.14);
+      transition: transform 160ms ease, opacity 160ms ease;
+      flex: 0 0 auto;
+    }
+    .backBtn:hover{ transform: translateY(-1px); opacity:.96; }
+    .backBtn:active{ transform: translateY(1px); }
+    .backBtn svg{ width:20px; height:20px; }
+
+    /* Form */
+    form{ flex:1; min-height:0; display:flex; flex-direction:column; }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      align-items:start;
+    }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .field label{
+      font-size: 13px;
+      font-weight: 1000;
+      color:#0e5b18;
+      letter-spacing: .02em;
+    }
+    .req{ color:#b30000; }
+
+    .field input{
+      width:100%;
+      height:46px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.14);
+      background: rgba(0,0,0,0.03);
+      padding: 0 14px;
+      font-weight: 800;
+      outline: none;
+      transition: border-color 160ms ease, background 160ms ease;
+      font-family: "Google Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .field input:focus{
+      border-color: rgba(0,0,0,0.28);
+      background: rgba(255,255,255,0.70);
+    }
+
+    .full{ grid-column: 1 / -1; }
+
+    /* Actions */
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:12px;
+      margin-top: 90px;
+      flex-wrap:wrap;
+      padding-bottom: 0;               
+    }
+    .btn, .btnGhost{
+      height:46px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      padding: 0 18px;
+      cursor:pointer;
+      font-weight: 1000;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: transform 160ms ease, opacity 160ms ease;
+      min-width: 170px;
+    }
+    .btn{
+      border:0;
+      background: var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.14);
+    }
+    .btn:hover{ transform: translateY(-1px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btnGhost{
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.03);
+      color:#111;
+    }
+    .btnGhost:hover{ transform: translateY(-1px); opacity:.96; }
+    .btnGhost:active{ transform: translateY(1px); }
+
+    .error{
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(176,0,0,0.82);
+      display:none;
+    }
+
+    /* Dots loader */
+    .loaderWrap{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 10px 0 0;
+    }
+    .dots{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .dot{
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #f4e32f;
+      animation: dotBounce 850ms infinite ease-in-out;
+    }
+    .dot:nth-child(1){ animation-delay: 0ms; }
+    .dot:nth-child(2){ animation-delay: 160ms; }
+    .dot:nth-child(3){ animation-delay: 320ms; }
+    @keyframes dotBounce{
+      0%, 100%{ transform: translateY(0); opacity: 0.55; }
+      50%{ transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* Modal */
+    .modalOverlay{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,0.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:2000;
+      padding:18px;
+    }
+    .modal{
+      width:min(520px, 94vw);
+      border-radius:18px;
+      background: rgba(255,255,255,0.98);
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+    .modalTop{
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modalTop h2{ margin:0; font-size:18px; font-weight:1000; color:#111; }
+    .closeX{
+      width:38px; height:38px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.03);
+      cursor:pointer;
+      font-weight:1000;
+    }
+    .modalBody{ padding: 12px 16px 10px; color: rgba(0,0,0,0.70); font-weight:800; line-height:1.35; }
+    .modalBody .big{ color:#111; font-weight:1000; font-size:16px; }
+    .modalActions{ padding: 0 16px 12px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+
+    /* CSV modal: scrollable preview */
+    #csvModal .modal{ width:min(900px, 94vw); }
+    #csvModal .modalBody{ padding: 12px 16px 10px; }
+    #csvModal .modalActions{ padding: 0 16px 12px; }
+
+    /* scroll area to prevent taking over screen */
+    .csvScroll{
+      margin-top: 8px;
+      max-height: 46vh;               /* ✅ keeps modal usable */
+      overflow: auto;
+      border-radius: 14px;
+    }
+
+    .tableWrap{
+      border:1px solid rgba(0,0,0,0.10);
+      border-radius:14px;
+      overflow:hidden;
+      background: rgba(255,255,255,0.80);
+    }
+    .tableWrap table{ width:100%; border-collapse:collapse; font-size: 13px; }
+    .tableWrap th, .tableWrap td{
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      text-align:left;
+      font-weight: 800;
+      color: rgba(0,0,0,0.72);
+      vertical-align: top;
+    }
+    .tableWrap th{
+      background: rgba(0,0,0,0.03);
+      color:#111;
+      position: sticky;               /* ✅ header stays visible while scrolling */
+      top: 0;
+      z-index: 2;
+    }
+    .badCell{ color: rgba(176,0,0,0.90) !important; }
+
+    /* Progress bar */
+    .search-progress{
+      height: 4px;
+      width: 100%;
+      background: rgba(0,0,0,0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+      display:none;
+    }
+    .search-progress__bar{
+      height: 100%;
+      width: 0%;
+      background: #FFC700;
+      border-radius: 999px;
+      transition: width 200ms ease;
+    }
+
+    @media (max-width: 980px){
+      .shell{ grid-template-columns:74px 1fr; }
+      .grid{ grid-template-columns: 1fr; }
+      .panel{ height:auto; min-height:unset; }
+      .btn, .btnGhost{ width:100%; min-width:unset; }
+      .actions{ justify-content:stretch; }
+      .csvScroll{ max-height: 55vh; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item is-active" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="content">
+            <div class="titleRow">
+              <div class="titleLeft">
+                <button class="backBtn" id="backBtn" type="button" aria-label="Back">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+                <h1><span class="accent">ADD</span> STUDENT</h1>
+              </div>
+            </div>
+
+            <form id="addForm">
+              <div class="grid">
+                <div class="field full">
+                  <label>STUDENT CODE: <span class="req">*</span></label>
+                  <input id="student_code" autocomplete="off" />
+                </div>
+
+                <div class="field">
+                  <label>LAST NAME: <span class="req">*</span></label>
+                  <input id="last_name" autocomplete="off" />
+                </div>
+
+                <div class="field">
+                  <label>FIRST NAME: <span class="req">*</span></label>
+                  <input id="first_name" autocomplete="off" />
+                </div>
+
+                <div class="field">
+                  <label>GRADE: <span class="req">*</span></label>
+                  <input id="grade" autocomplete="off" />
+                </div>
+
+                <div class="field">
+                  <label>SECTION: <span class="req">*</span></label>
+                  <input id="section" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="search-progress" id="progressWrap" aria-hidden="true">
+                <div class="search-progress__bar" id="progressBar"></div>
+              </div>
+
+              <div class="loaderWrap" id="addLoader" style="display:none;">
+                <div class="dots">
+                  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+              </div>
+
+              <div class="actions">
+                <input id="csvFile" type="file" accept=".csv,text/csv" style="display:none;" />
+                <button class="btnGhost" id="importCsvBtn" type="button">Import CSV</button>
+                <button class="btn" id="addBtn" type="submit">Add</button>
+              </div>
+
+              <div class="error" id="err"></div>
+            </form>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <!-- SUCCESS MODAL -->
+  <div class="modalOverlay" id="successModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <div class="modalTop">
+        <h2 id="successTitle">Student Added</h2>
+        <button class="closeX" id="closeSuccess" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="big" id="successName">—</div>
+        <div id="successSub">—</div>
+      </div>
+      <div class="modalActions">
+        <button class="btnGhost" id="addAnotherBtn" type="button">Add Another</button>
+        <button class="btn" id="goStudentsBtn" type="button">Go to Students</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV IMPORT MODAL -->
+  <div class="modalOverlay" id="csvModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="csvTitle">
+      <div class="modalTop">
+        <h2 id="csvTitle">Import Students (CSV)</h2>
+        <button class="closeX" id="closeCsvModal" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <div class="big" id="csvFileName">No file selected</div>
+          <div id="csvSummary" style="color:rgba(0,0,0,0.65); font-weight:800;"></div>
+        </div>
+
+        <div class="loaderWrap" id="csvLoader" style="display:none; margin-top:10px;">
+          <div class="dots">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+
+        <!-- ✅ scrollable area -->
+        <div class="csvScroll" id="csvPreview"></div>
+
+        <div class="modalError" id="csvErr" style="display:none; color:rgba(176,0,0,0.82); font-weight:900; margin-top:10px;"></div>
+      </div>
+
+      <div class="modalActions">
+        <button class="btnGhost" id="chooseCsvBtn" type="button">Choose File</button>
+        <button class="btn" id="confirmImportBtn" type="button" disabled>Import</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    // header scroll
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive:true });
+
+    // logout
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    function authHeaders(extra = {}) {
+      return Object.assign({ "Authorization": `Bearer ${token}` }, extra);
+    }
+
+    // Back
+    document.getElementById("backBtn").addEventListener("click", () => {
+      window.location.href = "students.html";
+    });
+
+    // Helpers
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    const err = document.getElementById("err");
+    function showError(msg){
+      err.style.display = "block";
+      err.textContent = msg || "Something went wrong.";
+    }
+    function clearError(){
+      err.style.display = "none";
+      err.textContent = "";
+    }
+
+    // Progress bar
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    let progressTimer = null;
+
+    function showProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      clearInterval(progressTimer);
+      let w = 0;
+      progressTimer = setInterval(() => {
+        w = Math.min(90, w + 10);
+        progressBar.style.width = w + "%";
+      }, 90);
+    }
+    function hideProgress(done=true){
+      clearInterval(progressTimer);
+      if (done){
+        progressBar.style.width = "100%";
+        setTimeout(() => {
+          progressWrap.style.display = "none";
+          progressBar.style.width = "0%";
+        }, 220);
+      } else {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+      }
+    }
+
+    // Success modal
+    const successModal = document.getElementById("successModal");
+    const closeSuccess = document.getElementById("closeSuccess");
+    const addAnotherBtn = document.getElementById("addAnotherBtn");
+    const goStudentsBtn = document.getElementById("goStudentsBtn");
+    const successName = document.getElementById("successName");
+    const successSub = document.getElementById("successSub");
+
+    function openSuccessModal(name, sub){
+      successName.textContent = name || "Student Added";
+      successSub.textContent = sub || "";
+      successModal.style.display = "flex";
+    }
+    function closeSuccessModal(){ successModal.style.display = "none"; }
+    closeSuccess.addEventListener("click", closeSuccessModal);
+    successModal.addEventListener("click", (e) => { if (e.target === successModal) closeSuccessModal(); });
+    addAnotherBtn.addEventListener("click", () => {
+      closeSuccessModal();
+      document.getElementById("addForm").reset();
+      document.getElementById("student_code").focus();
+    });
+    goStudentsBtn.addEventListener("click", () => window.location.href = "students.html");
+
+    // Add student submit (status defaults to active)
+    const addForm = document.getElementById("addForm");
+    const addBtn = document.getElementById("addBtn");
+    const addLoader = document.getElementById("addLoader");
+
+    addForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const payload = {
+        student_code: String(document.getElementById("student_code").value || "").trim(),
+        last_name: String(document.getElementById("last_name").value || "").trim(),
+        first_name: String(document.getElementById("first_name").value || "").trim(),
+        grade: String(document.getElementById("grade").value || "").trim(),
+        section: String(document.getElementById("section").value || "").trim(),
+        status: "active",
+      };
+
+      if (!payload.student_code || !payload.last_name || !payload.first_name || !payload.grade || !payload.section){
+        showError("Please complete all required fields.");
+        return;
+      }
+
+      addBtn.disabled = true;
+      addLoader.style.display = "flex";
+      showProgress();
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/students`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        addBtn.disabled = false;
+        addLoader.style.display = "none";
+        hideProgress(true);
+
+        if (!res.ok){
+          showError(data?.detail || "Failed to add student.");
+          return;
+        }
+
+        openSuccessModal(
+          `${payload.last_name}, ${payload.first_name}`,
+          `${payload.grade} - ${payload.section} • ${payload.student_code}`
+        );
+
+      }catch(errr){
+        addBtn.disabled = false;
+        addLoader.style.display = "none";
+        hideProgress(false);
+        showError(errr?.message || "Network error.");
+      }
+    });
+
+    // =============================
+    // CSV IMPORT (preview + confirm)
+    // =============================
+    const importCsvBtn = document.getElementById("importCsvBtn");
+    const csvFile = document.getElementById("csvFile");
+
+    const csvModal = document.getElementById("csvModal");
+    const closeCsvModal = document.getElementById("closeCsvModal");
+    const chooseCsvBtn = document.getElementById("chooseCsvBtn");
+    const confirmImportBtn = document.getElementById("confirmImportBtn");
+
+    const csvFileName = document.getElementById("csvFileName");
+    const csvSummary = document.getElementById("csvSummary");
+    const csvPreview = document.getElementById("csvPreview");
+    const csvErr = document.getElementById("csvErr");
+    const csvLoader = document.getElementById("csvLoader");
+
+    let selectedCsv = null;
+
+    function openCsvModal(){
+      csvErr.style.display = "none";
+      csvErr.textContent = "";
+      csvPreview.innerHTML = "";
+      csvSummary.textContent = "";
+      csvFileName.textContent = selectedCsv ? selectedCsv.name : "No file selected";
+      confirmImportBtn.disabled = !selectedCsv;
+      csvModal.style.display = "flex";
+    }
+    function closeCsvModalFn(){ csvModal.style.display = "none"; }
+
+    importCsvBtn.addEventListener("click", openCsvModal);
+    closeCsvModal.addEventListener("click", closeCsvModalFn);
+    csvModal.addEventListener("click", (e) => { if (e.target === csvModal) closeCsvModalFn(); });
+
+    chooseCsvBtn.addEventListener("click", () => csvFile.click());
+
+    confirmImportBtn.addEventListener("click", async () => {
+      if (!selectedCsv) return;
+
+      csvErr.style.display = "none";
+      csvErr.textContent = "";
+      csvLoader.style.display = "flex";
+      confirmImportBtn.disabled = true;
+
+      try{
+        const fd = new FormData();
+        fd.append("file", selectedCsv);
+
+        const res = await fetch(`${BASE_URL}/api/students/import-csv`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}` },
+          body: fd
+        });
+
+        const data = await res.json().catch(() => ({}));
+        csvLoader.style.display = "none";
+        confirmImportBtn.disabled = false;
+
+        if (!res.ok){
+          csvErr.style.display = "block";
+          csvErr.textContent = data?.detail || "Import failed.";
+          return;
+        }
+
+        const inserted = Number(data?.inserted ?? 0);
+        const failed = Number(data?.failed_count ?? 0);
+        const failedList = Array.isArray(data?.failed) ? data.failed : [];
+
+        csvSummary.textContent = `Imported: ${inserted} • Failed: ${failed}`;
+        csvPreview.innerHTML = `
+          <div class="tableWrap">
+            <table>
+              <thead><tr><th>Result</th><th>Info</th></tr></thead>
+              <tbody>
+                <tr><td>Inserted</td><td>${inserted}</td></tr>
+                <tr><td>Failed</td><td>${failed}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          ${failedList.length ? `
+            <div style="margin-top:10px; font-weight:1000; color:#111;">Failed Rows:</div>
+            <div class="tableWrap" style="margin-top:8px;">
+              <table>
+                <thead><tr><th>Line</th><th>Student Code</th><th>Error</th></tr></thead>
+                <tbody>
+                  ${failedList.map(r => `
+                    <tr>
+                      <td>${escapeHtml(String(r.line ?? ""))}</td>
+                      <td>${escapeHtml(String(r.student_code ?? ""))}</td>
+                      <td class="badCell">${escapeHtml(prettyPgError(String(r.error ?? "")))}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          ` : `<div style="margin-top:10px; font-weight:1000; color:#0e5b18;">All rows imported successfully</div>`}
+        `;
+
+      }catch(e){
+        csvLoader.style.display = "none";
+        confirmImportBtn.disabled = false;
+        csvErr.style.display = "block";
+        csvErr.textContent = e?.message || "Network error.";
+      }
+    });
+
+    csvFile.addEventListener("change", async () => {
+      const f = csvFile.files?.[0];
+      if (!f) return;
+
+      selectedCsv = f;
+      csvFileName.textContent = f.name;
+
+      csvErr.style.display = "none";
+      csvErr.textContent = "";
+      csvLoader.style.display = "flex";
+      confirmImportBtn.disabled = true;
+
+      try{
+        const text = await f.text();
+        const parsed = parseCSV(text);
+
+        const headersLower = parsed.headers.map(h => (h || "").trim().toLowerCase());
+        const required = ["student_code","last_name","first_name","grade","section"];
+        const missing = required.filter(r => !headersLower.includes(r));
+
+        if (missing.length){
+          csvLoader.style.display = "none";
+          csvErr.style.display = "block";
+          csvErr.textContent = `Missing required headers: ${missing.join(", ")}.`;
+          csvPreview.innerHTML = "";
+          return;
+        }
+
+        // Duplicate detection inside CSV
+        const codeCount = new Map();
+        for (const row of parsed.rows){
+          const code = String(row["student_code"] ?? "").trim();
+          if (!code) continue;
+          codeCount.set(code, (codeCount.get(code) || 0) + 1);
+        }
+        const duplicates = [...codeCount.entries()].filter(([_, n]) => n > 1).map(([c]) => c);
+        const dupSet = new Set(duplicates);
+
+        const dupInfo = { hasDuplicates: duplicates.length > 0, duplicates, dupSet };
+
+        const previewRows = parsed.rows.slice(0, 50);
+        csvSummary.textContent = `Rows detected: ${parsed.rows.length} • Previewing: ${previewRows.length}`;
+
+        csvPreview.innerHTML = renderPreviewTable(headersLower, previewRows, dupInfo);
+
+        csvLoader.style.display = "none";
+
+        if (dupInfo.hasDuplicates){
+          csvErr.style.display = "block";
+          csvErr.textContent = `Duplicate student_code in CSV: ${dupInfo.duplicates.join(", ")}. Fix and re-upload before importing.`;
+          confirmImportBtn.disabled = true;
+          return;
+        }
+
+        confirmImportBtn.disabled = false;
+
+      }catch(e){
+        csvLoader.style.display = "none";
+        csvErr.style.display = "block";
+        csvErr.textContent = e?.message || "Failed to read CSV.";
+        csvPreview.innerHTML = "";
+      }
+    });
+
+    function prettyPgError(msg){
+      const m = String(msg || "");
+      if (m.includes("duplicate key value violates unique constraint") && m.includes("student_student_code_key")){
+        const match = m.match(/\(student_code\)=\((.*?)\)/);
+        const code = match?.[1] ? ` (${match[1]})` : "";
+        return `Duplicate student_code${code} already exists.`;
+      }
+      if (m.includes("current transaction is aborted")){
+        return "Import stopped because a previous row failed in the database transaction.";
+      }
+      return m;
+    }
+
+    function renderPreviewTable(headersLower, rows, dupInfo){
+      const showCols = ["student_code","last_name","first_name","grade","section","status"];
+      const cols = showCols.filter(c => headersLower.includes(c));
+      const required = ["student_code","last_name","first_name","grade","section"];
+
+      const warnHtml = dupInfo?.hasDuplicates ? `
+        <div style="margin-top:10px; font-weight:1000; color:rgba(176,0,0,0.92);">
+          Duplicate student_code found in CSV: ${dupInfo.duplicates.join(", ")}. Please fix duplicates before importing.
+        </div>
+      ` : "";
+
+      return `
+        ${warnHtml}
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  ${cols.map(c => {
+                    const v = String(r[c] ?? "").trim();
+                    const isMissingRequired = (!v && required.includes(c));
+                    const isDupCode = (c === "student_code") && dupInfo?.dupSet?.has(String(v).trim());
+                    const cls = (isMissingRequired || isDupCode) ? "badCell" : "";
+                    return `<td class="${cls}">${escapeHtml(v)}</td>`;
+                  }).join("")}
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // Minimal CSV parser with quotes support
+    function parseCSV(text){
+      const lines = [];
+      let i=0, cur="", inQ=false;
+
+      while (i < text.length){
+        const ch = text[i];
+        if (ch === '"'){
+          if (inQ && text[i+1] === '"'){ cur += '"'; i += 2; continue; }
+          inQ = !inQ; i++; continue;
+        }
+        if (!inQ && (ch === "\n" || ch === "\r")){
+          if (ch === "\r" && text[i+1] === "\n") i++;
+          lines.push(cur);
+          cur = "";
+          i++;
+          continue;
+        }
+        cur += ch;
+        i++;
+      }
+      if (cur.length) lines.push(cur);
+
+      const splitLine = (line) => {
+        const out = [];
+        let j=0, c="", q=false;
+        while (j < line.length){
+          const ch2 = line[j];
+          if (ch2 === '"'){
+            if (q && line[j+1] === '"'){ c += '"'; j += 2; continue; }
+            q = !q; j++; continue;
+          }
+          if (!q && ch2 === ","){ out.push(c); c=""; j++; continue; }
+          c += ch2; j++;
+        }
+        out.push(c);
+        return out;
+      };
+
+      const headerLine = lines.find(l => l.trim().length > 0);
+      if (!headerLine) throw new Error("CSV is empty.");
+      const headerIdx = lines.indexOf(headerLine);
+
+      const headers = splitLine(headerLine).map(h => (h || "").trim().toLowerCase());
+      const rows = [];
+
+      for (let k = headerIdx + 1; k < lines.length; k++){
+        const line = lines[k];
+        if (!line.trim()) continue;
+        const cols = splitLine(line);
+        const obj = {};
+        for (let h = 0; h < headers.length; h++){
+          obj[headers[h]] = (cols[h] ?? "").trim();
+        }
+        rows.push(obj);
+      }
+
+      return { headers, rows };
+    }
+  </script>
+
+</body>
+</html>

@@ -274,6 +274,11 @@
       border-color: rgba(176,0,0,0.25);
       color: rgba(176,0,0,0.78);
     }
+    .badge.warn{
+      background: rgba(244,227,47,0.22);
+      border-color: rgba(244,227,47,0.55);
+      color: rgba(0,0,0,0.72);
+    }
 
     @media (max-width: 980px){
       .shell{ grid-template-columns: 74px 1fr; }
@@ -581,6 +586,10 @@
 
       for (const it of arr){
         const ok = it.ok === true;
+        const pending = it.ok === null || typeof it.ok === "undefined";
+        const badgeText = ok ? "✓ Ready" : (pending ? "⏳ Pending" : ("⚠ " + escapeHtml(it.error || "Failed")));
+        const badgeClass = ok ? "" : (pending ? "warn" : "err");
+
         itemsEl.insertAdjacentHTML("beforeend", `
           <div class="item">
             <div class="mono">
@@ -591,9 +600,7 @@
               <div class="i-title">${escapeHtml(it.title || "—")}</div>
               <div class="i-sub">${escapeHtml(it.author || "")}</div>
             </div>
-            <div class="badge ${ok ? "" : "err"}">
-  ${ok ? "✓ Added" : "⚠ " + escapeHtml(it.error || "Failed")}
-</div>
+            <div class="badge ${badgeClass}">${badgeText}</div>
           </div>
         `);
       }
@@ -603,6 +610,77 @@
       return String(s ?? "").replace(/[&<>"']/g, m => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
       }[m]));
+    }
+
+
+    function normalizeDetailToString(data){
+      if (!data) return "";
+      if (typeof data.detail === "string") return data.detail;
+      if (typeof data.detail === "object" && data.detail !== null){
+        return data.detail.message || data.detail.error || JSON.stringify(data.detail);
+      }
+      if (typeof data.message === "string") return data.message;
+      return "";
+    }
+
+    async function finalizeCheckout(){
+      const items = getItems();
+      if (!items.length){
+        setHint("No books added. Scan a book first.", true);
+        return;
+      }
+
+      // lock UI
+      checkoutBtn.disabled = true;
+      finishBtn.disabled = true;
+      changeStudentBtn.disabled = true;
+
+      showProgress();
+      setHint("Finalizing checkout…");
+
+      const updated = [];
+      for (const it of items){
+        const barcode = String(it.barcode || "").trim();
+        if (!barcode){
+          updated.push({ ...it, ok: false, error: "Missing barcode" });
+          continue;
+        }
+
+        try{
+          const res = await fetch(`${BASE_URL}/api/circulation/checkout`, {
+            method: "POST",
+            headers: {
+              ...authHeaders(),
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ barcode, student_code: studentCode })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok){
+            updated.push({
+              ...it,
+              ok: false,
+              error: normalizeDetailToString(data) || "Checkout failed"
+            });
+          } else {
+            updated.push({ ...it, ok: true });
+          }
+        }catch(err){
+          updated.push({
+            ...it,
+            ok: false,
+            error: err?.message || "Network error"
+          });
+        }
+      }
+
+      setItems(updated);
+      hideProgressAfterComplete();
+
+      // proceed to review page
+      window.location.href = "circulation_3.html";
     }
 
     function parseLookup(data){
@@ -690,6 +768,7 @@
       }
     });
 
+    
     checkoutBtn.addEventListener("click", async () => {
       const barcode = bookCodeEl.value.trim();
       if (!barcode) return;
@@ -702,68 +781,23 @@
         return;
       }
 
-      checkoutBtn.disabled = true;
-      showProgress();
-      setHint("Checking out…");
+      // IMPORTANT: Do NOT mark as borrowed yet.
+      // We only stage the book in this session. Actual checkout happens on Finish.
+      const items = getItems();
+      items.push({
+        ok: null, // pending
+        barcode,
+        title: currentBook?.title || "",
+        author: currentBook?.author || "",
+        isbn: currentBook?.isbn || ""
+      });
+      setItems(items);
 
-      try{
-        const res = await fetch(`${BASE_URL}/api/circulation/checkout`, {
-          method: "POST",
-          headers: {
-            ...authHeaders(),
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ barcode, student_code: studentCode })
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        const items = getItems();
-
-       if (!res.ok){
-
-        // Extract readable error message safely
-        let errorMsg = "Checkout failed.";
-
-        if (typeof data?.detail === "string") {
-            errorMsg = data.detail;
-        }
-        else if (typeof data?.detail === "object" && data.detail !== null) {
-            errorMsg =
-            data.detail.message ||
-            data.detail.error ||
-            JSON.stringify(data.detail);
-        }
-        else if (data?.message) {
-            errorMsg = data.message;
-        }
-
-        items.push({
-            ok: false,
-            barcode,
-            title: currentBook?.title || "",
-            author: currentBook?.author || "",
-            isbn: currentBook?.isbn || "",
-            error: errorMsg
-        });
-
-        setItems(items);
-
-        hideProgressAfterComplete();
-        setHint(errorMsg, true);
-        return;
-        }
-
-        // reset for next scan
-        bookCodeEl.value = "";
-        clearBookFields();
-        progressWrap.style.display = "none";
-        bookCodeEl.focus();
-      }catch(err){
-        hideProgressAfterComplete();
-        setHint(err?.message || "Network error.", true);
-        checkoutBtn.disabled = false;
-      }
+      setHint("Added to this session. Scan next book.");
+      bookCodeEl.value = "";
+      clearBookFields();
+      progressWrap.style.display = "none";
+      bookCodeEl.focus();
     });
 
     changeStudentBtn.addEventListener("click", () => {
@@ -776,8 +810,8 @@
       window.location.href = "circulation.html";
     });
 
-    finishBtn.addEventListener("click", () => {
-      window.location.href = "circulation_3.html";
+    finishBtn.addEventListener("click", async () => {
+      await finalizeCheckout();
     });
 
     renderItems();

@@ -48,6 +48,18 @@ class CheckoutRequest(BaseModel):
     barcode: str
     student_code: str
 
+from typing import Optional
+
+class BookUpdate(BaseModel):
+    title: str
+    author: str
+    publisher: Optional[str] = None
+    pub_year: Optional[int] = None
+    genre: Optional[str] = None
+    subject: Optional[str] = None
+    section: Optional[str] = None
+    cover_url: Optional[str] = None
+
 import re
 from fastapi import HTTPException
 
@@ -167,47 +179,36 @@ def test_db():
     return {"database_response": result}
 
 
-# -----------------------------
-# BOOK SEARCH ENDPOINT (OPAC)
-# -----------------------------
 @app.get("/api/books")
 def search_books(q: str = ""):
     """
-    Search books by title.
-    Query parameter:
-        q -> search keyword
-    Example:
-        /api/books?q=harry
+    Search books by title (Public OPAC).
     """
-
-    # Get database connection
     conn = get_connection()
     cur = conn.cursor()
 
-    # Execute case-insensitive search
     cur.execute(
         """
         SELECT book_id, title, author, section
         FROM book
         WHERE title ILIKE %s
+        ORDER BY title ASC
+        LIMIT 100
         """,
-        (f"%{q}%",)
+        (f"%{q}%",),
     )
 
-    # Fetch all matching rows
     books = cur.fetchall()
-
-    # Close connection
     cur.close()
     conn.close()
 
-    # Convert tuples into JSON-friendly format
+    # ✅ dict-row safe
     return [
         {
-            "book_id": b[0],
-            "title": b[1],
-            "author": b[2],
-            "section": b[3]
+            "book_id": b["book_id"],
+            "title": b["title"],
+            "author": b["author"],
+            "section": b["section"],
         }
         for b in books
     ]
@@ -2399,6 +2400,58 @@ def build_report_pdf(report: dict) -> bytes:
     buffer.close()
     return pdf_bytes
 
+@app.get("/api/books")
+def search_books(q: str = ""):
+    """
+    Search books by ANY keyword (title, author, publisher, genre, subject, section, catalog_key, identifiers).
+    Used by OPAC + Librarian search.
+    """
+    q = (q or "").strip()
+    if not q:
+        return []
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT DISTINCT
+            b.book_id,
+            b.title,
+            b.author,
+            b.section,
+            b.cover_url
+        FROM book b
+        LEFT JOIN book_identifier bi ON bi.book_id = b.book_id
+        WHERE
+            b.title ILIKE %(q)s
+            OR b.author ILIKE %(q)s
+            OR COALESCE(b.publisher,'') ILIKE %(q)s
+            OR COALESCE(b.genre,'') ILIKE %(q)s
+            OR COALESCE(b.subject,'') ILIKE %(q)s
+            OR COALESCE(b.section,'') ILIKE %(q)s
+            OR b.catalog_key ILIKE %(q)s
+            OR COALESCE(bi.id_value,'') ILIKE %(q)s
+        ORDER BY b.title ASC
+        LIMIT 100
+        """,
+        {"q": f"%{q}%"},
+    )
+
+    books = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return [
+        {
+            "book_id": b["book_id"],
+            "title": b["title"],
+            "author": b["author"],
+            "section": b["section"],
+            "cover_url": b["cover_url"],
+        }
+        for b in books
+    ]
 # -----------------------------
 # REPORTS: EXPORT PDF (Librarian Only)
 # -----------------------------
@@ -2699,7 +2752,6 @@ def fine_payment_history(
 def mark_book_lost(
     barcode: str,
     student_code: str,
-    lost_fee: float,
     note: str | None = None,
     current=Depends(get_current_librarian),
 ):
@@ -2712,21 +2764,31 @@ def mark_book_lost(
       3) Find active loan for (student_id, copy_id) where returned_at IS NULL
       4) Update loan: returned_at = NOW(), status = 'lost'
       5) Update copy: status = 'lost'
-      6) Create fine (unpaid) for lost_fee
+      6) Create fine (unpaid) using system_settings.lost_fee
       7) Return summary
 
     Notes:
-      - lost_fee must be > 0
-      - This is separate from overdue fines (this is a replacement/lost fee)
+      - Uses system_settings.lost_fee (no client-provided lost_fee to avoid tampering)
+      - Prevents duplicate "lost" fines for the same loan
     """
-    if lost_fee <= 0:
-        raise HTTPException(status_code=400, detail="lost_fee must be greater than 0")
-
     conn = get_connection()
     cur = conn.cursor()
 
     try:
-        librarian_id = current["librarian_id"]
+        # --- 0) Load lost fee from system_settings ---
+        cur.execute(
+            """
+            SELECT COALESCE(lost_fee, 0) AS lost_fee
+            FROM system_settings
+            ORDER BY updated_at DESC, settings_id DESC
+            LIMIT 1
+            """
+        )
+        settings = cur.fetchone()
+        lost_fee = float(settings["lost_fee"] or 0) if settings else 0.0
+
+        if lost_fee <= 0:
+            raise HTTPException(status_code=400, detail="Lost fee is not configured in system_settings")
 
         # --- 1) Student ---
         cur.execute(
@@ -2759,9 +2821,11 @@ def mark_book_lost(
         # --- 3) Active loan for this student + copy ---
         cur.execute(
             """
-            SELECT loan_id, due_at
+            SELECT loan_id, due_at, status
             FROM loan
-            WHERE student_id = %s AND copy_id = %s AND returned_at IS NULL
+            WHERE student_id = %s
+              AND copy_id = %s
+              AND returned_at IS NULL
             ORDER BY borrowed_at DESC
             LIMIT 1
             """,
@@ -2773,11 +2837,16 @@ def mark_book_lost(
 
         loan_id = loan["loan_id"]
 
-        # --- 4) Update loan to 'lost' ---
+        # Guard: If someone already marked it lost via some other flow, prevent duplication
+        if (loan.get("status") or "").lower() == "lost":
+            raise HTTPException(status_code=400, detail="This loan is already marked as lost")
+
+        # --- 4) Update loan to 'lost' and CLOSE it so it disappears from Current Borrowed ---
         cur.execute(
             """
             UPDATE loan
-            SET returned_at = NOW(), status = 'lost'
+            SET returned_at = NOW(),
+                status = 'lost'
             WHERE loan_id = %s
             RETURNING returned_at
             """,
@@ -2785,7 +2854,7 @@ def mark_book_lost(
         )
         returned_row = cur.fetchone()
 
-        # --- 5) Update copy to 'lost' ---
+        # --- 5) Update copy to 'lost' (not borrowable) ---
         cur.execute(
             """
             UPDATE book_copy
@@ -2795,20 +2864,38 @@ def mark_book_lost(
             (copy_id,),
         )
 
-        # --- 6) Create lost fee fine (unpaid) ---
+        # --- 6) Prevent duplicate lost fine for this loan ---
+        cur.execute(
+            """
+            SELECT fine_id
+            FROM fine
+            WHERE loan_id = %s
+              AND status = 'unpaid'
+              AND (reason ILIKE 'lost%%' OR reason ILIKE '%%lost%%')
+            ORDER BY assessed_at DESC
+            LIMIT 1
+            """,
+            (loan_id,),
+        )
+        existing_fine = cur.fetchone()
+
         reason = "Lost book fee"
         if note and note.strip():
             reason = f"Lost book fee - {note.strip()}"
 
-        cur.execute(
-            """
-            INSERT INTO fine (loan_id, student_id, amount, amount_paid, status, reason, assessed_at)
-            VALUES (%s, %s, %s, 0, 'unpaid', %s, NOW())
-            RETURNING fine_id, amount, status
-            """,
-            (loan_id, student_id, round(lost_fee, 2), reason),
-        )
-        fine_row = cur.fetchone()
+        if existing_fine:
+            # Fine already exists; do not create another one
+            fine_row = {"fine_id": existing_fine["fine_id"], "amount": lost_fee, "status": "unpaid"}
+        else:
+            cur.execute(
+                """
+                INSERT INTO fine (loan_id, student_id, amount, amount_paid, status, reason, assessed_at)
+                VALUES (%s, %s, %s, 0, 'unpaid', %s, NOW())
+                RETURNING fine_id, amount, status
+                """,
+                (loan_id, student_id, round(lost_fee, 2), reason),
+            )
+            fine_row = cur.fetchone()
 
         conn.commit()
 
@@ -2818,7 +2905,7 @@ def mark_book_lost(
             "copy_id": copy_id,
             "barcode": barcode,
             "student_code": student_code,
-            "loan_returned_at": str(returned_row["returned_at"]),
+            "loan_returned_at": returned_row["returned_at"].isoformat() if returned_row and returned_row.get("returned_at") else None,
             "copy_status": "lost",
             "fine": {
                 "fine_id": fine_row["fine_id"],
@@ -2838,6 +2925,57 @@ def mark_book_lost(
         cur.close()
         conn.close()
 
+from fastapi import Body
+
+@app.put("/api/students/{student_id}")
+def update_student(
+    student_id: int,
+    payload: dict = Body(...),
+    current=Depends(get_current_librarian),
+):
+    """
+    Updates a student.
+    Expected JSON:
+      student_code,last_name,first_name,grade,section,status
+    """
+    student_code = (payload.get("student_code") or "").strip()
+    last_name = (payload.get("last_name") or "").strip()
+    first_name = (payload.get("first_name") or "").strip()
+    grade_raw = (payload.get("grade") or "").strip()
+    section = (payload.get("section") or "").strip()
+    status = (payload.get("status") or "active").strip().lower()
+
+    if not student_code or not last_name or not first_name or not grade_raw or not section:
+        raise HTTPException(status_code=400, detail="All required fields must be provided.")
+
+    grade = normalize_grade(grade_raw)
+    if status not in ["active", "suspended", "graduated"]:
+        raise HTTPException(status_code=400, detail="status must be active, suspended, or graduated")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            UPDATE student
+            SET student_code=%s, last_name=%s, first_name=%s, grade=%s, section=%s, status=%s, updated_at=NOW()
+            WHERE student_id=%s
+            RETURNING student_id
+            """,
+            (student_code, last_name, first_name, grade, section, status, student_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        conn.commit()
+        return {"message": "Student updated", "student_id": student_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Update student failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 # -----------------------------
 # STUDENTS: BULK IMPORT (CSV) (Librarian Only)
 # -----------------------------
@@ -3296,6 +3434,24 @@ from fastapi import HTTPException, Depends
 
 from datetime import date, timedelta
 
+
+def get_system_settings(cur):
+    cur.execute("""
+        SELECT loan_period_days, fine_per_day, max_borrow_limit, max_renewals, block_renew_if_overdue,
+               COALESCE(damage_fine_minor, 0) AS damage_fine_minor,
+               COALESCE(damage_fine_major, 0) AS damage_fine_major,
+               COALESCE(lost_book_fine, 0) AS lost_book_fine
+        FROM system_settings
+        ORDER BY settings_id ASC
+        LIMIT 1
+    """)
+    s = cur.fetchone()
+    return s or {
+        "fine_per_day": 0,
+        "damage_fine_minor": 0,
+        "damage_fine_major": 0,
+        "lost_book_fine": 0,
+    }
 def _get_settings_for_grade(cur, grade: str | None):
     # Try grade_rule first
     if grade:
@@ -3333,6 +3489,185 @@ def _get_settings_for_grade(cur, grade: str | None):
             "block_renew_if_overdue": True,
         }
     return s
+
+@app.post("/api/circulation/lost")
+def mark_loan_lost(
+    loan_id: int,
+    note: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Load settings
+        cur.execute("""
+            SELECT COALESCE(lost_book_fine, 0) AS lost_book_fine
+            FROM system_settings
+            ORDER BY settings_id ASC
+            LIMIT 1
+        """)
+        settings = cur.fetchone()
+        lost_fee = float((settings and settings["lost_book_fine"]) or 0)
+        if lost_fee <= 0:
+            raise HTTPException(status_code=400, detail="Lost book fine is not configured")
+
+        # Load loan (must be active)
+        cur.execute("""
+            SELECT loan_id, student_id, copy_id, returned_at, status
+            FROM loan
+            WHERE loan_id = %s
+        """, (loan_id,))
+        loan = cur.fetchone()
+        if not loan:
+            raise HTTPException(status_code=404, detail="Loan not found")
+        if loan["returned_at"] is not None:
+            raise HTTPException(status_code=400, detail="Loan is already returned")
+        if (loan.get("status") or "").lower() == "lost":
+            # Already lost; still allow return info but no duplicate fine
+            pass
+
+        # Prevent duplicate lost fine for this loan
+        cur.execute("""
+            SELECT fine_id
+            FROM fine
+            WHERE loan_id = %s AND reason = 'lost'
+            ORDER BY assessed_at DESC
+            LIMIT 1
+        """, (loan_id,))
+        existing = cur.fetchone()
+        if existing:
+            raise HTTPException(status_code=400, detail="Lost fine already exists for this loan")
+
+        # Update loan + copy status
+        cur.execute("UPDATE loan SET status = 'lost' WHERE loan_id = %s", (loan_id,))
+        cur.execute("UPDATE book_copy SET status = 'lost' WHERE copy_id = %s", (loan["copy_id"],))
+
+        # Create fine
+        cur.execute("""
+            INSERT INTO fine (loan_id, student_id, amount, amount_paid, status, reason, assessed_at)
+            VALUES (%s, %s, %s, 0, 'unpaid', 'lost', NOW())
+            RETURNING fine_id
+        """, (loan_id, loan["student_id"], lost_fee))
+        fine_row = cur.fetchone()
+
+        conn.commit()
+
+        return {
+            "message": "Marked as lost and fine created",
+            "loan_id": loan_id,
+            "copy_id": loan["copy_id"],
+            "student_id": loan["student_id"],
+            "fine_id": fine_row["fine_id"],
+            "lost_fee": lost_fee,
+            "note": note,
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Mark lost failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/api/circulation/damage")
+def mark_damage_and_fine(
+    loan_id: int,
+    severity: str,
+    notes: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    sev = (severity or "").strip().lower()
+    if sev not in ("minor", "major"):
+        raise HTTPException(status_code=400, detail="severity must be 'minor' or 'major'")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Load settings
+        cur.execute("""
+            SELECT
+              COALESCE(damage_fine_minor, 0) AS damage_fine_minor,
+              COALESCE(damage_fine_major, 0) AS damage_fine_major
+            FROM system_settings
+            ORDER BY settings_id ASC
+            LIMIT 1
+        """)
+        settings = cur.fetchone()
+        if not settings:
+            raise HTTPException(status_code=404, detail="system_settings not configured")
+
+        fee = float(settings["damage_fine_minor"] if sev == "minor" else settings["damage_fine_major"])
+        if fee <= 0:
+            raise HTTPException(status_code=400, detail="Damage fine is not configured")
+
+        librarian_id = current["librarian_id"]
+
+        # Load loan
+        cur.execute("""
+            SELECT loan_id, student_id, copy_id, returned_at
+            FROM loan
+            WHERE loan_id = %s
+        """, (loan_id,))
+        loan = cur.fetchone()
+        if not loan:
+            raise HTTPException(status_code=404, detail="Loan not found")
+
+        # Prevent duplicate damage fine for this loan & severity
+        reason = f"damage_{sev}"
+        cur.execute("""
+            SELECT fine_id
+            FROM fine
+            WHERE loan_id = %s AND reason = %s
+            ORDER BY assessed_at DESC
+            LIMIT 1
+        """, (loan_id, reason))
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Damage fine already exists for this loan")
+
+        # Insert damage report
+        cur.execute("""
+            INSERT INTO damage_report (copy_id, student_id, recorded_by, severity, notes, reported_at)
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            RETURNING damage_id
+        """, (loan["copy_id"], loan["student_id"], librarian_id, sev, notes))
+        damage_row = cur.fetchone()
+
+        # Mark copy status (optional but recommended)
+        cur.execute("UPDATE book_copy SET status = 'damaged' WHERE copy_id = %s", (loan["copy_id"],))
+
+        # Insert fine
+        cur.execute("""
+            INSERT INTO fine (loan_id, student_id, amount, amount_paid, status, reason, assessed_at)
+            VALUES (%s, %s, %s, 0, 'unpaid', %s, NOW())
+            RETURNING fine_id
+        """, (loan_id, loan["student_id"], fee, reason))
+        fine_row = cur.fetchone()
+
+        conn.commit()
+
+        return {
+            "message": "Damage recorded and fine created",
+            "loan_id": loan_id,
+            "copy_id": loan["copy_id"],
+            "student_id": loan["student_id"],
+            "damage_id": damage_row["damage_id"],
+            "fine_id": fine_row["fine_id"],
+            "severity": sev,
+            "fee": fee,
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Damage fine failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 
 @app.get("/api/circulation/precheck")
 def circulation_precheck(student_code: str, current=Depends(get_current_librarian)):
@@ -4716,6 +5051,225 @@ def barcode_labels_pdf(
             media_type="application/pdf",
             headers={"Content-Disposition": 'attachment; filename="barcode_labels.pdf"'},
         )
+    finally:
+        cur.close()
+        conn.close()
+
+@app.put("/api/books/{book_id}")
+def update_book(
+    book_id: int,
+    payload: BookUpdate,
+    current=Depends(get_current_librarian),  # ✅ librarian-only
+):
+    # Basic validation
+    if not payload.title or not payload.title.strip():
+        raise HTTPException(status_code=400, detail="Title is required")
+    if not payload.author or not payload.author.strip():
+        raise HTTPException(status_code=400, detail="Author is required")
+    if payload.pub_year is not None and (payload.pub_year < 0 or payload.pub_year > 3000):
+        raise HTTPException(status_code=400, detail="Invalid publication year")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Make sure book exists
+    cur.execute("SELECT book_id FROM book WHERE book_id = %s", (book_id,))
+    exists = cur.fetchone()
+    if not exists:
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    # Update
+    cur.execute(
+        """
+        UPDATE book
+        SET
+            title = %s,
+            author = %s,
+            publisher = %s,
+            pub_year = %s,
+            genre = %s,
+            subject = %s,
+            section = %s,
+            cover_url = %s,
+            updated_at = NOW()
+        WHERE book_id = %s
+        RETURNING
+            book_id, title, author, publisher, pub_year, genre, subject, section, cover_url, updated_at
+        """,
+        (
+            payload.title.strip(),
+            payload.author.strip(),
+            payload.publisher.strip() if payload.publisher else None,
+            payload.pub_year,
+            payload.genre.strip() if payload.genre else None,
+            payload.subject.strip() if payload.subject else None,
+            payload.section.strip() if payload.section else None,
+            payload.cover_url.strip() if payload.cover_url else None,
+            book_id,
+        ),
+    )
+
+    updated = cur.fetchone()
+    conn.commit()
+
+    cur.close()
+    conn.close()
+
+    return {
+        "book_id": updated["book_id"],
+        "title": updated["title"],
+        "author": updated["author"],
+        "publisher": updated["publisher"],
+        "pub_year": updated["pub_year"],
+        "genre": updated["genre"],
+        "subject": updated["subject"],
+        "section": updated["section"],
+        "cover_url": updated.get("cover_url"),
+        "updated_at": updated.get("updated_at"),
+    }
+
+from fastapi import HTTPException, Depends
+from typing import Optional
+
+@app.get("/api/books/{book_id}/damaged-copies")
+def list_damaged_copies(
+    book_id: int,
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Ensure book exists
+        cur.execute("SELECT book_id FROM book WHERE book_id = %s", (book_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        cur.execute(
+            """
+            SELECT
+                bc.copy_id,
+                bc.barcode,
+                bc.status,
+                dr.damage_id,
+                dr.severity,
+                dr.notes,
+                dr.reported_at,
+                s.student_code,
+                s.last_name,
+                s.first_name
+            FROM book_copy bc
+            LEFT JOIN LATERAL (
+                SELECT damage_id, severity, notes, reported_at, student_id
+                FROM damage_report
+                WHERE copy_id = bc.copy_id
+                ORDER BY reported_at DESC
+                LIMIT 1
+            ) dr ON TRUE
+            LEFT JOIN student s ON s.student_id = dr.student_id
+            WHERE bc.book_id = %s
+              AND bc.status = 'damaged'
+            ORDER BY bc.copy_id DESC
+            """,
+            (book_id,),
+        )
+        rows = cur.fetchall()
+
+        return {
+            "book_id": book_id,
+            "damaged": [
+                {
+                    "copy_id": r["copy_id"],
+                    "barcode": r["barcode"],
+                    "status": r["status"],
+                    "last_damage": {
+                        "damage_id": r["damage_id"],
+                        "severity": r["severity"],
+                        "notes": r["notes"],
+                        "reported_at": r["reported_at"].isoformat() if r["reported_at"] else None,
+                        "student": {
+                            "student_code": r["student_code"],
+                            "last_name": r["last_name"],
+                            "first_name": r["first_name"],
+                        } if r["student_code"] else None,
+                    } if r["damage_id"] else None,
+                }
+                for r in rows
+            ],
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/api/book-copies/{copy_id}/restore")
+def restore_damaged_copy(
+    copy_id: int,
+    note: Optional[str] = None,
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Only restore if currently damaged
+        cur.execute(
+            """
+            UPDATE book_copy
+            SET status = 'available'
+            WHERE copy_id = %s AND status = 'damaged'
+            RETURNING copy_id, book_id, barcode, status
+            """,
+            (copy_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Damaged copy not found (or not damaged anymore)")
+
+        conn.commit()
+
+        return {
+            "message": "Copy restored to available",
+            "copy_id": row["copy_id"],
+            "book_id": row["book_id"],
+            "barcode": row["barcode"],
+            "status": row["status"],
+            "note": note,
+        }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+from fastapi import HTTPException, Depends
+
+@app.delete("/api/books/{book_id}")
+def delete_book(
+    book_id: int,
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # confirm exists
+        cur.execute("SELECT book_id FROM book WHERE book_id = %s", (book_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        cur.execute("DELETE FROM book WHERE book_id = %s RETURNING book_id", (book_id,))
+        conn.commit()
+        return {"message": "Book record deleted", "book_id": book_id}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
     finally:
         cur.close()
         conn.close()

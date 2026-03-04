@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Edit Student</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --shadow: 0 26px 60px rgba(0,0,0,0.30);
+    }
+
+    .topbar{ position:fixed; top:0; left:0; right:0; z-index:999; border-bottom:1px solid rgba(0,0,0,0.08); background:transparent; transition:background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease; }
+    .topbar.is-scrolled{ background:rgba(255,255,255,0.18); border-bottom:1px solid rgba(255,255,255,0.20); backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%); box-shadow:0 18px 45px rgba(0,0,0,0.18); }
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter:blur(2px) saturate(1.05) contrast(1.05); transform:scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background:linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 34px; }
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+
+    .sidebar{ border-radius:18px; background:linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14)); border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(14px) saturate(140%); -webkit-backdrop-filter:blur(14px) saturate(140%); box-shadow:var(--shadow); overflow:hidden; }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition:background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background:rgba(255,255,255,0.06); }
+    .side-item img{ width:34px; height:34px; object-fit:contain; filter:brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%); opacity:.92; transition:filter 180ms ease, transform 180ms ease; }
+    .side-item.is-active img{ filter:brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%); opacity:1; transform:translateY(-1px); }
+
+    .panel{ border-radius:18px; background:var(--panelWhite); border:1px solid var(--panelBorder); box-shadow:var(--panelShadow); overflow:hidden; min-height: calc(84vh - 150px); display:flex; flex-direction:column; }
+    .content{ padding:18px 18px 22px; display:flex; flex-direction:column; flex:1; }
+
+    .titleRow{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .backBtn{ width:40px; height:40px; border-radius:999px; border:0; cursor:pointer; background:var(--brand-yellow); color:#111; display:grid; place-items:center; box-shadow:0 16px 34px rgba(0,0,0,0.14); transition:transform 160ms ease, opacity 160ms ease; }
+    .backBtn:hover{ transform:translateY(-1px); opacity:.96; }
+    .backBtn:active{ transform:translateY(1px); }
+    .backBtn svg{ width:20px; height:20px; }
+
+    .titleRow h1{ margin:0; font-size:26px; font-weight:1000; letter-spacing:.01em; color:#111; }
+
+    .form{ display:flex; flex-direction:column; gap:14px; flex:1; }
+    .row2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+    .field label{ display:flex; align-items:center; gap:6px; font-size:14px; font-weight:1000; color:#0e5b18; margin-bottom:6px; }
+    .req{ color:#b30000; font-weight:1000; }
+
+    .field input, .field select{
+      width:100%;
+      height:46px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.14);
+      background:rgba(0,0,0,0.03);
+      padding:0 14px;
+      font-weight:800;
+      outline:none;
+      transition:border-color 160ms ease, background 160ms ease;
+      font-family: "Google Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .field input:focus, .field select:focus{
+      border-color: rgba(0,0,0,0.28);
+      box-shadow:none;
+      background: rgba(255,255,255,0.70);
+    }
+
+    .actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+      margin-top:auto;
+      padding-top:14px;
+      flex-wrap:wrap;
+    }
+    .btn, .btnGhost{
+      height:46px;
+      min-width:170px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      padding:0 22px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      white-space:nowrap;
+      transition:transform 160ms ease, opacity 160ms ease;
+    }
+    .btn{ border:0; background:var(--brand-yellow); color:#111; box-shadow:0 16px 34px rgba(0,0,0,0.14); }
+    .btn:hover{ transform:translateY(-1px); opacity:.96; }
+    .btn:active{ transform:translateY(1px); }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btnGhost{ border:1px solid rgba(0,0,0,0.12); background:rgba(0,0,0,0.03); color:#111; }
+    .btnGhost:hover{ transform:translateY(-1px); opacity:.96; }
+    .btnGhost:active{ transform:translateY(1px); }
+
+    .error{ margin-top:10px; font-size:12px; font-weight:900; color:rgba(176,0,0,0.82); display:none; }
+
+    .search-progress{ height:4px; width:100%; background:rgba(0,0,0,0.08); border-radius:999px; overflow:hidden; margin:6px 0 0; display:none; }
+    .search-progress__bar{ height:100%; width:0%; background:#FFC700; border-radius:999px; transition:width 200ms ease; }
+
+    /* Modal */
+    .modalOverlay{ position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:2000; padding:18px; }
+    .modal{ width:min(520px, 94vw); border-radius:18px; background:rgba(255,255,255,0.98); border:1px solid rgba(0,0,0,0.08); box-shadow:0 30px 80px rgba(0,0,0,0.35); overflow:hidden; }
+    .modalTop{ padding:16px 16px 12px; border-bottom:1px solid rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .modalTop h2{ margin:0; font-size:18px; font-weight:1000; color:#111; }
+    .closeX{ width:38px; height:38px; border-radius:12px; border:1px solid rgba(0,0,0,0.10); background:rgba(0,0,0,0.03); cursor:pointer; font-weight:1000; }
+    .modalBody{ padding:14px 16px 16px; color:rgba(0,0,0,0.70); font-weight:800; line-height:1.35; }
+    .modalBody .big{ color:#111; font-weight:1000; }
+    .modalActions{ padding:0 16px 16px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+
+    @media (max-width: 980px){
+      .shell{ grid-template-columns:74px 1fr; }
+      .row2{ grid-template-columns:1fr; }
+      .panel{ min-height:unset; }
+      .btn, .btnGhost{ width:100%; min-width:unset; }
+      .actions{ justify-content:stretch; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name"><span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph</div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item is-active" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="content">
+            <div class="titleRow">
+              <button class="backBtn" id="backBtn" type="button" aria-label="Back">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <h1>EDIT STUDENT</h1>
+            </div>
+
+            <form class="form" id="form">
+              <div class="field">
+                <label>STUDENT CODE: <span class="req">*</span></label>
+                <input id="student_code" autocomplete="off" />
+              </div>
+
+              <div class="row2">
+                <div class="field">
+                  <label>LAST NAME: <span class="req">*</span></label>
+                  <input id="last_name" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label>FIRST NAME: <span class="req">*</span></label>
+                  <input id="first_name" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="row2">
+                <div class="field">
+                  <label>GRADE: <span class="req">*</span></label>
+                  <input id="grade" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label>SECTION: <span class="req">*</span></label>
+                  <input id="section" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label>STATUS:</label>
+                <select id="status">
+                  <option value="active">active</option>
+                  <option value="suspended">suspended</option>
+                  <option value="graduated">graduated</option>
+                </select>
+              </div>
+
+              <div class="search-progress" id="progressWrap" aria-hidden="true">
+                <div class="search-progress__bar" id="progressBar"></div>
+              </div>
+
+              <div class="actions">
+                <button class="btnGhost" id="cancelBtn" type="button">Cancel</button>
+                <button class="btn" id="saveBtn" type="submit">Save Changes</button>
+              </div>
+
+              <div class="error" id="err"></div>
+            </form>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <div class="modalOverlay" id="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modalTop">
+        <h2 id="modalTitle">Saved!</h2>
+        <button class="closeX" id="closeModal" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="big" id="modalName">—</div>
+        <div id="modalSub">—</div>
+      </div>
+      <div class="modalActions">
+        <button class="btn" id="goBack" type="button">Back to Student</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive:true });
+
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    function authHeaders(extra = {}) {
+      return Object.assign({ "Authorization": `Bearer ${token}` }, extra);
+    }
+
+    const qs = new URLSearchParams(window.location.search);
+    const studentId = qs.get("student_id");
+    if (!studentId) window.location.href = "students.html";
+
+    const form = document.getElementById("form");
+    const err = document.getElementById("err");
+    const saveBtn = document.getElementById("saveBtn");
+
+    const student_code = document.getElementById("student_code");
+    const last_name = document.getElementById("last_name");
+    const first_name = document.getElementById("first_name");
+    const grade = document.getElementById("grade");
+    const section = document.getElementById("section");
+    const status = document.getElementById("status");
+
+    document.getElementById("backBtn").addEventListener("click", () => history.back());
+    document.getElementById("cancelBtn").addEventListener("click", () => history.back());
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    let progressTimer = null;
+
+    function showProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      clearInterval(progressTimer);
+      let w = 0;
+      progressTimer = setInterval(() => {
+        w = Math.min(90, w + 10);
+        progressBar.style.width = w + "%";
+      }, 90);
+    }
+    function hideProgress(done=true){
+      clearInterval(progressTimer);
+      if (done){
+        progressBar.style.width = "100%";
+        setTimeout(() => {
+          progressWrap.style.display = "none";
+          progressBar.style.width = "0%";
+        }, 220);
+      } else {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+      }
+    }
+
+    function showError(msg){
+      err.style.display = "block";
+      err.textContent = msg || "Something went wrong.";
+    }
+    function clearError(){
+      err.style.display = "none";
+      err.textContent = "";
+    }
+
+    // Modal
+    const modal = document.getElementById("modal");
+    const closeModal = document.getElementById("closeModal");
+    const goBack = document.getElementById("goBack");
+    const modalName = document.getElementById("modalName");
+    const modalSub = document.getElementById("modalSub");
+
+    function openModal(name, sub){
+      modalName.textContent = name || "Saved!";
+      modalSub.textContent = sub || "";
+      modal.style.display = "flex";
+    }
+    function closeModalFn(){ modal.style.display = "none"; }
+    closeModal.addEventListener("click", closeModalFn);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModalFn(); });
+    goBack.addEventListener("click", () => {
+      window.location.href = `student_details.html?student_id=${encodeURIComponent(studentId)}`;
+    });
+
+    async function loadStudent(){
+      clearError();
+      showProgress();
+      saveBtn.disabled = true;
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/students/${encodeURIComponent(studentId)}`, {
+          headers: authHeaders(),
+        });
+        const data = await res.json().catch(() => ({}));
+        hideProgress(true);
+        saveBtn.disabled = false;
+
+        if (!res.ok) {
+          showError(data?.detail || "Failed to load student.");
+          return;
+        }
+
+        student_code.value = data.student_code || "";
+        last_name.value = data.last_name || "";
+        first_name.value = data.first_name || "";
+        grade.value = data.grade || "";
+        section.value = data.section || "";
+        status.value = (data.status || "active").toLowerCase();
+
+      } catch (e) {
+        hideProgress(false);
+        saveBtn.disabled = false;
+        showError(e?.message || "Network error.");
+      }
+    }
+
+    async function saveStudent(payload){
+      return fetch(`${BASE_URL}/api/students/${encodeURIComponent(studentId)}`, {
+        method: "PUT",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(payload),
+      });
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const payload = {
+        student_code: String(student_code.value || "").trim(),
+        last_name: String(last_name.value || "").trim(),
+        first_name: String(first_name.value || "").trim(),
+        grade: String(grade.value || "").trim(),
+        section: String(section.value || "").trim(),
+        status: String(status.value || "active").trim(),
+      };
+
+      if (!payload.student_code || !payload.last_name || !payload.first_name || !payload.grade || !payload.section){
+        showError("Please complete all required fields.");
+        return;
+      }
+
+      saveBtn.disabled = true;
+      showProgress();
+
+      try{
+        const res = await saveStudent(payload);
+        const data = await res.json().catch(() => ({}));
+
+        hideProgress(true);
+        saveBtn.disabled = false;
+
+        if (!res.ok){
+          showError(data?.detail || "Failed to save changes.");
+          return;
+        }
+
+        openModal(`${payload.last_name}, ${payload.first_name}`, `${payload.grade} - ${payload.section} • ${payload.student_code}`);
+
+      }catch(errr){
+        hideProgress(false);
+        saveBtn.disabled = false;
+        showError(errr?.message || "Network error.");
+      }
+    });
+
+    loadStudent();
+  </script>
+
+  
+</body>
+</html>
