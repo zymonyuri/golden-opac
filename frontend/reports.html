@@ -1,0 +1,1575 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Reports</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..900;1,17..18,400..900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+
+      --glass: rgba(255,255,255,0.82);
+      --glass-strong: rgba(255,255,255,0.92);
+      --border: rgba(0,0,0,0.10);
+      --border-soft: rgba(0,0,0,0.08);
+      --shadow: 0 24px 55px rgba(0,0,0,0.26);
+
+      --ink:#111;
+      --muted: rgba(0,0,0,0.68);
+
+      --accent: rgba(141,217,89,0.35);
+      --accent-2: rgba(244,227,47,0.35);
+
+      --chart-green: rgba(0, 120, 60, 0.85);
+      --chart-green-soft: rgba(141, 217, 89, 0.60);
+      --chart-yellow: rgba(244, 227, 47, 0.75);
+      --chart-gray: rgba(0, 0, 0, 0.18);
+      --chart-gray-2: rgba(0, 0, 0, 0.10);
+      --chart-red: rgba(220, 60, 60, 0.55);
+    }
+
+    body{ font-family:"Google Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 34px; }
+    .shell{ width:min(1320px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+    @media (max-width: 980px){ .shell{ grid-template-columns:74px 1fr; } }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background: var(--glass);
+      border:1px solid rgba(255,255,255,0.14);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      color: var(--ink);
+
+      height: calc(100vh - 170px);
+      display:flex;
+      flex-direction:column;
+      min-height: 660px;
+
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+    }
+    @media (max-width: 980px){ .panel{ height:auto; min-height:0; } }
+
+    /* Tabs like screenshot (compact pills) */
+    .tabs{
+      display:flex;
+      gap:10px;
+      padding:12px 14px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.14);
+      flex: 0 0 auto;
+      background: rgba(255,255,255,0.55);
+      align-items:flex-end;
+    }
+    .tab{
+      padding:8px 14px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.14);
+      background: rgba(0,0,0,0.05);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .tab.is-active{
+      background: rgba(244,227,47,0.88);
+      color:#111;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+
+    .search-progress{
+      height: 4px;
+      width: 100%;
+      background: rgba(141,217,89,0.55);
+      border-radius: 999px;
+      overflow: hidden;
+      display:none;
+      flex: 0 0 auto;
+    }
+    .search-progress__bar{
+      height: 100%;
+      width: 0%;
+      background: rgba(244,227,47,0.95);
+      border-radius: 999px;
+      transition: width 200ms ease;
+    }
+
+    .content{
+      padding: 12px 16px 16px;
+      flex: 1 1 auto;
+      min-height:0;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    #viewDashboard{
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding-right: 6px;
+    }
+    #viewGenerate{
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    /* Reports title bar like screenshot */
+    .titleRow{
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      position: sticky;
+      top: 0;
+      z-index: 3;
+
+      background: rgba(255,255,255,0.62);
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.10);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .titleRow h1{
+      margin:0;
+      font-size: 28px;
+      font-weight: 1000;
+      letter-spacing: 0.01em;
+      color:#111;
+      line-height: 1.1;
+    }
+
+    .filters{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 10px 12px;
+      flex-wrap: wrap;
+
+      background: rgba(255,255,255,0.55);
+      padding: 12px 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.08);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .filtersLeft{ display:flex; align-items:flex-end; gap: 10px 12px; flex-wrap: wrap; }
+    .filtersRight{ display:flex; align-items:center; gap: 10px; flex-wrap: wrap; }
+
+    .field{ display:grid; gap:7px; min-width: 180px; }
+    .field.small{ min-width: 170px; }
+    .field label{
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.62);
+      line-height: 1.1;
+      margin: 0;
+    }
+    .dateRange{ display:flex; align-items:center; gap:10px; }
+    .dash{ font-weight:1000; opacity:.65; transform: translateY(2px); }
+
+    input, select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.70);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:800;
+      transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    input:focus, select:focus{
+      border-color: rgba(0,0,0,0.22);
+      box-shadow: 0 0 0 4px var(--accent-2);
+      background: rgba(255,255,255,0.85);
+    }
+
+    .btn{
+      height: 44px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:0;
+      border-radius: 999px;
+      padding: 0 16px;
+      cursor:pointer;
+      font-weight: 1000;
+      font-size: 14px;
+      background: rgba(244,227,47,0.90);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.14);
+      transition: transform 160ms ease, opacity 160ms ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ transform: translateY(-1px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn.ghost{
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow:none;
+      color: rgba(0,0,0,0.78);
+    }
+    .btn.green{
+      background: rgba(0,86,0,0.92);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.20);
+    }
+
+    .dashWrap{ display:flex; flex-direction:column; gap: 12px; padding-top: 10px; min-height:0; }
+
+    /* KPI cards: match screenshot (soft top glow) */
+    .statsGrid{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      align-items:stretch;
+    }
+    @media (max-width: 1180px){ .statsGrid{ grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px){ .statsGrid{ grid-template-columns: 1fr; } }
+
+    .statCard{
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.78);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+      padding: 14px 14px;
+      min-height: 92px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      text-align:center;
+      position: relative;
+      overflow:hidden;
+    }
+    .statCard::before{
+      content:"";
+      position:absolute;
+      left:-20%;
+      right:-20%;
+      top:-55px;
+      height: 120px;
+      background:
+        radial-gradient(circle at 20% 65%, rgba(141,217,89,0.55), transparent 60%),
+        radial-gradient(circle at 70% 55%, rgba(244,227,47,0.55), transparent 60%);
+      pointer-events:none;
+      filter: blur(0.2px);
+    }
+    .statNum{ font-size: 30px; font-weight:1000; line-height:1.05; margin-bottom:6px; color:#111; position:relative; }
+    .statLbl{ font-weight:1000; letter-spacing:.06em; text-transform:uppercase; font-size:11px; color: rgba(0,0,0,0.72); line-height: 1.15; position:relative; }
+    .statSub{
+      margin-top: 6px;
+      font-weight: 900;
+      font-size: 12px;
+      color: rgba(0,0,0,0.60);
+      position:relative;
+      min-height: 14px;
+    }
+
+    .dashGrid{
+      display:grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 12px;
+      min-height:0;
+    }
+    @media (max-width: 1100px){ .dashGrid{ grid-template-columns: 1fr; } }
+
+    .dashGrid .leftCol,
+    .dashGrid .rightCol{ display:grid; gap: 12px; min-height:0; }
+
+    .card{
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.62);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: 0;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* Card title centered like screenshot */
+    .cardHead{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 10px;
+      flex: 0 0 auto;
+      background: rgba(255,255,255,0.55);
+      position: relative;
+    }
+    .cardTitle{
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      font-size: 13px;
+      color: rgba(0,0,0,0.78);
+      line-height: 1.2;
+      text-align:center;
+      width: 100%;
+    }
+    .cardBody{
+      padding:14px;
+      flex: 1 1 auto;
+      min-height: 0;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    /* Dots on the right, title still centered */
+    .dots{
+      display:inline-flex;
+      align-items:center;
+      gap: 7px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.65);
+      border: 1px solid rgba(0,0,0,0.08);
+      line-height: 1;
+      position:absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .dot{
+      width: 8px; height: 8px;
+      border-radius: 999px;
+      background: var(--brand-yellow);
+      animation: b 1.1s infinite ease-in-out;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.10);
+    }
+    .dot:nth-child(2){ animation-delay: .12s; }
+    .dot:nth-child(3){ animation-delay: .24s; }
+    @keyframes b{ 0%,80%,100%{ transform: translateY(0); opacity:.55; } 40%{ transform: translateY(-4px); opacity:1; } }
+
+    .twoCharts{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      min-height:0;
+    }
+    @media (max-width: 760px){ .twoCharts{ grid-template-columns: 1fr; } }
+
+    .list{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      overflow:auto;
+      padding-right: 4px;
+      max-height: 300px;
+    }
+
+    /* Right column lists scroll like screenshot */
+    .rightCol .card .list{ max-height: 270px; }
+    .rightCol .card:last-child .logList{ max-height: 270px; }
+
+    .rowLink{ text-decoration:none; color: inherit; display:block; }
+    .rowItem{
+      display:grid;
+      grid-template-columns: 56px 1fr;
+      gap: 12px;
+      align-items:center;
+      padding: 10px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.86);
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      cursor: pointer;
+    }
+    .rowItem:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.94);
+    }
+    .cover{
+      width:56px; height:74px;
+      border-radius: 12px;
+      border:1px solid rgba(0,0,0,0.12);
+      overflow:hidden;
+      background: rgba(0,0,0,0.06);
+      display:grid;
+      place-items:center;
+    }
+    .cover img{ width:100%; height:100%; object-fit: cover; display:block; }
+    .metaTitle{ font-weight:1000; font-size: 14px; color:#111; line-height: 1.2; }
+    .metaSub{ margin-top: 2px; font-weight: 800; font-size: 12px; color: rgba(0,0,0,0.62); }
+    .metaBadges{ margin-top: 8px; display:flex; flex-wrap:wrap; gap: 8px; }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(141,217,89,0.22);
+      font-weight: 1000;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .badge.yellow{ background: rgba(244,227,47,0.22); }
+    .badge.red{ background: rgba(255,60,60,0.14); }
+
+    .empty{
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px dashed rgba(0,0,0,0.18);
+      background: rgba(255,255,255,0.40);
+      color: rgba(0,0,0,0.70);
+      font-weight: 800;
+      text-align:center;
+    }
+
+    .previewCard{
+      border-radius: 16px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.78);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      flex: 1 1 auto;
+      min-height: 0;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .previewHead{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      background: rgba(255,255,255,0.65);
+      flex: 0 0 auto;
+    }
+    .previewHead .small{
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.70);
+      line-height: 1.2;
+    }
+    .previewBody{
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      background: rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .pdfFrame{
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display:block;
+      background: #fff;
+    }
+    .overlayLoader{
+      position:absolute;
+      inset:0;
+      display:none;
+      place-items:center;
+      background: rgba(255,255,255,0.70);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 3;
+    }
+
+    .logList{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      overflow:auto;
+      max-height: 300px;
+      padding-right: 4px;
+    }
+    .logItem{
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.86);
+      border-radius: 14px;
+      padding: 10px 12px;
+      display:grid;
+      gap: 6px;
+      cursor:pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+    .logItem:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.94);
+    }
+    .logTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .logType{
+      font-weight: 1000;
+      font-size: 12px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.70);
+    }
+    .logTime{
+      font-weight: 900;
+      font-size: 12px;
+      color: rgba(0,0,0,0.55);
+      white-space: nowrap;
+    }
+    .logMsg{
+      font-weight: 900;
+      font-size: 13px;
+      color: rgba(0,0,0,0.78);
+      line-height: 1.25;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item is-active" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs" role="tablist" aria-label="Reports Tabs">
+            <button class="tab is-active" id="tabDashboard" role="tab" aria-selected="true" type="button">Dashboard</button>
+            <button class="tab" id="tabGenerate" role="tab" aria-selected="false" type="button">Generate Reports</button>
+          </div>
+
+          <div class="search-progress" id="progressWrap" aria-hidden="true">
+            <div class="search-progress__bar" id="progressBar"></div>
+          </div>
+
+          <div class="content">
+            <!-- DASHBOARD VIEW -->
+            <section id="viewDashboard" style="display:block;">
+              <div class="titleRow">
+                <h1>REPORTS</h1>
+              </div>
+
+              <div class="dashWrap">
+                <!-- KPI Cards -->
+                <div class="statsGrid">
+                  <div class="statCard">
+                    <div class="statNum" id="kpiBooks">—</div>
+                    <div class="statLbl">Total Books</div>
+                    <div class="statSub"></div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiCopies">—</div>
+                    <div class="statLbl">Total Copies</div>
+                    <div class="statSub"></div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiStudents">—</div>
+                    <div class="statLbl">Total Users (Students)</div>
+                    <div class="statSub"></div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiActiveLoans">—</div>
+                    <div class="statLbl">Active Loans</div>
+                    <div class="statSub">Borrowed now</div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiOverdue">—</div>
+                    <div class="statLbl">Overdue Loans</div>
+                    <div class="statSub"></div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiAvailPct">—</div>
+                    <div class="statLbl">Copies Available</div>
+                    <div class="statSub" id="kpiAvailSub">—</div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiTotalFines">—</div>
+                    <div class="statLbl">Total Fines</div>
+                    <div class="statSub" id="kpiFinesSub">Outstanding amount</div>
+                  </div>
+
+                  <div class="statCard">
+                    <div class="statNum" id="kpiUnpaidFines">—</div>
+                    <div class="statLbl">Unpaid Fines</div>
+                    <div class="statSub" id="kpiUnpaidSub">Unpaid records</div>
+                  </div>
+                </div>
+
+                <div class="dashGrid">
+                  <!-- LEFT -->
+                  <div class="leftCol">
+                    <div class="card">
+                      <div class="cardHead">
+                        <div class="cardTitle">Borrowing Trend (Monthly)</div>
+                        <div id="dotsTrend" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                      </div>
+                      <div class="cardBody">
+                        <canvas id="chartMonthly" height="120"></canvas>
+                        <div class="empty" id="monthlyEmpty" style="display:none;">No monthly trend data yet.</div>
+                      </div>
+                    </div>
+
+                    <div class="card">
+                      <div class="cardHead">
+                        <div class="cardTitle">Borrowing Breakdown</div>
+                        <div id="dotsBreakdown" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                      </div>
+                      <div class="cardBody">
+                        <div class="twoCharts">
+                          <div class="card" style="background:transparent; border:0;">
+                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
+                              <div class="cardTitle" style="font-size:12px;">Most Genres Borrowed</div>
+                            </div>
+                            <div class="cardBody" style="padding:0;">
+                              <canvas id="chartGenres" height="150"></canvas>
+                              <div class="empty" id="genresEmpty" style="display:none;">No genre data yet.</div>
+                            </div>
+                          </div>
+
+                          <div class="card" style="background:transparent; border:0;">
+                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
+                              <div class="cardTitle" style="font-size:12px;">Most Borrowed by Grade</div>
+                            </div>
+                            <div class="cardBody" style="padding:0;">
+                              <canvas id="chartBorrowByGrade" height="150"></canvas>
+                              <div class="empty" id="borrowGradeEmpty" style="display:none;">No grade borrow data yet.</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card">
+                      <div class="cardHead">
+                        <div class="cardTitle">Operations Snapshot</div>
+                        <div id="dotsOps" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                      </div>
+                      <div class="cardBody">
+                        <div class="twoCharts">
+                          <div class="card" style="background:transparent; border:0;">
+                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
+                              <div class="cardTitle" style="font-size:12px;">Overdue by Grade</div>
+                            </div>
+                            <div class="cardBody" style="padding:0;">
+                              <canvas id="chartOverdueGrade" height="150"></canvas>
+                              <div class="empty" id="overdueGradeEmpty" style="display:none;">No overdue breakdown yet.</div>
+                            </div>
+                          </div>
+
+                          <div class="card" style="background:transparent; border:0;">
+                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
+                              <div class="cardTitle" style="font-size:12px;">Inventory Status</div>
+                            </div>
+                            <div class="cardBody" style="padding:0;">
+                              <canvas id="chartInventory" height="150"></canvas>
+                              <div class="empty" id="inventoryEmpty" style="display:none;">No inventory status data yet.</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- RIGHT (order like screenshot) -->
+                  <div class="rightCol">
+                    <div class="card">
+                      <div class="cardHead">
+                        <div class="cardTitle">Most Borrowed Books</div>
+                        <div id="dotsBooks" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                      </div>
+                      <div class="cardBody">
+                        <div class="list" id="topBooks"></div>
+                        <div class="empty" id="topBooksEmpty" style="display:none;">No borrowing activity yet.</div>
+                      </div>
+                    </div>
+
+                    <div class="card">
+                      <div class="cardHead">
+                        <div class="cardTitle">Most Active Students</div>
+                        <div id="dotsStudents" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+                      </div>
+                      <div class="cardBody">
+                        <div class="list" id="topStudents"></div>
+                        <div class="empty" id="topStudentsEmpty" style="display:none;">No student borrowing activity yet.</div>
+                      </div>
+                    </div>
+
+                    <div class="card">
+                      <div class="cardHead">
+                        <div class="cardTitle">Recent Activity Logs</div>
+                      </div>
+                      <div class="cardBody">
+                        <div class="logList" id="activityLogs"></div>
+                        <div class="empty" id="activityEmpty" style="display:none;">No recent activity yet.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </section>
+
+            <!-- GENERATE VIEW -->
+            <section id="viewGenerate" style="display:none;">
+              <div class="titleRow">
+                <h1>REPORTS</h1>
+              </div>
+
+              <div class="filters">
+                <div class="filtersLeft">
+                  <div class="field" style="min-width: 340px;">
+                    <label>Date Range:</label>
+                    <div class="dateRange">
+                      <input id="dateFrom" type="date" />
+                      <div class="dash">–</div>
+                      <input id="dateTo" type="date" />
+                    </div>
+                  </div>
+
+                  <div class="field small">
+                    <label>Grade:</label>
+                    <select id="gradeSel">
+                      <option value="">All</option>
+                    </select>
+                  </div>
+
+                  <div class="field small">
+                    <label>Section:</label>
+                    <select id="sectionSel" disabled>
+                      <option value="">All</option>
+                    </select>
+                  </div>
+
+                  <button class="btn" id="btnApply" type="button">Apply</button>
+                  <button class="btn ghost" id="btnClear" type="button">Clear All</button>
+                </div>
+
+                <div class="filtersRight">
+                  <button class="btn green" id="btnPdf" type="button">Export PDF</button>
+                  <button class="btn green" id="btnCsv" type="button">Export CSV</button>
+                </div>
+              </div>
+
+              <div class="previewCard">
+                <div class="previewHead">
+                  <div class="small">PDF Preview</div>
+                  <div class="small">This preview matches Export PDF.</div>
+                </div>
+
+                <div class="previewBody">
+                  <div class="overlayLoader" id="pdfLoader">
+                    <div class="dots" style="position:static; transform:none;">
+                      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                    </div>
+                  </div>
+                  <iframe class="pdfFrame" id="pdfFrame" title="Report PDF Preview"></iframe>
+                </div>
+              </div>
+
+              <div class="empty" id="pdfError" style="display:none;">
+                Unable to load PDF preview. Try again or use Export PDF.
+              </div>
+            </section>
+
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      window.location.href = "login.html";
+    });
+
+    function authHeaders(){ return { "Authorization": `Bearer ${token}` }; }
+    function esc(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+    function fmtNum(n){
+      const x = Number(n ?? 0);
+      if (!Number.isFinite(x)) return "0";
+      return x.toLocaleString();
+    }
+    function safePct(part, whole){
+      const p = Number(part ?? 0);
+      const w = Number(whole ?? 0);
+      if (!Number.isFinite(p) || !Number.isFinite(w) || w <= 0) return 0;
+      return Math.round((p / w) * 100);
+    }
+    function peso(n){
+      const x = Number(n ?? 0);
+      if (!Number.isFinite(x)) return "₱0.00";
+      return "₱" + x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Progress bar
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    let progressTimer = null;
+
+    function showProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      clearInterval(progressTimer);
+      let w = 0;
+      progressTimer = setInterval(() => {
+        w = Math.min(90, w + 8);
+        progressBar.style.width = w + "%";
+      }, 90);
+    }
+    function hideProgress(done=true){
+      clearInterval(progressTimer);
+      if (done){
+        progressBar.style.width = "100%";
+        setTimeout(() => {
+          progressWrap.style.display = "none";
+          progressBar.style.width = "0%";
+        }, 220);
+      } else {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+      }
+    }
+
+    // Tabs
+    const tabDashboard = document.getElementById("tabDashboard");
+    const tabGenerate = document.getElementById("tabGenerate");
+    const viewDashboard = document.getElementById("viewDashboard");
+    const viewGenerate = document.getElementById("viewGenerate");
+
+    function setTab(which){
+      const isDash = which === "dashboard";
+      tabDashboard.classList.toggle("is-active", isDash);
+      tabGenerate.classList.toggle("is-active", !isDash);
+      tabDashboard.setAttribute("aria-selected", isDash ? "true" : "false");
+      tabGenerate.setAttribute("aria-selected", !isDash ? "true" : "false");
+      viewDashboard.style.display = isDash ? "block" : "none";
+      viewGenerate.style.display = !isDash ? "flex" : "none";
+    }
+    tabDashboard.addEventListener("click", () => setTab("dashboard"));
+    tabGenerate.addEventListener("click", () => setTab("generate"));
+
+    // Dots
+    const dotsTrend = document.getElementById("dotsTrend");
+    const dotsBreakdown = document.getElementById("dotsBreakdown");
+    const dotsOps = document.getElementById("dotsOps");
+    const dotsBooks = document.getElementById("dotsBooks");
+    const dotsStudents = document.getElementById("dotsStudents");
+    function setDots(on){
+      for (const el of [dotsTrend, dotsBreakdown, dotsOps, dotsBooks, dotsStudents]){
+        if (!el) continue;
+        el.style.display = on ? "inline-flex" : "none";
+      }
+    }
+
+    function coverFallback(title){
+      const t = (title || "No Cover").toString().slice(0, 18);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280">
+          <defs>
+            <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stop-color="#f4e32f"/>
+              <stop offset="1" stop-color="#8dd959"/>
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#g)"/>
+          <rect x="18" y="18" width="164" height="244" rx="18" fill="rgba(255,255,255,0.25)"/>
+          <text x="100" y="140" font-size="22" text-anchor="middle" font-family="Arial" fill="rgba(0,0,0,0.65)" font-weight="700">${esc(t)}</text>
+        </svg>`;
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    }
+
+    function hasAny(values){
+      return Array.isArray(values) && values.some(v => Number(v ?? 0) > 0);
+    }
+
+    // KPI elements
+    const kpiBooks = document.getElementById("kpiBooks");
+    const kpiCopies = document.getElementById("kpiCopies");
+    const kpiStudents = document.getElementById("kpiStudents");
+    const kpiActiveLoans = document.getElementById("kpiActiveLoans");
+    const kpiOverdue = document.getElementById("kpiOverdue");
+    const kpiAvailPct = document.getElementById("kpiAvailPct");
+    const kpiAvailSub = document.getElementById("kpiAvailSub");
+
+    const kpiTotalFines = document.getElementById("kpiTotalFines");
+    const kpiUnpaidFines = document.getElementById("kpiUnpaidFines");
+    const kpiFinesSub = document.getElementById("kpiFinesSub");
+    const kpiUnpaidSub = document.getElementById("kpiUnpaidSub");
+
+    // empties
+    const monthlyEmpty = document.getElementById("monthlyEmpty");
+    const genresEmpty = document.getElementById("genresEmpty");
+    const borrowGradeEmpty = document.getElementById("borrowGradeEmpty");
+    const overdueGradeEmpty = document.getElementById("overdueGradeEmpty");
+    const inventoryEmpty = document.getElementById("inventoryEmpty");
+
+    // lists
+    const topBooks = document.getElementById("topBooks");
+    const topBooksEmpty = document.getElementById("topBooksEmpty");
+    const topStudents = document.getElementById("topStudents");
+    const topStudentsEmpty = document.getElementById("topStudentsEmpty");
+
+    // activity
+    const activityLogs = document.getElementById("activityLogs");
+    const activityEmpty = document.getElementById("activityEmpty");
+
+    // charts
+    let chartMonthly=null, chartGenres=null, chartBorrowByGrade=null, chartOverdueGrade=null, chartInventory=null;
+    function destroyCharts(){
+      for (const c of [chartMonthly, chartGenres, chartBorrowByGrade, chartOverdueGrade, chartInventory]){
+        if (c) c.destroy();
+      }
+      chartMonthly=chartGenres=chartBorrowByGrade=chartOverdueGrade=chartInventory=null;
+    }
+
+    function fmtDateTime(ts){
+      try{
+        const d = new Date(ts);
+        if (Number.isNaN(d.getTime())) return String(ts);
+        return d.toLocaleString();
+      } catch {
+        return String(ts);
+      }
+    }
+
+    function logTargetHref(item){
+      const bookId = item?.book_id;
+      const studentId = item?.student_id;
+      if (bookId) return `details.html?book_id=${encodeURIComponent(bookId)}`;
+      if (studentId) return `student_details.html?student_id=${encodeURIComponent(studentId)}`;
+      return "#";
+    }
+
+    async function loadActivity(){
+      try{
+        const res = await fetch(`${BASE_URL}/api/reports/activity?limit=40`, { headers: authHeaders() });
+        const rows = await res.json().catch(() => []);
+        if (!res.ok || !Array.isArray(rows) || rows.length === 0){
+          activityLogs.innerHTML = "";
+          activityEmpty.style.display = "block";
+          return;
+        }
+        activityEmpty.style.display = "none";
+        activityLogs.innerHTML = rows.map(r => {
+          const href = logTargetHref(r);
+          const clickable = href !== "#";
+          const type = (r.type || "activity").toString().replace(/_/g, " ");
+          const msg = r.message || "";
+          const time = fmtDateTime(r.ts || "");
+          return `
+            <div class="logItem" ${clickable ? `onclick="window.location.href='${href}'"` : ""}>
+              <div class="logTop">
+                <div class="logType">${esc(type)}</div>
+                <div class="logTime">${esc(time)}</div>
+              </div>
+              <div class="logMsg">${esc(msg)}</div>
+            </div>
+          `;
+        }).join("");
+      } catch {
+        activityLogs.innerHTML = "";
+        activityEmpty.style.display = "block";
+      }
+    }
+
+    function chartBaseOptions(){
+      return {
+        responsive:true,
+        plugins:{
+          legend:{ labels:{ boxWidth: 10 } }
+        }
+      };
+    }
+
+    async function loadDashboard(){
+      setDots(true);
+      showProgress();
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/reports/dashboard`, { headers: authHeaders() });
+        const data = await res.json().catch(() => ({}));
+        hideProgress(true);
+        setDots(false);
+
+        if (!res.ok){
+          destroyCharts();
+          monthlyEmpty.style.display = "block";
+          genresEmpty.style.display = "block";
+          borrowGradeEmpty.style.display = "block";
+          overdueGradeEmpty.style.display = "block";
+          inventoryEmpty.style.display = "block";
+          topBooksEmpty.style.display = "block";
+          topStudentsEmpty.style.display = "block";
+          return;
+        }
+
+        const totals = data?.totals || {};
+        const inventory = data?.inventory || {};
+        const fines = data?.fines || {};
+
+        const totalBooks = Number(totals.total_books ?? 0);
+        const totalCopies = Number(totals.total_copies ?? 0);
+        const totalStudents = Number(totals.total_students ?? 0);
+        const activeLoans = Number(totals.active_loans ?? 0);
+        const overdueLoans = Number(totals.overdue_loans ?? 0);
+
+        kpiBooks.textContent = fmtNum(totalBooks);
+        kpiCopies.textContent = fmtNum(totalCopies);
+        kpiStudents.textContent = fmtNum(totalStudents);
+        kpiActiveLoans.textContent = fmtNum(activeLoans);
+        kpiOverdue.textContent = fmtNum(overdueLoans);
+
+        // availability %
+        const copyStatus = Array.isArray(inventory.copy_status_distribution) ? inventory.copy_status_distribution : [];
+        const availableRow = copyStatus.find(x => String(x.status).toLowerCase() === "available");
+        const availableCount = Number(availableRow?.count ?? 0);
+        const availPct = safePct(availableCount, totalCopies);
+        kpiAvailPct.textContent = `${availPct}%`;
+        kpiAvailSub.textContent = `${fmtNum(availableCount)} / ${fmtNum(totalCopies)}`;
+
+        // fines cards
+        const outstandingTotal = Number(fines.outstanding_total ?? 0);
+        const unpaidCount = Number(fines.unpaid_fine_count ?? 0);
+        kpiTotalFines.textContent = peso(outstandingTotal);
+        kpiUnpaidFines.textContent = fmtNum(unpaidCount);
+        kpiFinesSub.textContent = "Outstanding amount";
+        kpiUnpaidSub.textContent = "Unpaid records";
+
+        destroyCharts();
+
+        // monthly trend
+        const monthly = Array.isArray(data?.monthly_borrow_trend) ? data.monthly_borrow_trend : [];
+        const mLabels = monthly.map(x => x.month ?? "");
+        const mVals = monthly.map(x => Number(x.borrow_count ?? 0));
+        if (!hasAny(mVals)){
+          monthlyEmpty.style.display = "block";
+        } else {
+          monthlyEmpty.style.display = "none";
+          chartMonthly = new Chart(document.getElementById("chartMonthly"), {
+            type: "line",
+            data: {
+              labels: mLabels,
+              datasets: [{
+                label:"Borrowed",
+                data: mVals,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue("--chart-green").trim(),
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--chart-green-soft").trim(),
+                fill: true,
+                tension:0.25
+              }]
+            },
+            options: {
+              ...chartBaseOptions(),
+              plugins:{ legend:{ display:false } },
+              scales:{
+                y:{
+                  beginAtZero:true,
+                  title:{ display:false },
+                  grid:{ color: getComputedStyle(document.documentElement).getPropertyValue("--chart-gray-2").trim() }
+                },
+                x:{ grid:{ display:false } }
+              }
+            }
+          });
+        }
+
+        // genres pie (LEGEND ON, compact bottom)
+        const genres = Array.isArray(data?.genre_distribution) ? data.genre_distribution : [];
+        const gLabels = genres.map(x => x.genre ?? "Unknown");
+        const gVals = genres.map(x => Number(x.book_count ?? 0));
+        if (!hasAny(gVals)){
+          genresEmpty.style.display = "block";
+        } else {
+          genresEmpty.style.display = "none";
+          chartGenres = new Chart(document.getElementById("chartGenres"), {
+            type: "pie",
+            data: {
+              labels: gLabels,
+              datasets: [{
+                data: gVals,
+                backgroundColor: [
+                  getComputedStyle(document.documentElement).getPropertyValue("--chart-green-soft").trim(),
+                  getComputedStyle(document.documentElement).getPropertyValue("--chart-yellow").trim(),
+                  "rgba(0,0,0,0.12)",
+                  "rgba(0,0,0,0.18)",
+                  "rgba(141,217,89,0.35)",
+                  "rgba(244,227,47,0.28)",
+                ],
+                borderColor: "rgba(255,255,255,0.65)",
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive:true,
+              plugins:{
+                legend:{
+                  display:true,
+                  position:"bottom",
+                  labels:{ boxWidth: 10, font:{ size: 10 } }
+                }
+              }
+            }
+          });
+        }
+
+        // borrowed by grade (HORIZONTAL bar, swapped axes + axis labels)
+        const borrowedByGrade = Array.isArray(data?.borrowed_by_grade) ? data.borrowed_by_grade : [];
+        const bgLabels = borrowedByGrade.map(x => x.grade ?? "Unknown");
+        const bgVals = borrowedByGrade.map(x => Number(x.borrow_count ?? 0));
+        if (!hasAny(bgVals)){
+          borrowGradeEmpty.style.display = "block";
+        } else {
+          borrowGradeEmpty.style.display = "none";
+          chartBorrowByGrade = new Chart(document.getElementById("chartBorrowByGrade"), {
+            type: "bar",
+            data: {
+              labels: bgLabels,
+              datasets: [{
+                label:"Borrows",
+                data: bgVals,
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--chart-yellow").trim(),
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue("--chart-green").trim(),
+                borderWidth: 1
+              }]
+            },
+            options: {
+              ...chartBaseOptions(),
+              indexAxis: "y",
+              plugins:{ legend:{ display:false } },
+              scales:{
+                x:{
+                  beginAtZero:true,
+                  title:{ display:true, text:"Number of Borrowed Books" },
+                  grid:{ color: getComputedStyle(document.documentElement).getPropertyValue("--chart-gray-2").trim() }
+                },
+                y:{
+                  title:{ display:true, text:"Grade Level" },
+                  grid:{ display:false }
+                }
+              }
+            }
+          });
+        }
+
+        // overdue by grade
+        const overdueByGrade = Array.isArray(data?.overdue_breakdown?.by_grade) ? data.overdue_breakdown.by_grade : [];
+        const ogLabels = overdueByGrade.map(x => x.grade ?? "Unknown");
+        const ogVals = overdueByGrade.map(x => Number(x.overdue_count ?? 0));
+        if (!hasAny(ogVals)){
+          overdueGradeEmpty.style.display = "block";
+        } else {
+          overdueGradeEmpty.style.display = "none";
+          chartOverdueGrade = new Chart(document.getElementById("chartOverdueGrade"), {
+            type: "bar",
+            data: {
+              labels: ogLabels,
+              datasets: [{
+                label:"Overdue",
+                data: ogVals,
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue("--chart-red").trim(),
+                borderColor: "rgba(0,0,0,0.20)",
+                borderWidth: 1
+              }]
+            },
+            options: {
+              ...chartBaseOptions(),
+              plugins:{ legend:{ display:false } },
+              scales:{
+                y:{ beginAtZero:true, grid:{ color: getComputedStyle(document.documentElement).getPropertyValue("--chart-gray-2").trim() } },
+                x:{ grid:{ display:false } }
+              }
+            }
+          });
+        }
+
+        // inventory doughnut (legend bottom)
+        const invLabels = copyStatus.map(x => (x.status ?? "unknown"));
+        const invVals = copyStatus.map(x => Number(x.count ?? 0));
+        if (!hasAny(invVals)){
+          inventoryEmpty.style.display = "block";
+        } else {
+          inventoryEmpty.style.display = "none";
+          chartInventory = new Chart(document.getElementById("chartInventory"), {
+            type: "doughnut",
+            data: {
+              labels: invLabels,
+              datasets: [{
+                data: invVals,
+                backgroundColor: [
+                  getComputedStyle(document.documentElement).getPropertyValue("--chart-green-soft").trim(),
+                  "rgba(0,0,0,0.15)",
+                  getComputedStyle(document.documentElement).getPropertyValue("--chart-yellow").trim(),
+                  "rgba(0,0,0,0.10)",
+                ],
+                borderColor: "rgba(255,255,255,0.70)",
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive:true,
+              plugins:{
+                legend:{ position:"bottom", labels:{ boxWidth: 10, font:{ size: 10 } } }
+              }
+            }
+          });
+        }
+
+        // Most borrowed books
+        const books = Array.isArray(data?.most_borrowed_books) ? data.most_borrowed_books : [];
+        if (!books.length){
+          topBooks.innerHTML = "";
+          topBooksEmpty.style.display = "block";
+        } else {
+          topBooksEmpty.style.display = "none";
+          topBooks.innerHTML = books.map(b => {
+            const bookId = b.book_id ?? "";
+            const title = b.title || "Untitled";
+            const author = b.author || "";
+            const cover = b.cover_url || coverFallback(title);
+            const borrowCount = Number(b.borrow_count ?? 0);
+            const avail = Number(b.available_copies ?? 0);
+            const total = Number(b.total_copies ?? 0);
+            const href = bookId ? `details.html?book_id=${encodeURIComponent(bookId)}` : "#";
+            return `
+              <a class="rowLink" href="${href}" ${bookId ? "" : 'onclick="return false;"'}>
+                <div class="rowItem">
+                  <div class="cover">
+                    <img src="${esc(cover)}" alt="${esc(title)} cover" onerror="this.src='${coverFallback(title)}'">
+                  </div>
+                  <div>
+                    <div class="metaTitle">${esc(title)}</div>
+                    <div class="metaSub">${esc(author)}</div>
+                    <div class="metaBadges">
+                      <span class="badge yellow">Borrowed: ${fmtNum(borrowCount)} times</span>
+                      
+                    </div>
+                  </div>
+                </div>
+              </a>
+            `;
+          }).join("");
+        }
+
+        // Most active students
+        const students = Array.isArray(data?.most_active_students) ? data.most_active_students : [];
+        if (!students.length){
+          topStudents.innerHTML = "";
+          topStudentsEmpty.style.display = "block";
+        } else {
+          topStudentsEmpty.style.display = "none";
+          topStudents.innerHTML = students.map(s => {
+            const studentId = s.student_id ?? "";
+            const name = `${s.last_name || ""}, ${s.first_name || ""}`.replace(/^,\s*/,"").trim() || (s.student_code || "Student");
+            const grade = s.grade || "—";
+            const section = s.section || "—";
+            const borrowCount = Number(s.borrow_count ?? 0);
+            const href = studentId ? `student_details.html?student_id=${encodeURIComponent(studentId)}` : "#";
+            return `
+              <a class="rowLink" href="${href}" ${studentId ? "" : 'onclick="return false;"'}>
+                <div class="rowItem" style="grid-template-columns: 1fr;">
+                  <div>
+                    <div class="metaTitle">${esc(name)}</div>
+                    <div class="metaSub">${esc(s.student_code || "")} • Grade ${esc(grade)} • ${esc(section)}</div>
+                    <div class="metaBadges">
+                      <span class="badge yellow">Borrowed: ${fmtNum(borrowCount)}</span>
+                    </div>
+                  </div>
+                </div>
+              </a>
+            `;
+          }).join("");
+        }
+
+        await loadActivity();
+
+      } catch (e){
+        hideProgress(false);
+        setDots(false);
+        destroyCharts();
+      }
+    }
+
+    // Generate Reports
+    const dateFrom = document.getElementById("dateFrom");
+    const dateTo = document.getElementById("dateTo");
+    const gradeSel = document.getElementById("gradeSel");
+    const sectionSel = document.getElementById("sectionSel");
+
+    const btnApply = document.getElementById("btnApply");
+    const btnClear = document.getElementById("btnClear");
+    const btnPdf = document.getElementById("btnPdf");
+    const btnCsv = document.getElementById("btnCsv");
+
+    const pdfFrame = document.getElementById("pdfFrame");
+    const pdfLoader = document.getElementById("pdfLoader");
+    const pdfError = document.getElementById("pdfError");
+
+    let currentPdfUrl = null;
+
+    function setDefaults(){
+      const to = new Date();
+      const from = new Date();
+      from.setDate(to.getDate() - 30);
+      const fmt = (dt) => {
+        const mm = String(dt.getMonth()+1).padStart(2,"0");
+        const dd = String(dt.getDate()).padStart(2,"0");
+        return `${dt.getFullYear()}-${mm}-${dd}`;
+      };
+      dateTo.value = fmt(to);
+      dateFrom.value = fmt(from);
+    }
+
+    function buildParams(){
+      const p = new URLSearchParams();
+      const df = (dateFrom.value || "").trim();
+      const dt = (dateTo.value || "").trim();
+      const g = (gradeSel.value || "").trim();
+      const s = (sectionSel.value || "").trim();
+      if (df) p.set("date_from", df);
+      if (dt) p.set("date_to", dt);
+      if (g) p.set("grade", g);
+      if (s) p.set("section", s);
+      return p;
+    }
+
+    function setPdfLoading(on){ pdfLoader.style.display = on ? "grid" : "none"; }
+
+    async function loadPdfPreview(){
+      if (currentPdfUrl){
+        try{ URL.revokeObjectURL(currentPdfUrl); }catch{}
+        currentPdfUrl = null;
+      }
+      pdfError.style.display = "none";
+      setPdfLoading(true);
+      showProgress();
+      try{
+        const params = buildParams();
+        const url = `${BASE_URL}/api/reports/export/pdf?${params.toString()}`;
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) throw new Error("PDF fetch failed");
+        const blob = await res.blob();
+        currentPdfUrl = URL.createObjectURL(blob);
+        pdfFrame.src = currentPdfUrl + "#zoom=page-width";
+        hideProgress(true);
+        setPdfLoading(false);
+      } catch (e){
+        hideProgress(false);
+        setPdfLoading(false);
+        pdfFrame.removeAttribute("src");
+        pdfError.style.display = "block";
+      }
+    }
+
+    async function downloadWithAuth(url){
+      showProgress();
+      try{
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) throw new Error("Download failed");
+        const blob = await res.blob();
+
+        let filename = "report";
+        const cd = res.headers.get("content-disposition") || "";
+        const m = cd.match(/filename=\"?([^\";]+)\"?/i);
+        if (m && m[1]) filename = m[1];
+
+        const a = document.createElement("a");
+        const objectUrl = URL.createObjectURL(blob);
+        a.href = objectUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+        hideProgress(true);
+      } catch(e){
+        hideProgress(false);
+        alert("Unable to download. Please try again.");
+      }
+    }
+
+    async function loadGrades(){
+      try{
+        const res = await fetch(`${BASE_URL}/api/reports/filters`, { headers: authHeaders() });
+        if (!res.ok) return;
+        const data = await res.json().catch(() => ({}));
+        const grades = Array.isArray(data.grades) ? data.grades : [];
+        gradeSel.innerHTML = `<option value="">All</option>` + grades.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
+        sectionSel.innerHTML = `<option value="">All</option>`;
+        sectionSel.disabled = true;
+      } catch {}
+    }
+
+    async function loadSectionsForGrade(grade){
+      try{
+        sectionSel.disabled = true;
+        sectionSel.innerHTML = `<option value="">Loading...</option>`;
+        const url = `${BASE_URL}/api/reports/filters?grade=${encodeURIComponent(grade)}`;
+        const res = await fetch(url, { headers: authHeaders() });
+        if (!res.ok) throw new Error("filters failed");
+        const data = await res.json().catch(() => ({}));
+        const sections = Array.isArray(data.sections) ? data.sections : [];
+        sectionSel.innerHTML = `<option value="">All</option>` + sections.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
+        sectionSel.disabled = false;
+      } catch {
+        sectionSel.innerHTML = `<option value="">All</option>`;
+        sectionSel.disabled = false;
+      }
+    }
+
+    gradeSel.addEventListener("change", async () => {
+      const g = (gradeSel.value || "").trim();
+      sectionSel.value = "";
+      if (!g){
+        sectionSel.innerHTML = `<option value="">All</option>`;
+        sectionSel.disabled = true;
+      } else {
+        await loadSectionsForGrade(g);
+      }
+      loadPdfPreview();
+    });
+
+    btnApply.addEventListener("click", loadPdfPreview);
+    btnClear.addEventListener("click", () => {
+      gradeSel.value = "";
+      sectionSel.value = "";
+      sectionSel.innerHTML = `<option value="">All</option>`;
+      sectionSel.disabled = true;
+      setDefaults();
+      loadPdfPreview();
+    });
+
+    btnPdf.addEventListener("click", () => {
+      const params = buildParams();
+      downloadWithAuth(`${BASE_URL}/api/reports/export/pdf?${params.toString()}`);
+    });
+    btnCsv.addEventListener("click", () => {
+      const params = buildParams();
+      downloadWithAuth(`${BASE_URL}/api/reports/export/csv?${params.toString()}`);
+    });
+
+    setDefaults();
+    loadGrades();
+    loadDashboard();
+    loadPdfPreview();
+  </script>
+</body>
+</html>

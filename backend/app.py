@@ -43,6 +43,12 @@ from reportlab.lib.pagesizes import A4, letter, legal
 from reportlab.graphics.barcode import code128
 
 from pydantic import BaseModel
+from isbn_lookup import normalize_isbn  # <- import your helper
+from datetime import datetime
+import random
+import string
+
+from pydantic import BaseModel
 
 class CheckoutRequest(BaseModel):
     barcode: str
@@ -62,6 +68,20 @@ class BookUpdate(BaseModel):
 
 import re
 from fastapi import HTTPException
+
+def generate_barcode(prefix: str = "GK") -> str:
+    """
+    Generates a reasonably unique barcode string.
+    Example: GK-20260305-082233-483921
+    """
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    rand = "".join(random.choices(string.digits, k=6))
+    return f"{prefix}-{ts}-{rand}"
+
+
+class AddCopiesRequest(BaseModel):
+    isbn: str
+    copies: int = 1
 
 def normalize_grade(raw: str) -> str:
     """
@@ -382,79 +402,68 @@ def student_lookup(student_code: str, current=Depends(get_current_librarian)):
 # -----------------------------
 # CATALOGING: ADD BOOK BY ISBN (Librarian Only)
 # -----------------------------
+from datetime import datetime
+from uuid import uuid4
+from fastapi import HTTPException, Depends
+
+from fastapi import Form
+from datetime import datetime
+
 @app.post("/api/cataloging/add-book")
 def add_book_by_isbn(
-    isbn: str,
-    copies: int = 1,
+    isbn: str = Form(...),
+    copies: int = Form(1),
+
     # Optional overrides (librarian can edit anything)
-    title: str | None = None,
-    author: str | None = None,
-    publisher: str | None = None,
-    pub_year: int | None = None,
-    genre: str | None = None,
-    subject: str | None = None,
-    section: str | None = None,
+    title: str | None = Form(None),
+    author: str | None = Form(None),
+    publisher: str | None = Form(None),
+    pub_year: int | None = Form(None),
+    genre: str | None = Form(None),
+    subject: str | None = Form(None),
+    section: str | None = Form(None),
+
+    # cover can be stored as a URL or a data URL (base64) from the frontend
+    cover_url: str | None = Form(None),
+
     current=Depends(get_current_librarian),
 ):
-    """
-    Librarian-only endpoint.
-    Workflow:
-      1) Lookup ISBN via Google Books + Open Library (best effort)
-      2) Merge: librarian inputs override API data
-      3) If ISBN exists in book_identifier -> use existing book
-         else -> create new book + identifier
-      4) Create N book_copy rows with unique barcodes
-      5) Return created barcodes
-
-    Notes:
-      - 'section' is usually NOT available from APIs, librarian must fill it.
-      - Your schema requires book.title, book.author, book.catalog_key (unique).
-    """
-
-    # --- Basic validation ---
     if copies < 1 or copies > 100:
-        # 100 is an arbitrary safety cap to prevent accidental massive inserts
         raise HTTPException(status_code=400, detail="copies must be between 1 and 100")
 
-    # --- 1) Fetch from APIs ---
     meta = lookup_isbn(isbn)
     if not meta.get("found"):
+        # still allow manual entry if you want:
+        # meta = {"isbn": isbn, "found": True}
         raise HTTPException(status_code=404, detail="ISBN not found in Google Books/Open Library")
 
-    # --- 2) Merge strategy: librarian overrides win ---
+    # librarian overrides win, else API meta
     final_title = title or meta.get("title")
     final_author = author or meta.get("author")
     final_publisher = publisher or meta.get("publisher")
     final_pub_year = pub_year or meta.get("pub_year")
     final_genre = genre or meta.get("genre")
     final_subject = subject or meta.get("subject")
-    final_section = section  # section is librarian-defined; don't auto-fill unless you want to.
+    final_section = section
 
-    # --- 3) Required-field enforcement ---
+    # cover priority: librarian upload/url override, else API cover
+    final_cover = cover_url or meta.get("cover_url")
+
     missing_required = []
-    if not final_title:
-        missing_required.append("title")
-    if not final_author:
-        missing_required.append("author")
-    if not final_section:
-        missing_required.append("section")
+    if not final_title: missing_required.append("title")
+    if not final_author: missing_required.append("author")
+    if not final_section: missing_required.append("section")
 
     if missing_required:
-        # UX-friendly: tell frontend exactly what to ask librarian to fill
         raise HTTPException(
             status_code=400,
             detail={"message": "Missing required fields", "missing": missing_required, "autofill": meta},
         )
 
-    # --- DB work ---
     conn = get_connection()
     cur = conn.cursor()
-
     try:
-        # Use a transaction so we don't end up with half-created rows
-        # psycopg opens a transaction automatically; we commit at the end.
-
-        # --- 4) Check if book already exists by ISBN (primary identifier) ---
+        # Find existing book by ISBN
         cur.execute(
             """
             SELECT b.book_id
@@ -471,32 +480,21 @@ def add_book_by_isbn(
 
         book_id = existing_book_id
 
-        # --- 5) Create book if new ---
         if not book_id:
-            # catalog_key must be unique and not null; we standardize it as ISBN:{isbn}
             catalog_key = f"ISBN:{meta['isbn']}"
-
             cur.execute(
                 """
-                INSERT INTO book (title, author, publisher, pub_year, genre, subject, section, catalog_key, cover_url, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                INSERT INTO book (title, author, publisher, pub_year, genre, subject, section, catalog_key, cover_url, created_at, updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
                 RETURNING book_id
                 """,
                 (
-                    final_title,
-                    final_author,
-                    final_publisher,
-                    final_pub_year,
-                    final_genre,
-                    final_subject,
-                    final_section,
-                    catalog_key,
-                    meta.get("cover_url"),
+                    final_title, final_author, final_publisher, final_pub_year,
+                    final_genre, final_subject, final_section, catalog_key, final_cover
                 ),
             )
             book_id = cur.fetchone()["book_id"]
 
-            # Insert primary ISBN identifier
             cur.execute(
                 """
                 INSERT INTO book_identifier (book_id, id_type, id_value, is_primary, created_at)
@@ -504,15 +502,33 @@ def add_book_by_isbn(
                 """,
                 (book_id, meta["isbn"]),
             )
+        else:
+            # IMPORTANT: Update the BOOK record so ALL copies reflect the edited details
+            cur.execute(
+                """
+                UPDATE book
+                SET title=%s,
+                    author=%s,
+                    publisher=%s,
+                    pub_year=%s,
+                    genre=%s,
+                    subject=%s,
+                    section=%s,
+                    cover_url=%s,
+                    updated_at=NOW()
+                WHERE book_id=%s
+                """,
+                (
+                    final_title, final_author, final_publisher, final_pub_year,
+                    final_genre, final_subject, final_section, final_cover, book_id
+                ),
+            )
 
-        # --- 6) Create copies + barcodes ---
         created = []
-        # Simple unique barcode format: BK{book_id}-TS{unix}-N{counter}
         unix_ts = int(datetime.utcnow().timestamp())
 
         for i in range(1, copies + 1):
             barcode = f"BK{book_id}-TS{unix_ts}-N{i}"
-
             cur.execute(
                 """
                 INSERT INTO book_copy (book_id, barcode, status, is_printed, created_at)
@@ -526,17 +542,178 @@ def add_book_by_isbn(
 
         conn.commit()
 
+        # total copies after add
+        cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id=%s", (book_id,))
+        total = cur.fetchone()["total"]
+
         return {
             "message": "Book saved successfully",
             "book_id": book_id,
             "isbn": meta["isbn"],
             "copies_created": len(created),
+            "total_copies": int(total),
             "barcodes": created,
         }
 
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to add book: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/cataloging/isbn-exists/{isbn}")
+def isbn_exists(isbn: str, current=Depends(get_current_librarian)):
+    isbn_n = normalize_isbn(isbn)
+    if not isbn_n:
+        raise HTTPException(status_code=400, detail="Invalid ISBN")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT b.book_id, b.title, b.author, b.cover_url,
+                   COUNT(c.copy_id) AS total_copies,
+                   COALESCE(SUM(CASE WHEN c.status='available' THEN 1 ELSE 0 END), 0) AS available_copies
+            FROM book_identifier bi
+            JOIN book b ON b.book_id = bi.book_id
+            LEFT JOIN book_copy c ON c.book_id = b.book_id
+            WHERE UPPER(COALESCE(bi.id_type,'')) = 'ISBN'
+              AND bi.id_value = %s
+            GROUP BY b.book_id, b.title, b.author, b.cover_url
+            LIMIT 1
+            """,
+            (isbn_n,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return {"exists": False}
+
+        return {
+            "exists": True,
+            "book_id": row["book_id"],
+            "title": row["title"],
+            "author": row["author"],
+            "cover_url": row.get("cover_url"),
+            "total_copies": int(row["total_copies"] or 0),
+            "available_copies": int(row["available_copies"] or 0),
+        }
+    finally:
+        cur.close()
+        conn.close()
+from fastapi import HTTPException, Depends
+from datetime import datetime
+
+@app.get("/api/cataloging/isbn-info/{isbn}")
+def cataloging_isbn_info(
+    isbn: str,
+    current=Depends(get_current_librarian),
+):
+    """
+    Returns whether ISBN exists in the system.
+    If exists: returns book fields + total copies.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT b.book_id, b.title, b.author, b.publisher, b.pub_year, b.genre, b.subject, b.section, b.cover_url
+            FROM book b
+            JOIN book_identifier bi ON bi.book_id = b.book_id
+            WHERE bi.id_type='isbn' AND bi.id_value=%s
+            ORDER BY bi.is_primary DESC
+            LIMIT 1
+            """,
+            (isbn,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return {"exists": False}
+
+        cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id=%s", (row["book_id"],))
+        total = cur.fetchone()["total"]
+
+        return {
+            "exists": True,
+            "book": {
+                "book_id": row["book_id"],
+                "title": row["title"],
+                "author": row["author"],
+                "publisher": row["publisher"],
+                "pub_year": row["pub_year"],
+                "genre": row["genre"],
+                "subject": row["subject"],
+                "section": row["section"],
+                "cover_url": row["cover_url"],
+            },
+            "total_copies": int(total),
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/api/cataloging/add-copies")
+def add_copies_only(req: AddCopiesRequest, current=Depends(get_current_librarian)):
+    isbn_n = normalize_isbn(req.isbn)
+    if not isbn_n:
+        raise HTTPException(status_code=400, detail="Invalid ISBN")
+
+    copies = int(req.copies or 1)
+    if copies < 1 or copies > 100:
+        raise HTTPException(status_code=400, detail="copies must be between 1 and 100")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Find existing book by ISBN identifier
+        cur.execute(
+            """
+            SELECT bi.book_id
+            FROM book_identifier bi
+            WHERE UPPER(COALESCE(bi.id_type,'')) = 'ISBN'
+              AND bi.id_value = %s
+            ORDER BY bi.is_primary DESC, bi.identifier_id ASC
+            LIMIT 1
+            """,
+            (isbn_n,),
+        )
+        bi = cur.fetchone()
+        if not bi:
+            raise HTTPException(status_code=404, detail="ISBN not found in system. Use add-book first.")
+
+        book_id = bi["book_id"]
+
+        created = []
+        for _ in range(copies):
+            # retry a few times in case of barcode collision
+            for _try in range(8):
+                barcode = generate_barcode("GK")
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO book_copy (book_id, barcode, status)
+                        VALUES (%s, %s, 'available')
+                        RETURNING copy_id, barcode
+                        """,
+                        (book_id, barcode),
+                    )
+                    row = cur.fetchone()
+                    created.append({"copy_id": row["copy_id"], "barcode": row["barcode"]})
+                    break
+                except Exception:
+                    # possible UNIQUE collision; retry
+                    conn.rollback()
+                    continue
+
+        conn.commit()
+
+        return {
+            "book_id": book_id,
+            "created_copies": len(created),
+            "barcodes": created
+        }
     finally:
         cur.close()
         conn.close()
@@ -584,8 +761,9 @@ def librarian_search_books(
                     b.cover_url,
 
                     COUNT(bc.copy_id) AS total_copies,
-                    COALESCE(SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END), 0) AS available_copies
-
+                    COALESCE(SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END), 0) AS available_copies,
+                    COALESCE(SUM(CASE WHEN bc.is_printed IS TRUE THEN 1 ELSE 0 END), 0) AS printed_copies,
+                    COALESCE(SUM(CASE WHEN bc.is_printed IS NOT TRUE THEN 1 ELSE 0 END), 0) AS unprinted_copies
                 FROM book b
                 LEFT JOIN book_copy bc ON bc.book_id = b.book_id
                 GROUP BY b.book_id
@@ -608,8 +786,9 @@ def librarian_search_books(
                     b.cover_url,
 
                     COUNT(bc.copy_id) AS total_copies,
-                    COALESCE(SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END), 0) AS available_copies
-
+                    COALESCE(SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END), 0) AS available_copies,
+                    COALESCE(SUM(CASE WHEN bc.is_printed IS TRUE THEN 1 ELSE 0 END), 0) AS printed_copies,
+                    COALESCE(SUM(CASE WHEN bc.is_printed IS NOT TRUE THEN 1 ELSE 0 END), 0) AS unprinted_copies
                 FROM book b
                 LEFT JOIN book_copy bc ON bc.book_id = b.book_id
                 LEFT JOIN book_identifier bi ON bi.book_id = b.book_id
@@ -1673,6 +1852,10 @@ def reports_dashboard(
             date_where = "borrowed_at::date <= %s::date"
             date_params = [date_to]
 
+        # --- Total students (users) ---
+        cur.execute("SELECT COUNT(*) AS total_students FROM student;")
+        total_students = int(cur.fetchone()["total_students"])
+
         # --- Total books (bibliographic records) ---
         cur.execute("SELECT COUNT(*) AS total_books FROM book;")
         total_books = int(cur.fetchone()["total_books"])
@@ -1879,12 +2062,28 @@ def reports_dashboard(
         )
         fine_collected_month = cur.fetchone()
 
+        # inside /api/reports/dashboard before return {...}
+
+        cur.execute("""
+            SELECT COALESCE(TRIM(s.grade), 'Unknown') AS grade,
+                COUNT(*)::int AS borrow_count
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            GROUP BY COALESCE(TRIM(s.grade), 'Unknown')
+            ORDER BY borrow_count DESC, grade ASC
+        """)
+        borrowed_by_grade = cur.fetchall()
+
+        # then include in the response:
+        # "borrowed_by_grade": borrowed_by_grade,
+
         return {
             "totals": {
                 "total_books": total_books,
                 "total_copies": total_copies,
                 "active_loans": active_loans,
                 "overdue_loans": overdue_loans,
+                "total_students": total_students, 
             },
             "inventory": {
                 "copy_status_distribution": copy_status_distribution,
@@ -1900,13 +2099,15 @@ def reports_dashboard(
             "monthly_borrow_trend": monthly_borrow_trend,
             "daily_borrow_trend": daily_borrow_trend,
             "genre_distribution": genre_distribution,
+            
+            "borrowed_by_grade": borrowed_by_grade,
             "overdue_breakdown": {
                 "by_grade": overdue_by_grade,
                 "by_section": overdue_by_section,
             },
             "filters_used": {"date_from": date_from, "date_to": date_to},
         }
-
+        
     finally:
         cur.close()
         conn.close()
@@ -5270,6 +5471,255 @@ def delete_book(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+from pydantic import BaseModel
+from typing import List, Optional
+from fastapi import Depends, HTTPException
+
+class MarkPrintedRequest(BaseModel):
+    copy_ids: List[int]
+    batch_id: Optional[str] = None
+    reprint_reason: Optional[str] = None
+
+@app.post("/api/printing/mark-printed")
+def mark_printed_json(
+    payload: MarkPrintedRequest,
+    current=Depends(get_current_librarian),
+):
+    copy_ids = payload.copy_ids or []
+    if not copy_ids:
+        raise HTTPException(status_code=400, detail="copy_ids is required")
+
+    batch_id = payload.batch_id or f"BATCH-{int(datetime.utcnow().timestamp())}"
+    reprint_reason = (payload.reprint_reason or "").strip() or None
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Load copy states
+        cur.execute(
+            """
+            SELECT copy_id, is_printed
+            FROM book_copy
+            WHERE copy_id = ANY(%s)
+            """,
+            (copy_ids,),
+        )
+        rows = cur.fetchall()
+        found_ids = {r["copy_id"] for r in rows}
+        missing = [cid for cid in copy_ids if cid not in found_ids]
+        if missing:
+            raise HTTPException(status_code=404, detail=f"Copies not found: {missing}")
+
+        printed_ids = [r["copy_id"] for r in rows if r["is_printed"]]
+        unprinted_ids = [r["copy_id"] for r in rows if not r["is_printed"]]
+
+        # If any already printed => must provide reason
+        if printed_ids and not reprint_reason:
+            raise HTTPException(status_code=400, detail="reprint_reason is required when reprinting printed copies")
+
+        librarian_id = int(current["librarian_id"])
+
+        # Update copies (mark printed + timestamps)
+        cur.execute(
+            """
+            UPDATE book_copy
+            SET is_printed = TRUE,
+                printed_at = NOW(),
+                printed_by = %s,
+                updated_at = NOW()
+            WHERE copy_id = ANY(%s)
+            """,
+            (librarian_id, copy_ids),
+        )
+
+        # Increment reprint_count for already-printed copies
+        if printed_ids:
+            cur.execute(
+                """
+                UPDATE book_copy
+                SET reprint_count = COALESCE(reprint_count, 0) + 1,
+                    updated_at = NOW()
+                WHERE copy_id = ANY(%s)
+                """,
+                (printed_ids,),
+            )
+
+        # Insert print logs
+        def insert_logs(ids, action):
+            if not ids:
+                return
+            cur.execute(
+                """
+                INSERT INTO print_log (copy_id, printed_by, printed_at, action, batch_id)
+                SELECT x, %s, NOW(), %s, %s
+                FROM unnest(%s::int[]) AS x
+                """,
+                (librarian_id, action, batch_id, ids),
+            )
+
+        insert_logs(unprinted_ids, "print")
+        insert_logs(printed_ids, "reprint")
+
+        # Optional: store reason inside print_log.action or add a note column.
+        # Since your print_log has no note field, we can:
+        # - either keep just action='reprint'
+        # - or add a new column print_log.note (recommended)
+        # For now we keep it simple (no schema change).
+
+        conn.commit()
+
+        return {
+            "updated_count": len(copy_ids),
+            "printed_count": len(unprinted_ids),
+            "reprinted_count": len(printed_ids),
+            "batch_id": batch_id,
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+from fastapi import Query
+
+# -----------------------------
+# REPORTS: FILTER OPTIONS (Librarian Only)
+# -----------------------------
+@app.get("/api/reports/filters")
+def reports_filter_options(
+    grade: str | None = Query(default=None),
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT DISTINCT TRIM(grade) AS grade
+            FROM student
+            WHERE grade IS NOT NULL AND TRIM(grade) <> ''
+            ORDER BY TRIM(grade) ASC
+        """)
+        grades = [r["grade"] for r in cur.fetchall() if r.get("grade")]
+
+        if grade and grade.strip():
+            cur.execute("""
+                SELECT DISTINCT TRIM(section) AS section
+                FROM student
+                WHERE section IS NOT NULL AND TRIM(section) <> ''
+                  AND TRIM(grade) = TRIM(%s)
+                ORDER BY TRIM(section) ASC
+            """, (grade.strip(),))
+        else:
+            cur.execute("""
+                SELECT DISTINCT TRIM(section) AS section
+                FROM student
+                WHERE section IS NOT NULL AND TRIM(section) <> ''
+                ORDER BY TRIM(section) ASC
+            """)
+
+        sections = [r["section"] for r in cur.fetchall() if r.get("section")]
+        return {"grades": grades, "sections": sections}
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/reports/activity")
+def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
+    """
+    Returns recent activity logs for the Reports dashboard.
+
+    Includes:
+      - Checkouts (loan borrowed_at)
+      - Returns (loan returned_at)
+      - Fine payments (fine_payment)
+      - Barcode print / reprint (print_log)
+      - Damage reports (damage_report)
+    """
+    limit = max(5, min(int(limit or 30), 200))
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT *
+            FROM (
+                -- Checkout
+                SELECT
+                    l.borrowed_at AS ts,
+                    'checkout' AS type,
+                    ('Checked out: ' || b.title || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    b.book_id,
+                    s.student_id
+                FROM loan l
+                JOIN student s ON s.student_id = l.student_id
+                JOIN book_copy bc ON bc.copy_id = l.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+
+                UNION ALL
+
+                -- Return
+                SELECT
+                    l.returned_at AS ts,
+                    'return' AS type,
+                    ('Returned: ' || b.title || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    b.book_id,
+                    s.student_id
+                FROM loan l
+                JOIN student s ON s.student_id = l.student_id
+                JOIN book_copy bc ON bc.copy_id = l.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+                WHERE l.returned_at IS NOT NULL
+
+                UNION ALL
+
+                -- Fine payment
+                SELECT
+                    fp.paid_at AS ts,
+                    'fine_payment' AS type,
+                    ('Fine payment: ₱' || fp.amount || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    NULL::int AS book_id,
+                    s.student_id
+                FROM fine_payment fp
+                JOIN student s ON s.student_id = fp.student_id
+
+                UNION ALL
+
+                -- Print / Reprint
+                SELECT
+                    pl.printed_at AS ts,
+                    'barcode_print' AS type,
+                    ('Barcode ' || pl.action || ': ' || bc.barcode || ' — ' || b.title) AS message,
+                    b.book_id,
+                    NULL::int AS student_id
+                FROM print_log pl
+                JOIN book_copy bc ON bc.copy_id = pl.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+
+                UNION ALL
+
+                -- Damage report
+                SELECT
+                    d.reported_at AS ts,
+                    'damage' AS type,
+                    ('Damage report (' || d.severity || '): ' || b.title || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    b.book_id,
+                    s.student_id
+                FROM damage_report d
+                JOIN book_copy bc ON bc.copy_id = d.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+                JOIN student s ON s.student_id = d.student_id
+            ) x
+            WHERE x.ts IS NOT NULL
+            ORDER BY x.ts DESC
+            LIMIT %s
+            """,
+            (limit,),
+        )
+
+        return cur.fetchall()
     finally:
         cur.close()
         conn.close()

@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Cataloging</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..900;1,17..18,400..900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+      --shadow: 0 26px 60px rgba(0,0,0,0.32);
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+      --ink:#111;
+    }
+
+    
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 34px; }
+    .shell{ width:min(1280px,94vw); margin:0 auto; display:grid; grid-template-columns:84px 1fr; gap:16px; align-items:start; }
+    @media (max-width: 980px){ .shell{ grid-template-columns: 74px 1fr; } }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92; transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: var(--ink);
+    }
+
+    .tabs{
+      position:relative;
+      display:flex;
+      gap:10px;
+      padding:14px 16px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+    }
+    .tabs::after{
+      content:"";
+      position:absolute;
+      left:16px; right:16px; bottom:-1px;
+      height:14px;
+      background: rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius: 0 0 14px 14px;
+      z-index:0;
+      pointer-events:none;
+    }
+    .tab{
+      position:relative;
+      z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:13px;
+      text-decoration:none;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .tab.is-active{
+      background: var(--brand-yellow);
+      color:#111;
+      transform: translateY(1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+
+    .content{ padding:18px 18px 20px; }
+    h1{ margin:0 0 14px; font-size:26px; font-weight:1000; letter-spacing:.01em; }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 14px 18px;
+      align-items: stretch; /* ✅ changed from start -> stretch so preview can fill height */
+    }
+    @media (max-width: 980px){ .grid2{ grid-template-columns: 1fr; } }
+
+    .card{
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.02);
+      overflow:hidden;
+      height: 100%; /* ✅ allow full-height stretch in grid row */
+      display:flex;
+      flex-direction:column;
+    }
+    .cardHead{
+      padding: 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .cardTitle{
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      font-size: 13px;
+      color: rgba(0,0,0,0.75);
+    }
+    .cardBody{
+      padding:14px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .formGrid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 16px;
+      align-items:end;
+    }
+    .field{ display:grid; gap:8px; }
+    .field label{
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.65);
+    }
+    .reqMark{ color: rgba(176,0,0,0.78); font-weight:1000; }
+    input{
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:700;
+      transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    input:focus{
+      border-color: rgba(0,0,0,0.22);
+      box-shadow: 0 0 0 4px rgba(244,227,47,0.35);
+      background: rgba(0,0,0,0.02);
+    }
+
+    .isbnRow{
+      display:grid;
+      grid-template-columns: 1fr 220px;
+      gap: 14px;
+      align-items:end;
+    }
+    @media (max-width: 560px){ .isbnRow{ grid-template-columns: 1fr; } }
+
+    /* --- FIX: compact copies box (label + input side-by-side) --- */
+    .copiesBox{
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.70);
+      padding: 10px 12px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      height: 56px;
+    }
+    .copiesBox .cap{
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .copiesBox .t{
+      margin: 0;
+      font-weight: 1000;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: rgba(0,0,0,0.75);
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .copiesBox input{
+      width: 60px;
+      height: 37px;
+      padding: 0 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .btn{
+      border:0;
+      border-radius:999px;
+      padding:12px 18px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      letter-spacing:.02em;
+      background: var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.18);
+      transition: transform 170ms ease, opacity 170ms ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ transform: translateY(-2px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn.ghost{
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow:none;
+      color: rgba(0,0,0,0.78);
+    }
+    .btn.small{ padding:10px 14px; font-size:13px; }
+
+    /* Preview (right) */
+    .previewGrid{
+      display:grid;
+      grid-template-columns: 160px 1fr;
+      gap: 14px;
+      align-items:start;
+    }
+    @media (max-width: 980px){ .previewGrid{ grid-template-columns: 150px 1fr; } }
+    @media (max-width: 520px){ .previewGrid{ grid-template-columns: 1fr; } }
+
+    .uploadBox{
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      border-radius: 16px;
+      border: 2px dashed rgba(0,0,0,0.20);
+      background: rgba(0,0,0,0.02);
+      overflow:hidden;
+      position:relative;
+      cursor:pointer;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.12);
+      display:grid;
+      place-items:center;
+    }
+    .uploadInner{
+      text-align:center;
+      padding: 10px;
+      color: rgba(0,0,0,0.62);
+      font-weight:1000;
+      line-height:1.35;
+      font-size: 13px;
+    }
+    .coverImg{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:none;
+    }
+    .uploadBox.hasImage .uploadInner{ display:none; }
+    .uploadBox.hasImage .coverImg{ display:block; }
+
+    .meta h3{
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 1000;
+      letter-spacing: .01em;
+    }
+    .metaList{
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display:grid;
+      gap: 6px;
+      color: rgba(0,0,0,0.70);
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .metaList span{ color: rgba(0,0,0,0.55); font-weight: 900; }
+
+    .existsBanner{
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,138,0,0.25);
+      background: rgba(255,138,0,0.10);
+      padding: 10px 12px;
+      display:none;
+    }
+    .existsBanner .t{ font-weight: 1000; }
+    .existsBanner .s{ color: rgba(0,0,0,0.62); font-weight: 850; font-size: 13px; margin-top: 4px; }
+
+    /* ✅ Preview actions anchored bottom-right (inside preview card) */
+    .previewActions{
+      display:flex;
+      justify-content:flex-end;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      flex-wrap: wrap;
+
+      margin-top: auto; /* ✅ pushes buttons to the bottom of the card */
+    }
+
+    /* Overlay loader (3 dots) */
+    .overlayLoader{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 2000;
+    }
+    .overlayLoader.is-on{ display:flex; }
+    .loaderCard{
+      width: min(420px, 92vw);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.20);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 26px 60px rgba(0,0,0,0.35);
+      padding: 18px 16px;
+      color: rgba(255,255,255,0.92);
+      text-align:center;
+    }
+    .dots{ display:inline-flex; gap: 8px; margin: 10px 0 2px; }
+    .dot{
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #f4e32f;
+      opacity: .55;
+      animation: bounce 900ms ease-in-out infinite;
+    }
+    .dot:nth-child(2){ animation-delay: 120ms; }
+    .dot:nth-child(3){ animation-delay: 240ms; }
+    @keyframes bounce{
+      0%,100%{ transform: translateY(0); opacity:.55; }
+      50%{ transform: translateY(-6px); opacity:1; }
+    }
+    .loaderMsg{ margin: 0; font-weight: 1000; letter-spacing: .02em; }
+    .loaderSub{ margin: 6px 0 0; color: rgba(255,255,255,0.78); font-weight: 900; font-size: 13px; }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%) translateY(18px);
+      background: rgba(255,255,255,0.90);
+      color: #111;
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 999px;
+      padding: 10px 14px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+      z-index: 2200;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      font-weight: 900;
+      max-width: min(820px, 92vw);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .toast.is-on{ opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* topbar glass scroll (same style) */
+    .topbar{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
+    }
+    .topbar.is-scrolled{
+      background: rgba(0,0,0,0.22);
+      border-bottom: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- HEADER (keep same across pages) -->
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item is-active" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs">
+            <a class="tab is-active" href="cataloging.html">Add Book</a>
+            <a class="tab" href="print_barcodes.html">Print Bar Codes</a>
+          </div>
+
+          <div class="content">
+            <h1>CATALOGING</h1>
+
+            <div class="grid2">
+              <!-- LEFT: Input card -->
+              <div class="card">
+                <div class="cardHead">
+                  <div class="cardTitle">Book Details</div>
+                  <div style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn small ghost" type="button" id="addCopiesOnlyBtn" style="display:none;">Add copies only</button>
+                  </div>
+                </div>
+
+                <div class="cardBody">
+                  <div class="formGrid">
+                    <!-- ISBN + COPIES -->
+                    <div class="field" style="grid-column: 1 / -1;">
+                      <div class="isbnRow">
+                        <div>
+                          <label for="isbn">ISBN <span class="reqMark">*</span></label>
+                          <input id="isbn" type="text" autocomplete="off" autofocus />
+                        </div>
+
+                        <div class="copiesBox">
+                          <div class="cap">
+                            <div class="t">Copies to Add <span class="reqMark">*</span></div>
+                          </div>
+                          <input id="copies" type="number" min="1" max="100" value="1" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="field">
+                      <label for="section">Section <span class="reqMark">*</span></label>
+                      <input id="section" type="text" />
+                    </div>
+
+                    <div class="field">
+                      <label for="publisher">Publisher</label>
+                      <input id="publisher" type="text" />
+                    </div>
+
+                    <div class="field" style="grid-column: 1 / -1;">
+                      <label for="title">Title <span class="reqMark">*</span></label>
+                      <input id="title" type="text" />
+                    </div>
+
+                    <div class="field" style="grid-column: 1 / -1;">
+                      <label for="author">Author <span class="reqMark">*</span></label>
+                      <input id="author" type="text" />
+                    </div>
+
+                    <div class="field">
+                      <label for="year">Year</label>
+                      <input id="year" type="number" min="0" max="2100" />
+                    </div>
+
+                    <div class="field">
+                      <label for="genre">Genre</label>
+                      <input id="genre" type="text" />
+                    </div>
+
+                    <div class="field">
+                      <label for="subject">Subject</label>
+                      <input id="subject" type="text" />
+                    </div>
+                  </div>
+
+                  <div class="existsBanner" id="existsBanner">
+                    <div class="t">ISBN already exists in the system</div>
+                    <div class="s" id="existsText">This will update the book details and add more copies.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT: Preview card -->
+              <div class="card">
+                <div class="cardHead">
+                  <div class="cardTitle">Preview</div>
+                </div>
+
+                <div class="cardBody">
+                  <div class="previewGrid">
+                    <div>
+                      <div class="uploadBox" id="uploadBox" role="button" tabindex="0" aria-label="Upload cover image">
+                        <img class="coverImg" id="coverImg" alt="Cover preview" />
+                        <div class="uploadInner" id="uploadText">
+                          Click to upload cover<br><span style="opacity:.75; font-weight:900;">JPG / PNG</span>
+                        </div>
+                        <input id="coverFile" type="file" accept="image/*" style="display:none;">
+                      </div>
+                    </div>
+
+                    <div class="meta">
+                      <h3 id="previewTitle">Waiting for ISBN…</h3>
+                      <ul class="metaList" id="previewList">
+                        <li><span>Author:</span> —</li>
+                        <li><span>Publisher:</span> —</li>
+                        <li><span>Year:</span> —</li>
+                        <li><span>Genre:</span> —</li>
+                        <li><span>Subject:</span> —</li>
+                        <li><span>Section:</span> —</li>
+                        <li><span>Current copies:</span> —</li>
+                        <li><span>Copies to add:</span> —</li>
+                        <li><span>New total:</span> —</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ✅ anchored bottom-right INSIDE the preview card -->
+                <div class="previewActions">
+                  <button class="btn ghost" type="button" id="clearBtn">Clear</button>
+                  <button class="btn" type="button" id="saveBtn">Save / Add</button>
+                </div>
+              </div>
+
+            </div><!-- /grid2 -->
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <!-- Overlay loader -->
+  <div class="overlayLoader" id="overlayLoader" aria-hidden="true">
+    <div class="loaderCard">
+      <p class="loaderMsg" id="loaderMsg">Loading…</p>
+      <div class="dots" aria-hidden="true">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+      <p class="loaderSub" id="loaderSub">Please wait</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+
+    // Token getter (keeps compatibility across your pages)
+    function getToken(){
+      return (
+        sessionStorage.getItem("gk_token") ||
+        localStorage.getItem("gk_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("access_token") ||
+        sessionStorage.getItem("token") ||
+        sessionStorage.getItem("access_token") ||
+        ""
+      ).replace(/^Bearer\s+/i,"").trim();
+    }
+
+    const token = getToken();
+    if (!token) window.location.href = "login.html";
+
+    function authHeaders(extra={}){
+      return Object.assign({ "Authorization": "Bearer " + getToken() }, extra);
+    }
+
+    // Footer year
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    // Logout
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      ["gk_token","token","access_token"].forEach(k => {
+        try { sessionStorage.removeItem(k); } catch(_){}
+        try { localStorage.removeItem(k); } catch(_){}
+      });
+      window.location.href = "login.html";
+    });
+
+    // Contact scroll
+    document.getElementById("contactLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const footer = document.getElementById("footer");
+      const header = document.getElementById("siteHeader");
+      const headerH = header?.getBoundingClientRect().height ?? 0;
+      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+
+    // Sticky header glass on scroll
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){
+      if (!header) return;
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+    }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive: true });
+
+    // Toast
+    const toast = document.getElementById("toast");
+    let toastTimer = null;
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("is-on");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("is-on"), 2200);
+    }
+
+    // Overlay loader
+    const overlay = document.getElementById("overlayLoader");
+    const loaderMsg = document.getElementById("loaderMsg");
+    const loaderSub = document.getElementById("loaderSub");
+    function setLoading(on, msg="Loading…", sub="Please wait"){
+      overlay.classList.toggle("is-on", !!on);
+      loaderMsg.textContent = msg;
+      loaderSub.textContent = sub;
+    }
+
+    // Elements
+    const isbnEl = document.getElementById("isbn");
+    const copiesEl = document.getElementById("copies");
+    const sectionEl = document.getElementById("section");
+    const titleEl = document.getElementById("title");
+    const authorEl = document.getElementById("author");
+    const publisherEl = document.getElementById("publisher");
+    const yearEl = document.getElementById("year");
+    const genreEl = document.getElementById("genre");
+    const subjectEl = document.getElementById("subject");
+
+    const existsBanner = document.getElementById("existsBanner");
+    const existsText = document.getElementById("existsText");
+    const addCopiesOnlyBtn = document.getElementById("addCopiesOnlyBtn");
+
+    const previewTitle = document.getElementById("previewTitle");
+    const previewList = document.getElementById("previewList");
+
+    // Cover
+    const uploadBox = document.getElementById("uploadBox");
+    const coverFile = document.getElementById("coverFile");
+    const coverImg = document.getElementById("coverImg");
+
+    let coverPreviewUrl = "";
+    let coverDataUrl = "";
+    let isbnExists = false;
+    let existingTotalCopies = 0;
+
+    function normalizeIsbn(s){
+      return String(s || "").replace(/[^0-9Xx]/g, "").toUpperCase();
+    }
+
+    function debounce(fn, delay=420){
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+      };
+    }
+
+    async function apiGet(path){
+      const r = await fetch(BASE_URL + path, { headers: authHeaders() });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data?.detail || ("HTTP " + r.status));
+      return data;
+    }
+
+    // Cover upload
+    function chooseCover(){ coverFile.click(); }
+    uploadBox.addEventListener("click", chooseCover);
+    uploadBox.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chooseCover(); }
+    });
+    coverFile.addEventListener("change", async () => {
+      const f = coverFile.files && coverFile.files[0];
+      if (!f) return;
+
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
+
+      coverDataUrl = dataUrl;
+      coverPreviewUrl = dataUrl;
+      coverImg.src = coverPreviewUrl;
+      uploadBox.classList.add("hasImage");
+      showToast("Cover selected.");
+      renderPreview();
+    });
+
+    function setExistsState(exists, total=0){
+      isbnExists = !!exists;
+      existingTotalCopies = Number(total || 0) || 0;
+
+      existsBanner.style.display = isbnExists ? "" : "none";
+      addCopiesOnlyBtn.style.display = isbnExists ? "" : "none";
+
+      if (isbnExists){
+        existsText.textContent = "This will update the book details and add more copies.";
+      }
+    }
+
+    function renderPreview(){
+      const isbn = normalizeIsbn(isbnEl.value);
+      const copiesToAdd = Math.max(1, Math.min(100, parseInt(copiesEl.value || "1", 10) || 1));
+      const newTotal = (isbnExists ? existingTotalCopies : 0) + copiesToAdd;
+
+      const title = titleEl.value.trim() || "—";
+      const author = authorEl.value.trim() || "—";
+      const publisher = publisherEl.value.trim() || "—";
+      const year = yearEl.value.trim() || "—";
+      const genre = genreEl.value.trim() || "—";
+      const subject = subjectEl.value.trim() || "—";
+      const section = sectionEl.value.trim() || "—";
+
+      previewTitle.textContent = isbn ? title : "Waiting for ISBN…";
+
+      if (coverPreviewUrl){
+        coverImg.src = coverPreviewUrl;
+        uploadBox.classList.add("hasImage");
+      } else {
+        uploadBox.classList.remove("hasImage");
+        coverImg.removeAttribute("src");
+      }
+
+      previewList.innerHTML = `
+        <li><span>Author:</span> ${escapeHtml(author)}</li>
+        <li><span>Publisher:</span> ${escapeHtml(publisher)}</li>
+        <li><span>Year:</span> ${escapeHtml(year)}</li>
+        <li><span>Genre:</span> ${escapeHtml(genre)}</li>
+        <li><span>Subject:</span> ${escapeHtml(subject)}</li>
+        <li><span>Section:</span> ${escapeHtml(section)}</li>
+        <li><span>Current copies:</span> ${isbnExists ? existingTotalCopies : "—"}</li>
+        <li><span>Copies to add:</span> ${copiesToAdd}</li>
+        <li><span>New total:</span> ${isbnExists ? newTotal : "—"}</li>
+      `;
+    }
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    async function autoLookup(){
+      const isbn = normalizeIsbn(isbnEl.value);
+      setExistsState(false, 0);
+
+      if (!(isbn.length === 10 || isbn.length === 13)){
+        renderPreview();
+        return;
+      }
+
+      setLoading(true, "Fetching ISBN…", "Autofilling book details");
+      try{
+        const meta = await apiGet(`/api/cataloging/preview/${encodeURIComponent(isbn)}`);
+        if (meta?.found){
+          titleEl.value = meta.title || "";
+          authorEl.value = meta.author || "";
+          publisherEl.value = meta.publisher || "";
+          yearEl.value = meta.pub_year ? String(meta.pub_year) : "";
+          genreEl.value = meta.genre || "";
+          subjectEl.value = meta.subject || "";
+
+          if (!coverDataUrl && meta.cover_url){
+            coverPreviewUrl = meta.cover_url;
+          }
+        } else {
+          titleEl.value = "";
+          authorEl.value = "";
+          publisherEl.value = "";
+          yearEl.value = "";
+          genreEl.value = "";
+          subjectEl.value = "";
+        }
+
+        const info = await apiGet(`/api/cataloging/isbn-info/${encodeURIComponent(isbn)}`);
+        if (info?.exists){
+          setExistsState(true, info.total_copies || 0);
+
+          const b = info.book || {};
+          titleEl.value = b.title || titleEl.value;
+          authorEl.value = b.author || authorEl.value;
+          publisherEl.value = b.publisher || publisherEl.value;
+          yearEl.value = (b.pub_year !== null && b.pub_year !== undefined) ? String(b.pub_year) : yearEl.value;
+          genreEl.value = b.genre || genreEl.value;
+          subjectEl.value = b.subject || subjectEl.value;
+          sectionEl.value = b.section || sectionEl.value;
+
+          if (!coverDataUrl && b.cover_url){
+            coverPreviewUrl = b.cover_url;
+          }
+        }
+
+      }catch(err){
+        console.error(err);
+        showToast(err.message || "Lookup failed");
+      }finally{
+        setLoading(false);
+        renderPreview();
+      }
+    }
+
+    const debouncedLookup = debounce(autoLookup, 520);
+    isbnEl.addEventListener("input", () => debouncedLookup());
+
+    [copiesEl, sectionEl, titleEl, authorEl, publisherEl, yearEl, genreEl, subjectEl].forEach(el => {
+      el.addEventListener("input", renderPreview);
+    });
+
+    function openModal({title, body, actions}){
+      const m = document.createElement("div");
+      m.style.position="fixed";
+      m.style.inset="0";
+      m.style.background="rgba(0,0,0,0.48)";
+      m.style.zIndex="2500";
+      m.style.display="grid";
+      m.style.placeItems="center";
+      m.innerHTML = `
+        <div style="
+          width:min(520px,92vw);
+          border-radius:18px;
+          background:rgba(255,255,255,0.94);
+          border:1px solid rgba(0,0,0,0.10);
+          box-shadow:0 26px 60px rgba(0,0,0,0.35);
+          padding:16px 16px 14px;">
+          <div style="font-weight:1000;font-size:16px; margin-bottom:6px;">${escapeHtml(title)}</div>
+          <div style="color:rgba(0,0,0,0.70);font-weight:800; line-height:1.35;">${body}</div>
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap;" id="modalBtns"></div>
+        </div>
+      `;
+      document.body.appendChild(m);
+
+      const btnWrap = m.querySelector("#modalBtns");
+      (actions || []).forEach(a => {
+        const b = document.createElement("button");
+        b.className = "btn" + (a.kind === "ghost" ? " ghost" : "");
+        b.type = "button";
+        b.textContent = a.label;
+        b.addEventListener("click", () => a.onClick && a.onClick());
+        btnWrap.appendChild(b);
+      });
+
+      function close(){ try{ m.remove(); }catch(_){} }
+      return { close };
+    }
+
+    async function addCopiesOnly(){
+      const isbn = normalizeIsbn(isbnEl.value);
+      const copies = Math.max(1, Math.min(100, parseInt(copiesEl.value || "1", 10) || 1));
+      if (!isbn){ showToast("ISBN is required."); return; }
+
+      const modal = openModal({
+        title: "Add copies only?",
+        body: `Add <b>${copies}</b> copy/copies for ISBN <b>${escapeHtml(isbn)}</b>?`,
+        actions: [
+          { label: "Cancel", kind: "ghost", onClick: () => modal.close() },
+          { label: "Add copies", kind: "primary", onClick: async () => {
+              modal.close();
+              setLoading(true, "Adding copies…", "Creating barcodes");
+              try{
+                const r = await fetch(BASE_URL + "/api/cataloging/add-copies", {
+                  method: "POST",
+                  headers: authHeaders({ "Content-Type":"application/json" }),
+                  body: JSON.stringify({ isbn, copies })
+                });
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) throw new Error(data?.detail || "Failed to add copies");
+
+                showToast(`Added ${data?.created_copies || copies} copies.`);
+                await autoLookup();
+              }catch(err){
+                console.error(err);
+                showToast(err.message || "Add copies failed");
+              }finally{
+                setLoading(false);
+              }
+            }
+          }
+        ]
+      });
+    }
+    addCopiesOnlyBtn.addEventListener("click", addCopiesOnly);
+
+    async function saveOrAdd(){
+      const isbn = normalizeIsbn(isbnEl.value);
+      const copies = Math.max(1, Math.min(100, parseInt(copiesEl.value || "1", 10) || 1));
+      const section = sectionEl.value.trim();
+
+      if (!isbn){ showToast("ISBN is required."); return; }
+      if (!section){ showToast("Section is required."); sectionEl.focus(); return; }
+
+      const confirmIfExists = () => new Promise((resolve) => {
+        if (!isbnExists) return resolve(true);
+
+        const modal = openModal({
+          title: "ISBN already exists",
+          body: "Saving will update the book details for all copies, and add new copies. Continue?",
+          actions: [
+            { label: "Cancel", kind: "ghost", onClick: () => { modal.close(); resolve(false); } },
+            { label: "Continue", kind: "primary", onClick: () => { modal.close(); resolve(true); } },
+          ]
+        });
+      });
+
+      const ok = await confirmIfExists();
+      if (!ok) return;
+
+      setLoading(true, "Saving book…", "Updating details & creating copies");
+      try{
+        const form = new FormData();
+        form.append("isbn", isbn);
+        form.append("copies", String(copies));
+
+        form.append("title", titleEl.value.trim());
+        form.append("author", authorEl.value.trim());
+        form.append("publisher", publisherEl.value.trim());
+        form.append("pub_year", yearEl.value.trim());
+        form.append("genre", genreEl.value.trim());
+        form.append("subject", subjectEl.value.trim());
+        form.append("section", section);
+
+        const coverToSend = coverDataUrl || coverPreviewUrl || "";
+        if (coverToSend) form.append("cover_url", coverToSend);
+
+        const r = await fetch(BASE_URL + "/api/cataloging/add-book", {
+          method: "POST",
+          headers: authHeaders(),
+          body: form
+        });
+
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data?.detail?.message || data?.detail || "Save failed");
+
+        showToast(`Saved. Total copies: ${data.total_copies ?? "updated"}`);
+        clearAll(true);
+
+      }catch(err){
+        console.error(err);
+        showToast(err.message || "Save failed");
+      }finally{
+        setLoading(false);
+      }
+    }
+
+    document.getElementById("saveBtn").addEventListener("click", saveOrAdd);
+
+    function clearAll(keepFocus=false){
+      isbnEl.value = "";
+      copiesEl.value = "1";
+      sectionEl.value = "";
+      titleEl.value = "";
+      authorEl.value = "";
+      publisherEl.value = "";
+      yearEl.value = "";
+      genreEl.value = "";
+      subjectEl.value = "";
+
+      isbnExists = false;
+      existingTotalCopies = 0;
+      existsBanner.style.display = "none";
+      addCopiesOnlyBtn.style.display = "none";
+
+      coverPreviewUrl = "";
+      coverDataUrl = "";
+      try{ coverFile.value = ""; }catch(_){}
+      uploadBox.classList.remove("hasImage");
+      coverImg.removeAttribute("src");
+
+      renderPreview();
+      if (keepFocus) isbnEl.focus();
+    }
+
+    document.getElementById("clearBtn").addEventListener("click", () => clearAll(true));
+    renderPreview();
+  </script>
+
+ 
+</body>
+</html>

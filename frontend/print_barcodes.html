@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Print Bar Codes</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
+
+      --ink:#111;
+      --softInk: rgba(0,0,0,0.55);
+      --mutedInk: rgba(0,0,0,0.65);
+      --shadow: 0 26px 60px rgba(0,0,0,0.30);
+    }
+
+    body { font-family: 'Poppins', sans-serif; }
+
+    /* Header: glass only on scroll */
+    .topbar{
+      position: fixed; top:0; left:0; right:0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+    }
+    .topbar.is-scrolled{
+      background: rgba(255,255,255,0.18);
+      border-bottom: 1px solid rgba(255,255,255,0.20);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    }
+
+    .page{ position:relative; min-height:100vh; overflow:hidden; }
+    .page__bg{ position:absolute; inset:0; background:url("assets/bg.png") center/cover; filter: blur(2px) saturate(1.05) contrast(1.05); transform: scale(1.04); z-index:-2; }
+    .page__overlay{ position:absolute; inset:0; background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.35)); z-index:-1; }
+
+    .wrap{ position:relative; z-index:2; padding:110px 16px 18px; }
+    .shell{
+      width:min(1280px,94vw);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:84px 1fr;
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width: 980px){
+      .shell{ grid-template-columns: 74px 1fr; }
+    }
+
+    /* Sidebar */
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .side-item{
+      height:78px;
+      display:grid;
+      place-items:center;
+      border-bottom:1px solid rgba(255,255,255,0.10);
+      text-decoration:none;
+      transition: background 160ms ease;
+    }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px; height:34px; object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92;
+      transition: filter 180ms ease, transform 180ms ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1; transform: translateY(-1px);
+    }
+
+    /* Main panel */
+    .panel{
+      border-radius:18px;
+      background: var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow: var(--panelShadow);
+      overflow:hidden;
+      color: var(--ink);
+
+      height: calc(100vh - 140px);
+      display:flex;
+      flex-direction:column;
+      min-height: 650px;
+    }
+    @media (max-width: 980px){
+      .panel{ height: auto; min-height: 0; }
+    }
+
+    /* Tabs */
+    .tabs{
+      position:relative;
+      display:flex;
+      gap:10px;
+      padding:14px 16px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.12);
+      flex: 0 0 auto;
+    }
+    .tabs::after{
+      content:"";
+      position:absolute;
+      left:16px; right:16px; bottom:-1px;
+      height:14px;
+      background: rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius: 0 0 14px 14px;
+      z-index:0;
+      pointer-events:none;
+    }
+    .tab{
+      position:relative;
+      z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:13px;
+      text-decoration:none;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .tab.is-active{
+      background: var(--brand-yellow);
+      color:#111;
+      transform: translateY(1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+
+    /* Progress bar */
+    .search-progress{
+      height: 4px;
+      width: 100%;
+      background: #8dd959;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0;
+      display:none;
+      flex: 0 0 auto;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .search-progress__bar{
+      height: 100%;
+      width: 0%;
+      background: #FFC700;
+      border-radius: 999px;
+      transition: width 200ms ease;
+    }
+
+    .content{
+      padding:18px 18px 16px;
+      flex: 1 1 auto;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    h1{ margin:0 0 14px; font-size:26px; font-weight:1000; letter-spacing:.01em; color:#111; }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 14px 18px;
+      align-items: stretch;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+    @media (max-width: 980px){ .grid2{ grid-template-columns: 1fr; } }
+
+    .card{
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.02);
+      overflow:hidden;
+      height: 100%;
+      display:flex;
+      flex-direction:column;
+      min-height: 0;
+      color:#111;
+    }
+    .cardHead{
+      padding: 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .cardTitle{
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      font-size: 13px;
+      color: rgba(0,0,0,0.75);
+    }
+    .cardBody{
+      padding:14px;
+      flex: 1 1 auto;
+      min-height: 0;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .search{
+      flex: 1 1 auto;
+      min-width: 220px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.70);
+    }
+    .search svg{ width:18px; height:18px; opacity:.75; }
+    .search input{ border:0; outline:0; width:100%; background:transparent; font-weight: 900; font-size: 14px; color:#111; }
+
+    .btn{
+      border:0;
+      border-radius:999px;
+      padding:12px 18px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      background: var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.18);
+      transition: transform 170ms ease, opacity 170ms ease;
+      white-space: nowrap;
+    }
+    .btn:hover{ transform: translateY(-2px); opacity:.96; }
+    .btn:active{ transform: translateY(1px); }
+    .btn.ghost{
+      background: rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow:none;
+      color: rgba(0,0,0,0.78);
+    }
+    .btn.small{ padding:10px 14px; font-size:13px; }
+
+    .pillToggle{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.05);
+      font-weight:1000;
+      font-size:13px;
+      cursor:pointer;
+      user-select:none;
+      color:#111;
+    }
+    .pillToggle.is-on{
+      background: rgba(141,217,89,0.18);
+      border-color: rgba(141,217,89,0.35);
+    }
+    .pillToggle .dot0{
+      width:10px; height:10px; border-radius:999px;
+      background: rgba(0,0,0,0.22);
+      display:inline-block;
+    }
+    .pillToggle.is-on .dot0{ background: rgba(0,86,0,0.95); }
+
+    .chip{
+      border-radius: 999px;
+      padding: 8px 12px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.70);
+      font-weight: 1000;
+      font-size: 13px;
+      color: rgba(0,0,0,0.78);
+      white-space: nowrap;
+    }
+
+    /* ✅ FIX: prevent horizontal scroll in books list */
+    .list{
+      margin-top: 10px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      flex:1;
+      overflow-y:auto;
+      overflow-x:hidden; /* KEY */
+      padding-right:6px;
+      align-items:stretch;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      padding-top: 12px;
+      min-height: 0;
+    }
+
+    .list-loader{
+      border-radius: 16px;
+      border: 1px dashed rgba(0,0,0,0.18);
+      background: rgba(0,0,0,0.02);
+      padding: 20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height: 92px;
+    }
+    .dots{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.08);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .dot{
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #f4e32f;
+      animation: dotBounce 850ms infinite ease-in-out;
+    }
+    .dot:nth-child(1){ animation-delay: 0ms; }
+    .dot:nth-child(2){ animation-delay: 160ms; }
+    .dot:nth-child(3){ animation-delay: 320ms; }
+    @keyframes dotBounce{
+      0%, 100%{ transform: translateY(0); opacity: 0.55; }
+      50%{ transform: translateY(-5px); opacity: 1; }
+    }
+
+    @keyframes cardIn{
+      from{ opacity:0; transform: translateY(10px); }
+      to{ opacity:1; transform: translateY(0); }
+    }
+
+    /* ✅ FIX: responsive card layout so buttons never overflow */
+    .bcard{
+      width: 100%;
+      border-radius: 16px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.78);
+      padding: 14px 16px;
+      display:grid;
+      grid-template-columns: 1fr minmax(160px, 290px); /* KEY */
+      gap: 12px 14px;
+      align-items:center;
+      animation: cardIn 260ms ease both;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      overflow:hidden; /* KEY */
+    }
+    .bcard:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.86);
+    }
+
+    .btitle{
+      font-size: 18px;
+      font-weight: 1000;
+      color: #111;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      margin:0;
+      min-width:0;
+    }
+    .bsub{
+      margin-top: 6px;
+      font-size: 13px;
+      font-weight: 850;
+      color: rgba(0,0,0,0.55);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      min-width:0;
+    }
+
+    .bright{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap: 8px;
+      min-width:0;          /* KEY */
+      max-width: 100%;
+    }
+
+    .pills{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;      /* KEY */
+      justify-content:flex-end;
+      max-width: 100%;
+    }
+
+    .mini{
+      border-radius: 999px;
+      padding: 7px 10px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.90);
+      font-weight: 1000;
+      font-size: 12px;
+      color: rgba(0,0,0,0.78);
+      white-space: nowrap;
+    }
+    .mini.unprinted{ background: rgba(244,227,47,0.20); border-color: rgba(244,227,47,0.45); }
+    .mini.printed{ background: rgba(141,217,89,0.18); border-color: rgba(141,217,89,0.35); }
+
+    .expandBtn{
+      height: 38px;
+      border-radius: 12px;
+      padding: 0 12px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.04);
+      cursor:pointer;
+      font-weight: 1000;
+      color:#111;
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      transition: transform 160ms ease, background 160ms ease;
+      max-width: 100%;
+    }
+    .expandBtn:hover{ transform: translateY(-1px); background: rgba(0,0,0,0.06); }
+    .chev{
+      width: 10px;
+      height: 10px;
+      border-right: 3px solid rgba(0,0,0,0.55);
+      border-bottom: 3px solid rgba(0,0,0,0.55);
+      transform: rotate(45deg);
+      transition: transform 160ms ease;
+      margin-top: -2px;
+      flex: 0 0 auto;
+    }
+    .bwrap.is-open .chev{ transform: rotate(225deg); margin-top: 2px; }
+
+    /* When the books column is narrow, stack the right side under title */
+    @media (max-width: 560px){
+      .bcard{ grid-template-columns: 1fr; }
+      .bright{
+        align-items:flex-start;
+        flex-direction:row;
+        justify-content:space-between;
+        gap:10px;
+        flex-wrap:wrap;
+      }
+      .pills{ justify-content:flex-start; }
+    }
+
+    .copiesWrap{
+      margin-top: 12px;
+      grid-column: 1 / -1;
+      display:none;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      padding-top: 12px;
+    }
+    .bwrap.is-open .copiesWrap{ display:block; }
+
+    .copies{
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+      max-height: 260px;
+      overflow:auto;
+      padding-right: 6px;
+    }
+
+    .copyRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.85);
+    }
+    .copyLeft{ display:flex; align-items:center; gap:10px; min-width:0; }
+    .copyLeft input{ width:18px; height:18px; accent-color: var(--brand-yellow); }
+    .copyCode{
+      font-weight: 1000;
+      font-size: 13px;
+      color: rgba(0,0,0,0.85);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      max-width: 420px;
+    }
+    .badge{
+      border-radius: 999px;
+      padding: 6px 10px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.85);
+      font-weight: 1000;
+      font-size: 12px;
+      white-space: nowrap;
+      color:#111;
+    }
+    .badge.printed{ background: rgba(141,217,89,0.18); border-color: rgba(141,217,89,0.35); }
+    .badge.unprinted{ background: rgba(244,227,47,0.20); border-color: rgba(244,227,47,0.45); }
+
+    .empty{
+      border-radius: 16px;
+      border: 1px dashed rgba(0,0,0,0.18);
+      background: rgba(0,0,0,0.02);
+      padding: 16px;
+      color: rgba(0,0,0,0.55);
+      font-weight: 900;
+    }
+
+    /* Right panel */
+    .field{ display:grid; gap:8px; }
+    .field label{
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.65);
+    }
+    select{
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight: 900;
+    }
+
+    .previewWrap{
+      position: relative;
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.60);
+      overflow:hidden;
+      min-height: 0;
+      flex: 1 1 auto;
+      display:flex;
+      flex-direction:column;
+    }
+    .previewBox{
+      padding: 10px;
+      overflow:auto;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+    .pvEmpty{
+      text-align:center;
+      padding: 20px 10px;
+      font-weight: 900;
+      color: rgba(0,0,0,0.55);
+    }
+    .pvItem{
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.70);
+      padding: 10px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .pvTitle{
+      margin:0 0 6px;
+      font-size: 13px;
+      font-weight: 1000;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width: 320px;
+      color:#111;
+    }
+    .pvCode{ font-weight: 1000; font-size: 12px; color: rgba(0,0,0,0.70); word-break: break-all; }
+    .pvRemove{
+      width: 34px; height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.70);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      flex: 0 0 auto;
+    }
+
+    .pvLoading{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background: rgba(255,255,255,0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .pvLoading.is-on{ display:flex; }
+    .dot3{
+      width: 10px; height: 10px; border-radius: 999px;
+      background: #111;
+      opacity: .35;
+      animation: bounce 900ms ease-in-out infinite;
+    }
+    .dot3:nth-child(2){ animation-delay: 120ms; }
+    .dot3:nth-child(3){ animation-delay: 240ms; }
+    @keyframes bounce{
+      0%,100%{ transform: translateY(0); opacity:.35; }
+      50%{ transform: translateY(-6px); opacity:.8; }
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%) translateY(18px);
+      background: rgba(255,255,255,0.90);
+      color: #111;
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 999px;
+      padding: 10px 14px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+      z-index: 5200;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      font-weight: 900;
+      max-width: min(820px, 92vw);
+      white-space: nowrap;
+      overflow:hidden;
+      text-overflow: ellipsis;
+    }
+    .toast.is-on{ opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 5000;
+      padding: 16px;
+    }
+    .modal.is-on{ display:flex; }
+    .modalCard{
+      width: min(980px, 96vw);
+      height: min(86vh, 780px);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      color: #111;
+    }
+    .modalHead{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.10);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+    }
+    .modalTitle{
+      font-weight: 1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size: 13px;
+      color: rgba(0,0,0,0.75);
+    }
+    .modalBody{ flex: 1 1 auto; min-height: 0; background: rgba(0,0,0,0.03); }
+    .modalBody iframe{ width: 100%; height: 100%; border: 0; background: #fff; }
+
+    .footer{
+      position: relative;
+      z-index: 3;
+      padding: 18px 16px 26px;
+      color: rgba(255,255,255,0.80);
+    }
+    .footerInner{
+      width:min(1280px,94vw);
+      margin:0 auto;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name">
+          <span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph
+        </div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item is-active" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs">
+            <a class="tab" href="cataloging.html">Add Book</a>
+            <a class="tab is-active" href="print_barcodes.html">Print Bar Codes</a>
+          </div>
+
+          <div class="search-progress" id="progressWrap" aria-hidden="true">
+            <div class="search-progress__bar" id="progressBar"></div>
+          </div>
+
+          <div class="content">
+            <h1>CATALOGING</h1>
+
+            <div class="grid2">
+              <!-- LEFT -->
+              <div class="card">
+                <div class="cardHead">
+                  <div class="cardTitle">Books</div>
+                  <span class="chip" id="resultsChip">Results: 0</span>
+                </div>
+
+                <div class="cardBody">
+                  <div class="row">
+                    <div class="search" role="search">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2"/>
+                        <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                      <input id="q" type="text" autocomplete="off" placeholder="Search title, author, ISBN, section…" />
+                    </div>
+
+                    <button class="pillToggle" id="reprintModeBtn" type="button">
+                      <span class="dot0" aria-hidden="true"></span>
+                      Reprint mode: <span id="reprintLabel">OFF</span>
+                    </button>
+
+                    <button class="btn small ghost" id="selectAllResultsBtn" type="button">
+                      Select all results
+                    </button>
+                  </div>
+
+                  <div class="row">
+                    <span class="chip" id="selectedChip">Selected: 0</span>
+                  </div>
+
+                  <div class="list" id="bookList" aria-live="polite">
+                    <div class="list-loader" aria-label="Loading books">
+                      <div class="dots">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- RIGHT -->
+              <div class="card">
+                <div class="cardHead">
+                  <div class="cardTitle">Selected Bar Codes</div>
+                  <span class="chip" id="selectedMeta">Selected: 0</span>
+                </div>
+
+                <div class="cardBody" style="gap:12px;">
+                  <div class="row" style="width:100%;">
+                    <div class="field" style="flex:1;">
+                      <label for="paper">Paper</label>
+                      <select id="paper">
+                        <option value="A4">A4</option>
+                        <option value="LEGAL">LEGAL</option>
+                        <option value="SHORT">SHORT</option>
+                      </select>
+                    </div>
+                    <div class="field" style="flex:1;">
+                      <label for="columns">Columns</label>
+                      <select id="columns">
+                        <option value="3">3 columns</option>
+                        <option value="2">2 columns</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="previewWrap">
+                    <div class="previewBox" id="previewBox">
+                      <div class="pvEmpty" id="pvEmpty">No selected bar codes yet.</div>
+                    </div>
+                    <div class="pvLoading" id="pvLoading" aria-hidden="true">
+                      <div class="dots" aria-hidden="true">
+                        <span class="dot3"></span><span class="dot3"></span><span class="dot3"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <button class="btn ghost" id="clearSelectedBtn" type="button">Clear</button>
+                    <button class="btn ghost" id="previewPdfBtn" type="button" disabled>Preview PDF</button>
+                    <button class="btn" id="downloadPdfBtn" type="button" disabled>Download PDF</button>
+                    <button class="btn ghost" id="markPrintedBtn" type="button" disabled>Mark Selected as Printed</button>
+                  </div>
+
+                  <div style="margin-top:4px; color: rgba(0,0,0,0.62); font-weight:850; font-size: 13px; line-height: 1.35;">
+                    Important: Preview/Download PDF does NOT auto-mark as printed.
+                    Only clicking <b>Mark Selected as Printed</b> updates print status and records the librarian + date.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <footer class="footer" id="footer">
+      <div class="footerInner">
+        <div style="font-weight:900;">Golden Key Integrated School of Saint Joseph</div>
+        <div style="font-weight:750;">OPAC / LMS</div>
+      </div>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">—</div>
+
+  <div class="modal" id="pdfModal" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalHead">
+        <div class="modalTitle">PDF Preview</div>
+        <div class="row" style="justify-content:flex-end;">
+          <button class="btn ghost small" id="closePdfModalBtn" type="button">Close</button>
+        </div>
+      </div>
+      <div class="modalBody">
+        <iframe id="pdfFrame" title="Barcode PDF Preview"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+
+    const token =
+      sessionStorage.getItem("gk_token") ||
+      localStorage.getItem("gk_token") ||
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("token") ||
+      "";
+
+    if (!token) window.location.href = "login.html";
+
+    function authHeaders(extra={}){
+      return Object.assign({ "Authorization": `Bearer ${token}` }, extra);
+    }
+
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive:true });
+
+    document.getElementById("logoutLink")?.addEventListener("click",(e)=>{
+      e.preventDefault();
+      sessionStorage.removeItem("gk_token");
+      localStorage.removeItem("gk_token");
+      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
+      window.location.href="login.html";
+    });
+
+    const toast = document.getElementById("toast");
+    let toastTimer=null;
+    function showToast(msg){
+      toast.textContent = msg || "—";
+      toast.classList.add("is-on");
+      clearTimeout(toastTimer);
+      toastTimer=setTimeout(()=>toast.classList.remove("is-on"),2200);
+    }
+
+    const progressWrap = document.getElementById("progressWrap");
+    const progressBar = document.getElementById("progressBar");
+    let progressTimer = null;
+
+    function showProgress(){
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      clearInterval(progressTimer);
+      let w = 0;
+      progressTimer = setInterval(() => {
+        w = Math.min(90, w + 8);
+        progressBar.style.width = w + "%";
+      }, 90);
+    }
+    function hideProgress(done=true){
+      clearInterval(progressTimer);
+      if (done){
+        progressBar.style.width = "100%";
+        setTimeout(() => {
+          progressWrap.style.display = "none";
+          progressBar.style.width = "0%";
+        }, 220);
+      } else {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+      }
+    }
+
+    const pvLoading = document.getElementById("pvLoading");
+    function setPreviewLoading(on){
+      pvLoading.classList.toggle("is-on", !!on);
+      pvLoading.setAttribute("aria-hidden", on ? "false" : "true");
+    }
+
+    function esc(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    async function safeJson(res){
+      return await res.json().catch(()=> ({}));
+    }
+
+    async function apiGet(path){
+      const res = await fetch(BASE_URL + path, { headers: authHeaders() });
+      const data = await safeJson(res);
+      if(!res.ok){
+        throw new Error(data?.detail || `HTTP ${res.status}`);
+      }
+      return data;
+    }
+
+    function normalizeArray(payload){
+      if (Array.isArray(payload)) return payload;
+      if (!payload || typeof payload !== "object") return [];
+      const a = payload.items || payload.results || payload.data || payload.books || payload.rows;
+      return Array.isArray(a) ? a : [];
+    }
+
+    const qEl = document.getElementById("q");
+    const resultsChip = document.getElementById("resultsChip");
+    const bookListEl = document.getElementById("bookList");
+
+    const reprintModeBtn = document.getElementById("reprintModeBtn");
+    const reprintLabel = document.getElementById("reprintLabel");
+    const selectAllResultsBtn = document.getElementById("selectAllResultsBtn");
+
+    const selectedChip = document.getElementById("selectedChip");
+    const selectedMeta = document.getElementById("selectedMeta");
+    const previewBox = document.getElementById("previewBox");
+    const pvEmpty = document.getElementById("pvEmpty");
+
+    const paperEl = document.getElementById("paper");
+    const columnsEl = document.getElementById("columns");
+
+    const clearSelectedBtn = document.getElementById("clearSelectedBtn");
+    const previewPdfBtn = document.getElementById("previewPdfBtn");
+    const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+    const markPrintedBtn = document.getElementById("markPrintedBtn");
+
+    const pdfModal = document.getElementById("pdfModal");
+    const pdfFrame = document.getElementById("pdfFrame");
+    const closePdfModalBtn = document.getElementById("closePdfModalBtn");
+
+    let reprintMode = false;
+    let currentBooks = [];
+    let copiesCache = new Map(); // key => copies[]
+    const selected = new Map();  // copy_id => {copy_id, barcode, is_printed, title}
+    let lastPdfBlobUrl = null;
+
+    function showBooksLoader(){
+      bookListEl.innerHTML = `
+        <div class="list-loader" aria-label="Loading books">
+          <div class="dots">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateSelectedUI(){
+      const n = selected.size;
+      selectedChip.textContent = "Selected: " + n;
+      selectedMeta.textContent = "Selected: " + n;
+
+      previewPdfBtn.disabled = n===0;
+      downloadPdfBtn.disabled = n===0;
+      markPrintedBtn.disabled = n===0;
+
+      previewBox.innerHTML = "";
+      if (n===0){
+        previewBox.appendChild(pvEmpty);
+        pvEmpty.style.display = "block";
+        return;
+      }
+      pvEmpty.style.display = "none";
+
+      const items = Array.from(selected.values()).sort((a,b)=>{
+        const t=(a.title||"").localeCompare(b.title||"");
+        if(t!==0) return t;
+        return (a.barcode||"").localeCompare(b.barcode||"");
+      });
+
+      for (const it of items){
+        const row=document.createElement("div");
+        row.className="pvItem";
+        row.innerHTML = `
+          <div style="min-width:0">
+            <p class="pvTitle" title="${esc(it.title||"")}">${esc(it.title||"—")}</p>
+            <div class="pvCode">${esc(it.barcode || ("copy_id:" + it.copy_id))}</div>
+            <div style="margin-top:6px;">
+              <span class="badge ${it.is_printed ? "printed":"unprinted"}">${it.is_printed ? "Printed":"Unprinted"}</span>
+            </div>
+          </div>
+          <button class="pvRemove" type="button" title="Remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        `;
+        row.querySelector(".pvRemove").addEventListener("click", ()=>{
+          selected.delete(it.copy_id);
+          const cb=document.querySelector(`input[data-copy-id="${it.copy_id}"]`);
+          if(cb) cb.checked=false;
+          updateSelectedUI();
+        });
+        previewBox.appendChild(row);
+      }
+    }
+
+    function addOrRemoveSelection(copy, checked){
+      if(checked) selected.set(copy.copy_id, copy);
+      else selected.delete(copy.copy_id);
+      updateSelectedUI();
+    }
+
+    function cacheKey(bookId){
+      return `${String(bookId)}:${reprintMode ? "ALL" : "UNPRINTED"}`;
+    }
+
+    async function loadCopies(bookId, bookTitle){
+      const key = cacheKey(bookId);
+      if (copiesCache.has(key)) return copiesCache.get(key);
+
+      const onlyUnprinted = reprintMode ? "false" : "true";
+      const rows = await apiGet(`/api/librarian/books/${bookId}/copies?only_unprinted=${onlyUnprinted}`);
+      const copies = normalizeArray(rows).map(r=>({
+        copy_id: r.copy_id,
+        barcode: r.barcode,
+        is_printed: !!r.is_printed,
+        title: bookTitle || ""
+      }));
+      copiesCache.set(key, copies);
+      return copies;
+    }
+
+    function renderCopies(copies, targetEl){
+      targetEl.innerHTML = "";
+      if (!copies.length){
+        targetEl.innerHTML = `<div class="empty">${reprintMode ? "No copies to show." : "No unprinted copies."}</div>`;
+        return;
+      }
+      for(const c of copies){
+        const row=document.createElement("div");
+        row.className="copyRow";
+        row.innerHTML = `
+          <div class="copyLeft">
+            <input type="checkbox" data-copy-id="${c.copy_id}" />
+            <div class="copyCode" title="${esc(c.barcode)}">${esc(c.barcode)}</div>
+          </div>
+          <span class="badge ${c.is_printed ? "printed":"unprinted"}">${c.is_printed ? "Printed":"Unprinted"}</span>
+        `;
+        const cb=row.querySelector("input");
+        cb.checked = selected.has(c.copy_id);
+        cb.addEventListener("change", ()=> addOrRemoveSelection(c, cb.checked));
+        targetEl.appendChild(row);
+      }
+    }
+
+    function renderBooks(){
+      resultsChip.textContent = `Results: ${currentBooks.length}`;
+
+      if(!currentBooks.length){
+        bookListEl.innerHTML = `<div class="empty">No books found.</div>`;
+        return;
+      }
+
+      bookListEl.innerHTML = "";
+
+      currentBooks.forEach((b, idx)=>{
+        const bookId = b.book_id ?? b.id ?? b.bookId ?? b.bookID;
+        const title = b.title || "Untitled";
+        const author = b.author || "—";
+        const section = b.section || "—";
+        const unprinted = Number(b.unprinted_copies ?? b.unprinted ?? 0) || 0;
+        const printed = Number(b.printed_copies ?? b.printed ?? 0) || 0;
+
+        const wrap = document.createElement("div");
+        wrap.className = "bwrap";
+        wrap.innerHTML = `
+          <div class="bcard" style="animation-delay:${Math.min(idx*35, 280)}ms;">
+            <div style="min-width:0;">
+              <p class="btitle" title="${esc(title)}">${esc(title)}</p>
+              <div class="bsub">${esc(author)} • ${esc(section)}</div>
+            </div>
+
+            <div class="bright">
+              <div class="pills">
+                <span class="mini unprinted">Unprinted: ${unprinted}</span>
+                <span class="mini printed">Printed: ${printed}</span>
+              </div>
+              <button class="expandBtn" type="button">
+                Expand <span class="chev" aria-hidden="true"></span>
+              </button>
+            </div>
+
+            <div class="copiesWrap">
+              <div class="copies"></div>
+            </div>
+          </div>
+        `;
+
+        const expandBtn = wrap.querySelector(".expandBtn");
+        const copiesEl = wrap.querySelector(".copies");
+
+        expandBtn.addEventListener("click", async ()=>{
+          if (wrap.classList.contains("is-open")){
+            wrap.classList.remove("is-open");
+            return;
+          }
+
+          wrap.classList.add("is-open");
+          copiesEl.innerHTML = `
+            <div class="list-loader" aria-label="Loading copies">
+              <div class="dots">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              </div>
+            </div>
+          `;
+
+          showProgress();
+          setPreviewLoading(true);
+          try{
+            const copies = await loadCopies(bookId, title);
+            renderCopies(copies, copiesEl);
+          }catch(err){
+            copiesEl.innerHTML = `<div class="empty">Failed to load copies.</div>`;
+            showToast(err.message || "Failed to load copies");
+          }finally{
+            hideProgress(true);
+            setPreviewLoading(false);
+          }
+        });
+
+        bookListEl.appendChild(wrap);
+      });
+    }
+
+    async function loadBooks(){
+      const q = (qEl.value || "").trim();
+
+      showBooksLoader();
+      showProgress();
+
+      try{
+        const payload = await apiGet(`/api/librarian/books?q=${encodeURIComponent(q)}`);
+        currentBooks = normalizeArray(payload);
+        renderBooks();
+      }catch(err){
+        console.error(err);
+        resultsChip.textContent = "Results: 0";
+        bookListEl.innerHTML = `<div class="empty">Failed to load books. (${esc(err.message || "Error")})</div>`;
+        showToast(err.message || "Failed to load books");
+      }finally{
+        hideProgress(true);
+      }
+    }
+
+    selectAllResultsBtn.addEventListener("click", async ()=>{
+      if(!currentBooks.length) return;
+
+      showProgress();
+      setPreviewLoading(true);
+      try{
+        for(const b of currentBooks){
+          const bid = b.book_id ?? b.id ?? b.bookId ?? b.bookID;
+          const title = b.title || "";
+          const copies = await loadCopies(bid, title);
+          for(const c of copies) selected.set(c.copy_id, c);
+        }
+        document.querySelectorAll("input[data-copy-id]").forEach(cb=>{
+          const id = cb.getAttribute("data-copy-id");
+          cb.checked = selected.has(Number(id) || id);
+        });
+        updateSelectedUI();
+        showToast("Selected all copies in current results.");
+      }catch(err){
+        showToast(err.message || "Select all failed");
+      }finally{
+        hideProgress(true);
+        setPreviewLoading(false);
+      }
+    });
+
+    reprintModeBtn.addEventListener("click", ()=>{
+      reprintMode = !reprintMode;
+      reprintModeBtn.classList.toggle("is-on", reprintMode);
+      reprintLabel.textContent = reprintMode ? "ON" : "OFF";
+      copiesCache = new Map();
+      document.querySelectorAll(".bwrap.is-open").forEach(x=>x.classList.remove("is-open"));
+      showToast(reprintMode ? "Reprint mode ON." : "Reprint mode OFF.");
+    });
+
+    clearSelectedBtn.addEventListener("click", ()=>{
+      document.querySelectorAll("input[data-copy-id]").forEach(cb=> cb.checked = false);
+      selected.clear();
+      updateSelectedUI();
+      showToast("Selection cleared.");
+    });
+
+    async function generatePdfBlob(){
+      const ids = Array.from(selected.keys());
+      if(!ids.length) throw new Error("No selected barcodes.");
+
+      const paper = paperEl.value || "A4";
+      const columns = parseInt(columnsEl.value || "3", 10) || 3;
+
+      const res = await fetch(
+        `${BASE_URL}/api/barcodes/labels/pdf?paper=${encodeURIComponent(paper)}&columns=${encodeURIComponent(columns)}`,
+        {
+          method:"POST",
+          headers: authHeaders({ "Content-Type":"application/json" }),
+          body: JSON.stringify({ copy_ids: ids })
+        }
+      );
+
+      if(!res.ok){
+        const data = await safeJson(res);
+        throw new Error(data?.detail || "Failed to generate PDF");
+      }
+      return await res.blob();
+    }
+
+    function openPdfModal(blob){
+      if(lastPdfBlobUrl) URL.revokeObjectURL(lastPdfBlobUrl);
+      lastPdfBlobUrl = URL.createObjectURL(blob);
+      pdfFrame.src = lastPdfBlobUrl;
+      pdfModal.classList.add("is-on");
+      pdfModal.setAttribute("aria-hidden","false");
+    }
+    function closePdfModal(){
+      pdfModal.classList.remove("is-on");
+      pdfModal.setAttribute("aria-hidden","true");
+      pdfFrame.src = "about:blank";
+    }
+    closePdfModalBtn.addEventListener("click", closePdfModal);
+    pdfModal.addEventListener("click", (e)=>{ if(e.target===pdfModal) closePdfModal(); });
+
+    previewPdfBtn.addEventListener("click", async ()=>{
+      if(!selected.size) return;
+      showProgress();
+      setPreviewLoading(true);
+      try{
+        const blob = await generatePdfBlob();
+        openPdfModal(blob);
+        showToast("Preview generated.");
+      }catch(err){
+        showToast(err.message || "Preview failed");
+      }finally{
+        hideProgress(true);
+        setPreviewLoading(false);
+      }
+    });
+
+    downloadPdfBtn.addEventListener("click", async ()=>{
+      if(!selected.size) return;
+      showProgress();
+      setPreviewLoading(true);
+      try{
+        const blob = await generatePdfBlob();
+        const url = URL.createObjectURL(blob);
+
+        const a=document.createElement("a");
+        a.href=url;
+        a.download="barcode_labels.pdf";
+        document.body.appendChild(a);
+        a.click(); a.remove();
+
+        setTimeout(()=>URL.revokeObjectURL(url), 4000);
+        showToast("PDF downloaded.");
+      }catch(err){
+        showToast(err.message || "Download failed");
+      }finally{
+        hideProgress(true);
+        setPreviewLoading(false);
+      }
+    });
+
+    markPrintedBtn.addEventListener("click", async ()=>{
+      const ids = Array.from(selected.keys());
+      if(!ids.length) return;
+
+      const batchId = "BATCH-" + Date.now();
+
+      showProgress();
+      setPreviewLoading(true);
+      try{
+        const params = new URLSearchParams({ copy_ids: ids.join(","), batch_id: batchId });
+        const res = await fetch(`${BASE_URL}/api/printing/mark-printed?${params.toString()}`, {
+          method:"POST",
+          headers: authHeaders()
+        });
+
+        const data = await safeJson(res);
+        if(!res.ok) throw new Error(data?.detail || "Failed to mark printed");
+
+        showToast(`Updated: ${data?.updated_count ?? ids.length}`);
+
+        document.querySelectorAll("input[data-copy-id]").forEach(cb=> cb.checked = false);
+        selected.clear();
+        updateSelectedUI();
+        copiesCache = new Map();
+        await loadBooks();
+      }catch(err){
+        showToast(err.message || "Mark printed failed");
+      }finally{
+        hideProgress(true);
+        setPreviewLoading(false);
+      }
+    });
+
+    let t = null;
+    qEl.addEventListener("input", ()=>{
+      clearTimeout(t);
+      t = setTimeout(loadBooks, 240);
+    });
+    qEl.addEventListener("keydown",(e)=>{
+      if(e.key==="Enter"){ e.preventDefault(); loadBooks(); }
+    });
+
+    updateSelectedUI();
+    loadBooks();
+  </script>
+</body>
+</html>

@@ -477,6 +477,13 @@ input::-ms-reveal {
         }
 
         // Store token for librarian pages (session-only for now)
+        // Store token for librarian pages (shared keys used by other pages)
+        localStorage.setItem("token", token);
+        localStorage.setItem("access_token", token);
+        sessionStorage.setItem("token", token);
+        sessionStorage.setItem("access_token", token);
+
+        // Optional: keep legacy key too (if any old pages still read it)
         sessionStorage.setItem("gk_token", token);
 
         // Verify token
