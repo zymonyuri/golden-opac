@@ -35,6 +35,8 @@
       --chart-gray: rgba(0, 0, 0, 0.18);
       --chart-gray-2: rgba(0, 0, 0, 0.10);
       --chart-red: rgba(220, 60, 60, 0.55);
+
+      --shadow-strong: 0 26px 60px rgba(0,0,0,0.32);
     }
 
     body{ font-family:"Google Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
@@ -53,7 +55,7 @@
       border:1px solid rgba(255,255,255,0.12);
       backdrop-filter: blur(14px) saturate(140%);
       -webkit-backdrop-filter: blur(14px) saturate(140%);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-strong);
       overflow:hidden;
     }
     .side-item{ height:78px; display:grid; place-items:center; border-bottom:1px solid rgba(255,255,255,0.10); text-decoration:none; transition: background 160ms ease; }
@@ -269,7 +271,7 @@
 
     .dashWrap{ display:flex; flex-direction:column; gap: 12px; padding-top: 10px; min-height:0; }
 
-    /* KPI cards: match screenshot (soft top glow) */
+    /* KPI cards */
     .statsGrid{
       display:grid;
       grid-template-columns: repeat(4, 1fr);
@@ -340,7 +342,7 @@
       -webkit-backdrop-filter: blur(10px);
     }
 
-    /* Card title centered like screenshot */
+    /* Card title centered */
     .cardHead{
       padding: 12px 14px;
       border-bottom: 1px solid rgba(0,0,0,0.08);
@@ -371,7 +373,7 @@
       gap: 12px;
     }
 
-    /* Dots on the right, title still centered */
+    /* Dots right */
     .dots{
       display:inline-flex;
       align-items:center;
@@ -397,13 +399,53 @@
     .dot:nth-child(3){ animation-delay: .24s; }
     @keyframes b{ 0%,80%,100%{ transform: translateY(0); opacity:.55; } 40%{ transform: translateY(-4px); opacity:1; } }
 
+    /* Two charts: force same visual size */
     .twoCharts{
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
       min-height:0;
+      align-items:stretch;
     }
     @media (max-width: 760px){ .twoCharts{ grid-template-columns: 1fr; } }
+
+    .chartBox{
+      border-radius: 14px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.55);
+      padding: 10px 10px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+    .chartBoxTitle{
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      font-size: 12px;
+      color: rgba(0,0,0,0.75);
+      text-align:center;
+      margin: 2px 0 8px;
+    }
+
+    /* SAME SIZE for pie and bar (fixed viewport height) */
+    .chartViewport{
+      height: 230px; /* <- both charts look the same size */
+      min-height: 230px;
+      max-height: 230px;
+      position: relative;
+    }
+    /* For bar chart: allow scroll INSIDE if too many records */
+    .chartViewport.scrollY{
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 6px;
+    }
+
+    .chartCanvas{
+      width: 100% !important;
+      display:block;
+    }
 
     .list{
       display:flex;
@@ -414,7 +456,6 @@
       max-height: 300px;
     }
 
-    /* Right column lists scroll like screenshot */
     .rightCol .card .list{ max-height: 270px; }
     .rightCol .card:last-child .logList{ max-height: 270px; }
 
@@ -462,7 +503,6 @@
       white-space: nowrap;
     }
     .badge.yellow{ background: rgba(244,227,47,0.22); }
-    .badge.red{ background: rgba(255,60,60,0.14); }
 
     .empty{
       padding: 14px;
@@ -579,6 +619,22 @@
       color: rgba(0,0,0,0.78);
       line-height: 1.25;
     }
+
+    /* ===== HEADER LIQUID GLASS ON SCROLL (same behavior as cataloging.html) ===== */
+    .topbar{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
+    }
+    .topbar.is-scrolled{
+      background: rgba(0,0,0,0.22);
+      border-bottom: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+    }
   </style>
 </head>
 
@@ -597,7 +653,7 @@
 
     <nav class="nav" aria-label="Primary">
       <a href="home.html" class="nav__link">Home</a>
-      <a href="#footer" class="nav__link">Contact</a>
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
       <a href="#" class="nav__link" id="logoutLink">Log out</a>
     </nav>
   </div>
@@ -707,24 +763,22 @@
                       </div>
                       <div class="cardBody">
                         <div class="twoCharts">
-                          <div class="card" style="background:transparent; border:0;">
-                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
-                              <div class="cardTitle" style="font-size:12px;">Most Genres Borrowed</div>
+                          <!-- PIE -->
+                          <div class="chartBox">
+                            <div class="chartBoxTitle">Most Genres Borrowed</div>
+                            <div class="chartViewport" id="genresViewport">
+                              <canvas id="chartGenres" class="chartCanvas"></canvas>
                             </div>
-                            <div class="cardBody" style="padding:0;">
-                              <canvas id="chartGenres" height="150"></canvas>
-                              <div class="empty" id="genresEmpty" style="display:none;">No genre data yet.</div>
-                            </div>
+                            <div class="empty" id="genresEmpty" style="display:none; margin-top:10px;">No genre data yet.</div>
                           </div>
 
-                          <div class="card" style="background:transparent; border:0;">
-                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
-                              <div class="cardTitle" style="font-size:12px;">Most Borrowed by Grade</div>
+                          <!-- BAR (same size, internal scroll if many records) -->
+                          <div class="chartBox">
+                            <div class="chartBoxTitle">Most Borrowed by Grade</div>
+                            <div class="chartViewport scrollY" id="borrowViewport">
+                              <canvas id="chartBorrowByGrade" class="chartCanvas"></canvas>
                             </div>
-                            <div class="cardBody" style="padding:0;">
-                              <canvas id="chartBorrowByGrade" height="150"></canvas>
-                              <div class="empty" id="borrowGradeEmpty" style="display:none;">No grade borrow data yet.</div>
-                            </div>
+                            <div class="empty" id="borrowGradeEmpty" style="display:none; margin-top:10px;">No grade borrow data yet.</div>
                           </div>
                         </div>
                       </div>
@@ -737,31 +791,27 @@
                       </div>
                       <div class="cardBody">
                         <div class="twoCharts">
-                          <div class="card" style="background:transparent; border:0;">
-                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
-                              <div class="cardTitle" style="font-size:12px;">Overdue by Grade</div>
+                          <div class="chartBox">
+                            <div class="chartBoxTitle">Overdue by Grade</div>
+                            <div class="chartViewport" id="overdueViewport">
+                              <canvas id="chartOverdueGrade" class="chartCanvas"></canvas>
                             </div>
-                            <div class="cardBody" style="padding:0;">
-                              <canvas id="chartOverdueGrade" height="150"></canvas>
-                              <div class="empty" id="overdueGradeEmpty" style="display:none;">No overdue breakdown yet.</div>
-                            </div>
+                            <div class="empty" id="overdueGradeEmpty" style="display:none; margin-top:10px;">No overdue breakdown yet.</div>
                           </div>
 
-                          <div class="card" style="background:transparent; border:0;">
-                            <div class="cardHead" style="border-bottom:0; padding:0 0 8px 0; background:transparent;">
-                              <div class="cardTitle" style="font-size:12px;">Inventory Status</div>
+                          <div class="chartBox">
+                            <div class="chartBoxTitle">Inventory Status</div>
+                            <div class="chartViewport" id="inventoryViewport">
+                              <canvas id="chartInventory" class="chartCanvas"></canvas>
                             </div>
-                            <div class="cardBody" style="padding:0;">
-                              <canvas id="chartInventory" height="150"></canvas>
-                              <div class="empty" id="inventoryEmpty" style="display:none;">No inventory status data yet.</div>
-                            </div>
+                            <div class="empty" id="inventoryEmpty" style="display:none; margin-top:10px;">No inventory status data yet.</div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- RIGHT (order like screenshot) -->
+                  <!-- RIGHT -->
                   <div class="rightCol">
                     <div class="card">
                       <div class="cardHead">
@@ -885,19 +935,57 @@
 
   <script>
     const BASE_URL = "http://127.0.0.1:8000";
-    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+
+    // Token getter (same compatibility pattern as cataloging.html)
+    function getToken(){
+      return (
+        sessionStorage.getItem("gk_token") ||
+        localStorage.getItem("gk_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("access_token") ||
+        sessionStorage.getItem("token") ||
+        sessionStorage.getItem("access_token") ||
+        ""
+      ).replace(/^Bearer\s+/i,"").trim();
+    }
+
+    const token = getToken();
     if (!token) window.location.href = "login.html";
 
+    function authHeaders(){ return { "Authorization": "Bearer " + getToken() }; }
+
+    // Footer year
     document.getElementById("footerYear").textContent = String(new Date().getFullYear());
 
+    // Logout
     document.getElementById("logoutLink")?.addEventListener("click", (e) => {
       e.preventDefault();
-      sessionStorage.removeItem("gk_token");
-      localStorage.removeItem("gk_token");
+      ["gk_token","token","access_token"].forEach(k => {
+        try { sessionStorage.removeItem(k); } catch(_){}
+        try { localStorage.removeItem(k); } catch(_){}
+      });
       window.location.href = "login.html";
     });
 
-    function authHeaders(){ return { "Authorization": `Bearer ${token}` }; }
+    // Contact scroll (same as cataloging)
+    document.getElementById("contactLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const footer = document.getElementById("footer");
+      const header = document.getElementById("siteHeader");
+      const headerH = header?.getBoundingClientRect().height ?? 0;
+      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+
+    // Sticky header liquid glass on scroll (same as cataloging)
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){
+      if (!header) return;
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+    }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive: true });
+
     function esc(s){
       return String(s ?? "").replace(/[&<>"']/g, m => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -1032,8 +1120,12 @@
     const activityLogs = document.getElementById("activityLogs");
     const activityEmpty = document.getElementById("activityEmpty");
 
+    // chart viewports
+    const borrowViewport = document.getElementById("borrowViewport");
+
     // charts
     let chartMonthly=null, chartGenres=null, chartBorrowByGrade=null, chartOverdueGrade=null, chartInventory=null;
+
     function destroyCharts(){
       for (const c of [chartMonthly, chartGenres, chartBorrowByGrade, chartOverdueGrade, chartInventory]){
         if (c) c.destroy();
@@ -1092,12 +1184,7 @@
     }
 
     function chartBaseOptions(){
-      return {
-        responsive:true,
-        plugins:{
-          legend:{ labels:{ boxWidth: 10 } }
-        }
-      };
+      return { responsive:true, maintainAspectRatio:false };
     }
 
     async function loadDashboard(){
@@ -1138,7 +1225,6 @@
         kpiActiveLoans.textContent = fmtNum(activeLoans);
         kpiOverdue.textContent = fmtNum(overdueLoans);
 
-        // availability %
         const copyStatus = Array.isArray(inventory.copy_status_distribution) ? inventory.copy_status_distribution : [];
         const availableRow = copyStatus.find(x => String(x.status).toLowerCase() === "available");
         const availableCount = Number(availableRow?.count ?? 0);
@@ -1146,7 +1232,6 @@
         kpiAvailPct.textContent = `${availPct}%`;
         kpiAvailSub.textContent = `${fmtNum(availableCount)} / ${fmtNum(totalCopies)}`;
 
-        // fines cards
         const outstandingTotal = Number(fines.outstanding_total ?? 0);
         const unpaidCount = Number(fines.unpaid_fine_count ?? 0);
         kpiTotalFines.textContent = peso(outstandingTotal);
@@ -1183,7 +1268,6 @@
               scales:{
                 y:{
                   beginAtZero:true,
-                  title:{ display:false },
                   grid:{ color: getComputedStyle(document.documentElement).getPropertyValue("--chart-gray-2").trim() }
                 },
                 x:{ grid:{ display:false } }
@@ -1192,7 +1276,7 @@
           });
         }
 
-        // genres pie (LEGEND ON, compact bottom)
+        // genres pie (legend on bottom)
         const genres = Array.isArray(data?.genre_distribution) ? data.genre_distribution : [];
         const gLabels = genres.map(x => x.genre ?? "Unknown");
         const gVals = genres.map(x => Number(x.book_count ?? 0));
@@ -1212,14 +1296,14 @@
                   "rgba(0,0,0,0.12)",
                   "rgba(0,0,0,0.18)",
                   "rgba(141,217,89,0.35)",
-                  "rgba(244,227,47,0.28)",
+                  "rgba(244,227,47,0.28)"
                 ],
                 borderColor: "rgba(255,255,255,0.65)",
                 borderWidth: 1
               }]
             },
             options: {
-              responsive:true,
+              ...chartBaseOptions(),
               plugins:{
                 legend:{
                   display:true,
@@ -1231,15 +1315,28 @@
           });
         }
 
-        // borrowed by grade (HORIZONTAL bar, swapped axes + axis labels)
+        // borrowed by grade (horizontal) — same viewport size as pie, but internally scrolls when many records
         const borrowedByGrade = Array.isArray(data?.borrowed_by_grade) ? data.borrowed_by_grade : [];
         const bgLabels = borrowedByGrade.map(x => x.grade ?? "Unknown");
         const bgVals = borrowedByGrade.map(x => Number(x.borrow_count ?? 0));
+
+        // Dynamically size the BAR canvas height based on number of rows so bars don't get squished,
+        // while the viewport stays fixed (scroll shows more).
+        const barCanvas = document.getElementById("chartBorrowByGrade");
+        const rows = Math.max(bgLabels.length, 1);
+        const perRow = 26;           // px per bar
+        const padding = 70;          // top/bottom + axes
+        const desiredH = Math.min(900, Math.max(230, rows * perRow + padding));
+        barCanvas.height = desiredH; // makes internal scroll work nicely
+
+        // reset scroll position each refresh
+        if (borrowViewport) borrowViewport.scrollTop = 0;
+
         if (!hasAny(bgVals)){
           borrowGradeEmpty.style.display = "block";
         } else {
           borrowGradeEmpty.style.display = "none";
-          chartBorrowByGrade = new Chart(document.getElementById("chartBorrowByGrade"), {
+          chartBorrowByGrade = new Chart(barCanvas, {
             type: "bar",
             data: {
               labels: bgLabels,
@@ -1263,7 +1360,11 @@
                 },
                 y:{
                   title:{ display:true, text:"Grade Level" },
-                  grid:{ display:false }
+                  grid:{ display:false },
+                  ticks:{
+                    autoSkip: false,
+                    font:{ size: 10 }
+                  }
                 }
               }
             }
@@ -1301,7 +1402,7 @@
           });
         }
 
-        // inventory doughnut (legend bottom)
+        // inventory doughnut
         const invLabels = copyStatus.map(x => (x.status ?? "unknown"));
         const invVals = copyStatus.map(x => Number(x.count ?? 0));
         if (!hasAny(invVals)){
@@ -1318,17 +1419,15 @@
                   getComputedStyle(document.documentElement).getPropertyValue("--chart-green-soft").trim(),
                   "rgba(0,0,0,0.15)",
                   getComputedStyle(document.documentElement).getPropertyValue("--chart-yellow").trim(),
-                  "rgba(0,0,0,0.10)",
+                  "rgba(0,0,0,0.10)"
                 ],
                 borderColor: "rgba(255,255,255,0.70)",
                 borderWidth: 1
               }]
             },
             options: {
-              responsive:true,
-              plugins:{
-                legend:{ position:"bottom", labels:{ boxWidth: 10, font:{ size: 10 } } }
-              }
+              ...chartBaseOptions(),
+              plugins:{ legend:{ position:"bottom", labels:{ boxWidth: 10, font:{ size: 10 } } } }
             }
           });
         }
@@ -1359,8 +1458,8 @@
                     <div class="metaTitle">${esc(title)}</div>
                     <div class="metaSub">${esc(author)}</div>
                     <div class="metaBadges">
-                      <span class="badge yellow">Borrowed: ${fmtNum(borrowCount)} times</span>
-                      
+                      <span class="badge yellow">Borrowed: ${fmtNum(borrowCount)}</span>
+                      <span class="badge">Available: ${fmtNum(avail)} / ${fmtNum(total)}</span>
                     </div>
                   </div>
                 </div>
@@ -1401,7 +1500,7 @@
 
         await loadActivity();
 
-      } catch (e){
+      } catch {
         hideProgress(false);
         setDots(false);
         destroyCharts();
@@ -1471,7 +1570,7 @@
         pdfFrame.src = currentPdfUrl + "#zoom=page-width";
         hideProgress(true);
         setPdfLoading(false);
-      } catch (e){
+      } catch {
         hideProgress(false);
         setPdfLoading(false);
         pdfFrame.removeAttribute("src");
@@ -1500,7 +1599,7 @@
         a.remove();
         URL.revokeObjectURL(objectUrl);
         hideProgress(true);
-      } catch(e){
+      } catch {
         hideProgress(false);
         alert("Unable to download. Please try again.");
       }
