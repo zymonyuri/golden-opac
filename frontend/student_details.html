@@ -698,6 +698,41 @@
     </div>
   </div>
 
+
+  <!-- Renew Modal -->
+  <div class="modalOverlay" id="renewModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="renewTitle">
+      <div class="modalTop">
+        <h2 id="renewTitle">Renew Book</h2>
+        <button class="closeX" id="closeRenew" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="modalBody">
+        <div class="big" id="renewInfo">—</div>
+        <div class="field">
+          <label>Current Due Date</label>
+          <input id="renewCurrentDue" type="text" readonly />
+        </div>
+        <div class="field">
+          <label>New Due Date</label>
+          <input id="renewNewDue" type="text" readonly />
+        </div>
+        <div class="modalError" id="renewError"></div>
+        <div id="renewLoader" style="display:none; margin-top:10px;">
+  <div class="dots">
+    <span class="dot"></span>
+    <span class="dot"></span>
+    <span class="dot"></span>
+  </div>
+</div>
+      </div>
+      <div class="modalActions">
+        <button class="btnGhost" id="cancelRenewBtn" type="button">Cancel</button>
+        <button class="btn" id="confirmRenewBtn" type="button">Confirm Renew</button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Mark Lost Modal -->
   <div class="modalOverlay" id="lostModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lostTitle">
@@ -866,6 +901,15 @@
     historyModal.addEventListener("click", (e) => { if (e.target === historyModal) closeHistoryModal(); });
 
     // ---------- LOST MODAL ----------
+    const renewModal = document.getElementById("renewModal");
+    const closeRenew = document.getElementById("closeRenew");
+    const cancelRenewBtn = document.getElementById("cancelRenewBtn");
+    const confirmRenewBtn = document.getElementById("confirmRenewBtn");
+    const renewInfo = document.getElementById("renewInfo");
+    const renewCurrentDue = document.getElementById("renewCurrentDue");
+    const renewNewDue = document.getElementById("renewNewDue");
+    const renewError = document.getElementById("renewError");
+
     const lostModal = document.getElementById("lostModal");
     const closeLost = document.getElementById("closeLost");
     const cancelLostBtn = document.getElementById("cancelLostBtn");
@@ -874,7 +918,86 @@
     const lostNote = document.getElementById("lostNote");
     const lostError = document.getElementById("lostError");
 
+    let pendingRenew = null; // { loan_id, title, barcode, current_due, new_due }
     let pendingLost = null; // { barcode, student_code, title }
+
+    function estimateRenewDays(row){
+      const borrowed = new Date(row.borrowed_at);
+      const due = new Date(row.due_at);
+      const cycles = Math.max(1, Number(row.renew_count || 0) + 1);
+
+      if (Number.isNaN(borrowed.getTime()) || Number.isNaN(due.getTime())) return 7;
+
+      const diffMs = due.getTime() - borrowed.getTime();
+      const rawDays = Math.round(diffMs / 86400000 / cycles);
+      return Math.max(1, rawDays || 7);
+    }
+
+    function addDays(dateInput, days){
+      const d = new Date(dateInput);
+      if (Number.isNaN(d.getTime())) return null;
+      d.setDate(d.getDate() + Number(days || 0));
+      return d;
+    }
+
+    function openRenewModal(row){
+      const extraDays = estimateRenewDays(row);
+      const projected = addDays(row.due_at, extraDays);
+
+      pendingRenew = {
+        loan_id: row.loan_id,
+        title: row.title || "Book",
+        barcode: row.barcode || "",
+        current_due: row.due_at,
+        new_due: projected ? projected.toISOString() : row.due_at
+      };
+
+      renewInfo.textContent = `Renew: ${row.title || "Book"} • ${row.barcode || ""}`;
+      renewCurrentDue.value = fmtDT(row.due_at);
+      renewNewDue.value = fmtDT(pendingRenew.new_due);
+      renewError.style.display = "none";
+      renewError.textContent = "";
+      renewModal.style.display = "flex";
+    }
+
+    function closeRenewModal(){
+      renewModal.style.display = "none";
+      pendingRenew = null;
+    }
+
+    closeRenew.addEventListener("click", closeRenewModal);
+    cancelRenewBtn.addEventListener("click", closeRenewModal);
+    renewModal.addEventListener("click", (e) => { if (e.target === renewModal) closeRenewModal(); });
+
+    async function postRenew(loan_id){
+      const url = new URL(`${BASE_URL}/api/circulation/renew`);
+      url.searchParams.set("loan_id", String(loan_id || ""));
+
+      const res = await fetch(url.toString(), { method: "POST", headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.detail?.message || data?.detail || "Failed to renew book.");
+      return data;
+    }
+
+    confirmRenewBtn.addEventListener("click", async () => {
+      if (!pendingRenew) return;
+      confirmRenewBtn.disabled = true;
+      document.getElementById("renewLoader").style.display = "flex";
+      renewError.style.display = "none";
+      renewError.textContent = "";
+      try{
+        const result = await postRenew(pendingRenew.loan_id);
+        renewNewDue.value = fmtDT(result?.new_due_at || pendingRenew.new_due);
+        closeRenewModal();
+        await loadProfile();
+      }catch(err){
+        renewError.style.display = "block";
+        renewError.textContent = err?.message || "Failed to renew book.";
+      }finally{
+        confirmRenewBtn.disabled = false;
+        document.getElementById("renewLoader").style.display = "none";
+      }
+    });
 
     function openLostModal({ barcode, student_code, title }){
       pendingLost = { barcode, student_code, title };
@@ -893,7 +1016,6 @@
     lostModal.addEventListener("click", (e) => { if (e.target === lostModal) closeLostModal(); });
 
     async function postMarkLost({ barcode, student_code, note }){
-      // Uses your backend endpoint: POST /api/circulation/mark-lost?barcode=...&student_code=...&note=...
       const url = new URL(`${BASE_URL}/api/circulation/mark-lost`);
       url.searchParams.set("barcode", String(barcode || ""));
       url.searchParams.set("student_code", String(student_code || ""));
@@ -916,7 +1038,7 @@
           note: lostNote.value.trim()
         });
         closeLostModal();
-        await loadProfile(); // refresh UI
+        await loadProfile();
       }catch(err){
         lostError.style.display = "block";
         lostError.textContent = err?.message || "Failed to mark lost.";
@@ -1230,13 +1352,11 @@
             <tbody>
               ${rows.map(r => {
                 const status = String(r.status || "").toLowerCase();
-                const isActive = !r.returned_at;
+                const isActive = !r.returned_at && status !== "lost";
                 const badge =
                   status === "lost" ? `<span class="badge b-bad">Lost</span>` :
                   isActive ? `<span class="badge b-info">Active</span>` :
                   `<span class="badge b-ok">Returned</span>`;
-
-                const canLost = isActive && status !== "lost";
 
                 return `
                   <tr>
@@ -1249,14 +1369,26 @@
                     <td>
                       <div class="rowActions">
                         ${
-                          canLost
-                            ? `<button class="miniBtn miniDanger" type="button"
-                                 data-marklost="1"
-                                 data-barcode="${esc(r.barcode || "")}"
-                                 data-title="${esc(r.title || "Book")}"
-                                 data-student-code="${esc(st.student_code || "")}">
-                                 Mark Lost
-                               </button>`
+                          isActive
+                            ? `
+                              <button class="miniBtn" type="button"
+                                data-renew="1"
+                                data-loan-id="${esc(r.loan_id || "")}"
+                                data-title="${esc(r.title || "Book")}"
+                                data-barcode="${esc(r.barcode || "")}"
+                                data-borrowed-at="${esc(r.borrowed_at || "")}"
+                                data-due-at="${esc(r.due_at || "")}"
+                                data-renew-count="${esc(r.renew_count || 0)}">
+                                Renew
+                              </button>
+                              <button class="miniBtn miniDanger" type="button"
+                                data-marklost="1"
+                                data-barcode="${esc(r.barcode || "")}"
+                                data-title="${esc(r.title || "Book")}"
+                                data-student-code="${esc(st.student_code || "")}">
+                                Mark Lost
+                              </button>
+                            `
                             : `<span class="badge b-ok">—</span>`
                         }
                       </div>
@@ -1268,6 +1400,19 @@
           </table>
         </div>
       `;
+
+      [...el.querySelectorAll("[data-renew='1']")].forEach(btn => {
+        btn.addEventListener("click", () => {
+          openRenewModal({
+            loan_id: Number(btn.getAttribute("data-loan-id")),
+            title: btn.getAttribute("data-title"),
+            barcode: btn.getAttribute("data-barcode"),
+            borrowed_at: btn.getAttribute("data-borrowed-at"),
+            due_at: btn.getAttribute("data-due-at"),
+            renew_count: Number(btn.getAttribute("data-renew-count") || 0)
+          });
+        });
+      });
 
       [...el.querySelectorAll("[data-marklost='1']")].forEach(btn => {
         btn.addEventListener("click", () => {

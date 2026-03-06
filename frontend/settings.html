@@ -1,0 +1,1570 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Golden Key OPAC — Settings</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..900;1,17..18,400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    :root{
+      --brand-yellow:#f4e32f;
+      --brand-green:#8dd959;
+      --panelWhite: rgba(255,255,255,0.96);
+      --panelBorder: rgba(0,0,0,0.06);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.20);
+      --ink:#111;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ margin:0; padding:0; }
+
+    
+
+    .page{
+      position:relative;
+      min-height:100vh;
+      overflow:hidden;
+    }
+    .page__bg{
+      position:absolute;
+      inset:0;
+      background:url("assets/bg.png") center/cover no-repeat;
+      filter: blur(2px) saturate(1.04) contrast(1.04);
+      transform: scale(1.04);
+      z-index:-2;
+    }
+    .page__overlay{
+      position:absolute;
+      inset:0;
+      background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.36));
+      z-index:-1;
+    }
+
+    .wrap{
+      position:relative;
+      z-index:2;
+      padding:110px 16px 34px;
+    }
+
+    .shell{
+      width:min(1280px,94vw);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:84px 1fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    .sidebar{
+      border-radius:18px;
+      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
+      border:1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+      box-shadow: 0 26px 60px rgba(0,0,0,0.32);
+      overflow:hidden;
+    }
+    .side-item{
+      height:78px;
+      display:grid;
+      place-items:center;
+      border-bottom:1px solid rgba(255,255,255,0.10);
+      text-decoration:none;
+      transition: background .16s ease;
+    }
+    .side-item:last-child{ border-bottom:0; }
+    .side-item:hover{ background: rgba(255,255,255,0.06); }
+    .side-item img{
+      width:34px;
+      height:34px;
+      object-fit:contain;
+      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
+      opacity:.92;
+      transition: filter .18s ease, transform .18s ease;
+    }
+    .side-item.is-active img{
+      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      opacity:1;
+      transform: translateY(-1px);
+    }
+
+    .panel{
+      border-radius:18px;
+      background:var(--panelWhite);
+      border:1px solid var(--panelBorder);
+      box-shadow:var(--panelShadow);
+      overflow:hidden;
+      color:var(--ink);
+    }
+
+    .tabs{
+      position:relative;
+      display:flex;
+      gap:10px;
+      padding:14px 16px 0;
+      border-bottom:1px solid rgba(0,0,0,0.12);
+      flex-wrap:wrap;
+    }
+    .tabs::after{
+      content:"";
+      position:absolute;
+      left:16px;
+      right:16px;
+      bottom:-1px;
+      height:14px;
+      background: rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius: 0 0 14px 14px;
+      z-index:0;
+      pointer-events:none;
+    }
+    .tab{
+      position:relative;
+      z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.70);
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:13px;
+      cursor:pointer;
+      font-family:inherit;
+      transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+    .tab.is-active{
+      background: var(--brand-yellow);
+      color:#111;
+      transform: translateY(1px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+    }
+
+    .search-progress{
+      height:4px;
+      width:100%;
+      background: rgba(141,217,89,0.55);
+      overflow:hidden;
+      display:none;
+    }
+    .search-progress__bar{
+      height:100%;
+      width:0%;
+      background: rgba(244,227,47,0.95);
+      transition: width .2s ease;
+    }
+
+    .content{
+      padding:18px 18px 20px;
+    }
+
+    h1{
+      margin:0 0 14px;
+      font-size:26px;
+      font-weight:1000;
+      letter-spacing:.01em;
+      color:#111;
+    }
+
+    .section{ display:none; }
+    .section.is-active{ display:block; }
+
+    .stack{
+      display:grid;
+      gap:16px;
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+      align-items:stretch;
+    }
+
+    .card{
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.02);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      height:100%;
+      min-height:0;
+    }
+    .cardHead{
+      padding:14px 16px;
+      border-bottom:1px solid rgba(0,0,0,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .cardTitle{
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      font-size:13px;
+      color: rgba(0,0,0,0.75);
+    }
+    .cardBody{
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      flex:1 1 auto;
+      min-height:0;
+    }
+
+    .formGrid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px 20px;
+      align-items:start;
+    }
+
+    .field{
+      display:grid;
+      gap:8px;
+      align-content:start;
+    }
+    .field.full{ grid-column:1 / -1; }
+
+    .field label{
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.65);
+      line-height:1.15;
+    }
+
+    input, select{
+      width:100%;
+      min-height:56px;
+      padding:12px 18px;
+      border-radius:18px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:800;
+      font-family:inherit;
+      transition: box-shadow .16s ease, border-color .16s ease, background .16s ease;
+    }
+    input:focus, select:focus{
+      border-color: rgba(0,0,0,0.22);
+      box-shadow: 0 0 0 4px rgba(244,227,47,0.35);
+      background: rgba(0,0,0,0.02);
+    }
+    input[disabled]{
+      opacity:.85;
+      cursor:not-allowed;
+      background: rgba(0,0,0,0.03);
+    }
+
+    .valueBox{
+      min-height:58px;
+      display:flex;
+      align-items:center;
+      padding:12px 18px;
+      border-radius:18px;
+      border:1px solid rgba(0,0,0,0.10);
+      background:#fff;
+      font-weight:800;
+      font-size:16px;
+      color:#111;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+      margin-top:auto;
+    }
+
+    .btn, .btnGhost, .btnDark{
+      border-radius:999px;
+      padding:12px 22px;
+      min-height:46px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:14px;
+      font-family:inherit;
+      white-space:nowrap;
+      transition: transform .16s ease, opacity .16s ease;
+    }
+    .btn{
+      border:0;
+      background:var(--brand-yellow);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.18);
+    }
+    .btnGhost{
+      background: rgba(0,0,0,0.05);
+      border:1px solid rgba(0,0,0,0.10);
+      color: rgba(0,0,0,0.78);
+    }
+    .btnDark{
+      border:0;
+      background:#111;
+      color:#fff;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.18);
+    }
+    .btn:hover, .btnGhost:hover, .btnDark:hover{
+      transform: translateY(-2px);
+      opacity:.96;
+    }
+
+    .iconBtn{
+      width:19px;
+      height:19px;
+      min-width:34px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.10);
+      background:transparent;
+      color:rgba(0,0,0,0.72);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:13px;
+      font-weight:1000;
+      cursor:pointer;
+      line-height:1;
+      padding:0;
+      transition: transform .16s ease, opacity .16s ease, background .16s ease, color .16s ease;
+    }
+    .iconBtn:hover{
+      transform: translateY(-1px);
+      opacity:.96;
+      background: rgba(0,0,0,0.05);
+      color:#111;
+    }
+
+    .statusLine{
+      min-height:20px;
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.62);
+    }
+
+    .successBox{
+      display:none;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(244,227,47,0.18);
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:1000;
+      color:#111;
+    }
+    .successBox.show{ display:block; }
+
+    .rulesWrap{
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.92);
+      border-radius:14px;
+      overflow:hidden;
+      min-height:320px;
+      max-height:320px;
+      display:flex;
+      flex-direction:column;
+    }
+    .rulesHead{
+      flex:0 0 auto;
+      background: rgba(244,227,47,0.88);
+      border-bottom:1px solid rgba(0,0,0,0.08);
+    }
+    .rulesScroll{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto;
+    }
+    .rulesTable{
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+    }
+    .rulesTable th,
+    .rulesTable td{
+      padding:12px;
+      border-bottom:1px solid rgba(0,0,0,0.07);
+      font-size:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .rulesTable th{
+      text-align:left;
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      color:#111;
+    }
+    .rulesTable td{
+      background:#fff;
+      font-weight:900;
+      color: rgba(0,0,0,0.78);
+    }
+
+    .rulesTable--grades col:nth-child(1){ width:15%; }
+    .rulesTable--grades col:nth-child(2){ width:14%; }
+    .rulesTable--grades col:nth-child(3){ width:12%; }
+    .rulesTable--grades col:nth-child(4){ width:17%; }
+    .rulesTable--grades col:nth-child(5){ width:16%; }
+    .rulesTable--grades col:nth-child(6){ width:15%; }
+    .rulesTable--grades col:nth-child(7){ width:11%; }
+
+    .rulesTable--libs col:nth-child(1){ width:24%; }
+    .rulesTable--libs col:nth-child(2){ width:28%; }
+    .rulesTable--libs col:nth-child(3){ width:34%; }
+    .rulesTable--libs col:nth-child(4){ width:14%; }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform: translateX(-50%) translateY(18px);
+      background: rgba(255,255,255,0.90);
+      color:#111;
+      border:1px solid rgba(0,0,0,0.10);
+      border-radius:999px;
+      padding:10px 14px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+      z-index:2200;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+      font-weight:900;
+      max-width:min(820px,92vw);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width:1100px){
+      .grid2{ grid-template-columns:1fr; }
+      .formGrid{ grid-template-columns:1fr; }
+    }
+
+    @media (max-width:980px){
+      .shell{ grid-template-columns:74px 1fr; }
+    }
+
+    @media (max-width:720px){
+      .shell{ grid-template-columns:1fr; }
+      .sidebar{
+        display:grid;
+        grid-template-columns:repeat(6, 1fr);
+      }
+      .side-item{
+        height:64px;
+        border-bottom:0;
+        border-right:1px solid rgba(255,255,255,0.10);
+      }
+      .side-item:last-child{ border-right:0; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand">
+      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <div class="brand__text">
+        <div class="brand__name"><span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph</div>
+        <div class="brand__sub">Librarian Portal</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Primary">
+      <a href="home.html" class="nav__link">Home</a>
+      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+      <a href="#" class="nav__link" id="logoutLink">Log out</a>
+    </nav>
+  </div>
+
+  <main class="page">
+    <div class="page__bg" aria-hidden="true"></div>
+    <div class="page__overlay" aria-hidden="true"></div>
+
+    <section class="wrap">
+      <div class="shell">
+        <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+          <a class="side-item" href="students.html" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+          <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+          <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+          <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+          <a class="side-item is-active" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+        </aside>
+
+        <section class="panel">
+          <div class="tabs" role="tablist" aria-label="Settings Tabs">
+            <button class="tab is-active" data-tab="personal" type="button">Personal Information</button>
+            <button class="tab" data-tab="circulation" type="button">Circulation Settings</button>
+            <button class="tab" data-tab="student" type="button">Student Edit</button>
+            <button class="tab" data-tab="profile" type="button">New Profile</button>
+          </div>
+
+          <div class="search-progress" id="progressWrap" aria-hidden="true">
+            <div class="search-progress__bar" id="progressBar"></div>
+          </div>
+
+          <div class="content">
+            <h1>SETTINGS</h1>
+
+            <section class="section is-active" id="tab-personal">
+              <div class="stack">
+                <div class="grid2">
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Personal Information</div>
+                    </div>
+                    <div class="cardBody">
+                      <div class="formGrid">
+                        <div class="field">
+                          <label>Username</label>
+                          <input id="meUsername" type="text" disabled>
+                        </div>
+                        <div class="field">
+                          <label>Email</label>
+                          <input id="meEmail" type="email">
+                        </div>
+                        <div class="field">
+                          <label>First Name</label>
+                          <input id="meFirstName" type="text">
+                        </div>
+                        <div class="field">
+                          <label>Last Name</label>
+                          <input id="meLastName" type="text">
+                        </div>
+                      </div>
+
+                      <div class="actions">
+                        <button class="btnGhost" id="reloadMeBtn" type="button">Reload</button>
+                        <button class="btn" id="saveProfileBtn" type="button">Save Profile</button>
+                      </div>
+                      <div class="statusLine" id="profileStatus"></div>
+                    </div>
+                  </article>
+
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Change Password</div>
+                    </div>
+                    <div class="cardBody">
+                      <div class="formGrid">
+                        <div class="field full">
+                          <label>Current Password</label>
+                          <input id="currentPassword" type="password">
+                        </div>
+                        <div class="field">
+                          <label>New Password</label>
+                          <input id="newPassword" type="password">
+                        </div>
+                        <div class="field">
+                          <label>Confirm New Password</label>
+                          <input id="confirmPassword" type="password">
+                        </div>
+                      </div>
+
+                      <div class="actions">
+                        <button class="btnDark" id="changePasswordBtn" type="button">Change Password</button>
+                      </div>
+                      <div class="statusLine" id="passwordStatus"></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="section" id="tab-circulation">
+              <div class="stack">
+                <div class="grid2">
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Default Configuration</div>
+                      <div class="actions" style="justify-content:flex-end; gap:6px; margin-top:0;">
+                        <button class="iconBtn" id="editDefaultsBtn" type="button" aria-label="Edit defaults" title="Edit defaults">✎</button>
+                      </div>
+                    </div>
+
+                    <div class="cardBody">
+                      <div class="formGrid" id="defaultViewMode">
+                        <div class="field">
+                          <label>Loan Period (Days)</label>
+                          <div class="valueBox" id="viewLoanDays">—</div>
+                        </div>
+                        <div class="field">
+                          <label>Fine Per Day</label>
+                          <div class="valueBox" id="viewFinePerDay">—</div>
+                        </div>
+                        <div class="field">
+                          <label>Max Borrow Limit</label>
+                          <div class="valueBox" id="viewBorrowLimit">—</div>
+                        </div>
+                        <div class="field">
+                          <label>Max Renewals</label>
+                          <div class="valueBox" id="viewRenewals">—</div>
+                        </div>
+                        <div class="field full">
+                          <label>Block Renew If Overdue</label>
+                          <div class="valueBox" id="viewBlockRenew">—</div>
+                        </div>
+                      </div>
+
+                      <div class="formGrid" id="defaultEditMode" style="display:none;">
+                        <div class="field">
+                          <label>Loan Period (Days)</label>
+                          <input id="globalLoanDays" type="number" min="1">
+                        </div>
+                        <div class="field">
+                          <label>Fine Per Day</label>
+                          <input id="globalFinePerDay" type="number" min="0" step="0.01">
+                        </div>
+                        <div class="field">
+                          <label>Max Borrow Limit</label>
+                          <input id="globalBorrowLimit" type="number" min="1">
+                        </div>
+                        <div class="field">
+                          <label>Max Renewals</label>
+                          <input id="globalRenewals" type="number" min="0">
+                        </div>
+                        <div class="field full">
+                          <label>Block Renew If Overdue</label>
+                          <select id="globalBlockRenew">
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="actions" id="defaultEditActions" style="display:none;">
+                        <button class="btnGhost" id="cancelDefaultsBtn" type="button">Cancel</button>
+                        <button class="btn" id="saveGlobalBtn" type="button">Save Defaults</button>
+                      </div>
+
+                      <div class="statusLine" id="globalStatus"></div>
+                    </div>
+                  </article>
+
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Grade Rule</div>
+                    </div>
+
+                    <div class="cardBody">
+                      <div class="formGrid">
+                        <div class="field">
+                          <label>Grade</label>
+                          <select id="ruleGrade"></select>
+                        </div>
+                        <div class="field">
+                          <label>Loan Period (Days)</label>
+                          <input id="ruleLoanDays" type="number" min="1">
+                        </div>
+                        <div class="field">
+                          <label>Max Borrow Limit</label>
+                          <input id="ruleBorrowLimit" type="number" min="1">
+                        </div>
+                        <div class="field">
+                          <label>Fine Per Day</label>
+                          <input id="ruleFinePerDay" type="number" min="0" step="0.01">
+                        </div>
+                        <div class="field">
+                          <label>Max Renewals</label>
+                          <input id="ruleRenewals" type="number" min="0">
+                        </div>
+                        <div class="field">
+                          <label>Block Renew If Overdue</label>
+                          <select id="ruleBlockRenew">
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div class="actions">
+                        <button class="btn" id="saveRuleBtn" type="button">Save Grade Rule</button>
+                      </div>
+                      <div class="statusLine" id="ruleStatus"></div>
+                    </div>
+                  </article>
+                </div>
+
+                <article class="card">
+                  <div class="cardHead">
+                    <div class="cardTitle">Existing Grade Rules</div>
+                  </div>
+                  <div class="cardBody">
+                    <div class="rulesWrap">
+                      <div class="rulesHead">
+                        <table class="rulesTable rulesTable--grades">
+                          <colgroup>
+                            <col><col><col><col><col><col><col>
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th>Grade</th>
+                              <th>Loan Days</th>
+                              <th>Fine/Day</th>
+                              <th>Max Borrow</th>
+                              <th>Max Renewals</th>
+                              <th>Block Overdue</th>
+                              <th>Updated</th>
+                            </tr>
+                          </thead>
+                        </table>
+                      </div>
+                      <div class="rulesScroll">
+                        <table class="rulesTable rulesTable--grades">
+                          <colgroup>
+                            <col><col><col><col><col><col><col>
+                          </colgroup>
+                          <tbody id="rulesTableBody">
+                            <tr><td colspan="7">No grade rules yet.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section class="section" id="tab-student">
+              <div class="stack">
+                <div class="grid2">
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Promote Students</div>
+                    </div>
+                    <div class="cardBody">
+                      <div class="formGrid">
+                        <div class="field">
+                          <label>From Grade</label>
+                          <select id="promoteFromGrade"></select>
+                        </div>
+                        <div class="field">
+                          <label>From Section</label>
+                          <select id="promoteFromSection"></select>
+                        </div>
+                        <div class="field">
+                          <label>To Grade</label>
+                          <input id="promoteToGrade" type="text" placeholder="Enter target grade">
+                        </div>
+                        <div class="field">
+                          <label>To Section</label>
+                          <input id="promoteToSection" type="text" >
+                        </div>
+                      </div>
+
+                      <div class="actions">
+                        <button class="btn" id="promoteBtn" type="button">Promote</button>
+                      </div>
+                      <div class="statusLine" id="promoteStatus"></div>
+                      <div class="successBox" id="promoteSuccess"></div>
+                    </div>
+                  </article>
+
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Graduate Grade 12</div>
+                    </div>
+                    <div class="cardBody">
+                      <div class="formGrid">
+                        <div class="field">
+                          <label>Grade</label>
+                          <select id="graduateGrade"></select>
+                        </div>
+                        <div class="field">
+                          <label>Section (Optional)</label>
+                          <select id="graduateSection"></select>
+                        </div>
+                      </div>
+
+                      <div class="actions">
+                        <button class="btnDark" id="graduateBtn" type="button">Graduate Students</button>
+                      </div>
+                      <div class="statusLine" id="graduateStatus"></div>
+                      <div class="successBox" id="graduateSuccess"></div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="section" id="tab-profile">
+              <div class="stack">
+                <div class="grid2">
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Create Librarian</div>
+                    </div>
+                    <div class="cardBody">
+                      <div class="formGrid">
+                        <div class="field">
+                          <label>Username</label>
+                          <input id="newLibUsername" type="text">
+                        </div>
+                        <div class="field">
+                          <label>Email</label>
+                          <input id="newLibEmail" type="email">
+                        </div>
+                        <div class="field">
+                          <label>First Name</label>
+                          <input id="newLibFirst" type="text">
+                        </div>
+                        <div class="field">
+                          <label>Last Name</label>
+                          <input id="newLibLast" type="text">
+                        </div>
+                        <div class="field full">
+                          <label>Password</label>
+                          <input id="newLibPassword" type="password">
+                        </div>
+                      </div>
+
+                      <div class="actions">
+                        <button class="btn" id="createLibBtn" type="button">Create Profile</button>
+                      </div>
+                      <div class="statusLine" id="createLibStatus"></div>
+                    </div>
+                  </article>
+
+                  <article class="card">
+                    <div class="cardHead">
+                      <div class="cardTitle">Existing Librarians</div>
+                    </div>
+                    <div class="cardBody">
+                      <div class="rulesWrap" style="min-height:350px;max-height:350px;">
+                        <div class="rulesHead">
+                          <table class="rulesTable rulesTable--libs">
+                            <colgroup>
+                              <col><col><col><col>
+                            </colgroup>
+                            <thead>
+                              <tr>
+                                <th>Username</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                          </table>
+                        </div>
+                        <div class="rulesScroll">
+                          <table class="rulesTable rulesTable--libs">
+                            <colgroup>
+                              <col><col><col><col>
+                            </colgroup>
+                            <tbody id="librariansTableBody">
+                              <tr><td colspan="4">No librarian accounts found.</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="footer">
+    <div class="site-footer__inner">
+      <section class="site-footer__col">
+        <h3 class="site-footer__title">Golden Key OPAC</h3>
+        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
+        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      </section>
+      <section class="site-footer__col site-footer__col--right">
+        <h3 class="site-footer__title">Contact &amp; Support</h3>
+        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
+        <p class="site-footer__text">(043) 702 2153</p>
+      </section>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:8000";
+
+    function getToken(){
+      return (
+        sessionStorage.getItem("gk_token") ||
+        localStorage.getItem("gk_token") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("access_token") ||
+        sessionStorage.getItem("token") ||
+        sessionStorage.getItem("access_token") ||
+        ""
+      ).replace(/^Bearer\s+/i, "").trim();
+    }
+
+    if (!getToken()) window.location.href = "login.html";
+
+    function authHeaders(extra = {}){
+      return { "Authorization": "Bearer " + getToken(), ...extra };
+    }
+
+    function showToast(message){
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function esc(v){
+      return String(v ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        "\"":"&quot;",
+        "'":"&#39;"
+      }[m]));
+    }
+
+    function qs(obj){
+      const p = new URLSearchParams();
+      Object.entries(obj).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") p.append(k, v);
+      });
+      return p.toString();
+    }
+
+    async function apiFetch(path, options = {}){
+      const res = await fetch(BASE_URL + path, {
+        ...options,
+        headers: {
+          ...authHeaders(),
+          ...(options.headers || {})
+        }
+      });
+
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+
+      if (!res.ok){
+        const msg = (data && data.detail)
+          ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail))
+          : (typeof data === "string" && data ? data : "Request failed");
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    function fmtDateTime(v){
+      if (!v) return "—";
+      try { return new Date(v).toLocaleString(); } catch { return v; }
+    }
+
+    function setProgress(on, pct = 0){
+      const wrap = document.getElementById("progressWrap");
+      const bar = document.getElementById("progressBar");
+      wrap.style.display = on ? "block" : "none";
+      bar.style.width = `${pct}%`;
+      if (on && pct < 90){
+        clearInterval(setProgress._i);
+        let current = pct;
+        setProgress._i = setInterval(() => {
+          current = Math.min(current + 7, 90);
+          bar.style.width = `${current}%`;
+        }, 140);
+      } else if (!on){
+        clearInterval(setProgress._i);
+        bar.style.width = "0%";
+      }
+    }
+
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+
+    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      ["gk_token","token","access_token"].forEach(k => {
+        try { sessionStorage.removeItem(k); } catch(_) {}
+        try { localStorage.removeItem(k); } catch(_) {}
+      });
+      window.location.href = "login.html";
+    });
+
+    document.getElementById("contactLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const footer = document.getElementById("footer");
+      const header = document.getElementById("siteHeader");
+      const headerH = header?.getBoundingClientRect().height ?? 0;
+      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
+
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){
+      if (!header) return;
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+    }
+    syncHeader();
+    window.addEventListener("scroll", syncHeader, { passive: true });
+
+    const tabs = document.querySelectorAll(".tab");
+    const sections = document.querySelectorAll(".section");
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(t => t.classList.remove("is-active"));
+        sections.forEach(s => s.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        document.getElementById("tab-" + tab.dataset.tab).classList.add("is-active");
+      });
+    });
+
+    let currentDefaults = null;
+    let latestGradeRules = {};
+    let studentMeta = { grades: [], sections_by_grade: {} };
+
+    function toggleDefaultEdit(isEditing){
+      document.getElementById("defaultViewMode").style.display = isEditing ? "none" : "grid";
+      document.getElementById("defaultEditMode").style.display = isEditing ? "grid" : "none";
+      document.getElementById("defaultEditActions").style.display = isEditing ? "flex" : "none";
+      document.getElementById("editDefaultsBtn").style.display = isEditing ? "none" : "inline-flex";
+    }
+
+    function buildGradeSelect(selectEl, includeBlank = false){
+      selectEl.innerHTML = "";
+
+      if (includeBlank){
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "Select";
+        selectEl.appendChild(blank);
+      }
+
+      const grades = studentMeta.grades?.length ? studentMeta.grades : ["7","8","9","10","11","12"];
+      grades.forEach(g => {
+        const clean = String(g).trim();
+        const opt = document.createElement("option");
+        opt.value = clean;
+        opt.textContent = clean;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function latestRulesByGrade(rows){
+      const latest = {};
+      rows.forEach(r => {
+        const g = String(r.grade || "").trim();
+        if (!g) return;
+        if (!latest[g]) {
+          latest[g] = r;
+          return;
+        }
+        const oldTime = new Date(latest[g].updated_at || 0).getTime();
+        const newTime = new Date(r.updated_at || 0).getTime();
+        if (newTime >= oldTime) latest[g] = r;
+      });
+      return latest;
+    }
+
+    function syncSectionsForGrade(gradeSelectId, sectionSelectId, includeBlank){
+      const grade = document.getElementById(gradeSelectId).value;
+      const sectionSelect = document.getElementById(sectionSelectId);
+      const sections = (studentMeta.sections_by_grade && studentMeta.sections_by_grade[String(grade)])
+        ? studentMeta.sections_by_grade[String(grade)]
+        : [];
+
+      sectionSelect.innerHTML = "";
+
+      if (includeBlank){
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "All Sections";
+        sectionSelect.appendChild(blank);
+      }
+
+      if (!sections.length && !includeBlank){
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No sections found";
+        sectionSelect.appendChild(opt);
+        return;
+      }
+
+      sections.forEach(sec => {
+        const opt = document.createElement("option");
+        opt.value = sec;
+        opt.textContent = sec;
+        sectionSelect.appendChild(opt);
+      });
+    }
+
+    function fillRuleFormFromSelectedGrade(){
+      const grade = document.getElementById("ruleGrade").value;
+      const existing = latestGradeRules[String(grade)];
+
+      if (existing){
+        document.getElementById("ruleLoanDays").value = existing.loan_period_days ?? "";
+        document.getElementById("ruleBorrowLimit").value = existing.max_borrow_limit ?? "";
+        document.getElementById("ruleFinePerDay").value = existing.fine_per_day ?? "";
+        document.getElementById("ruleRenewals").value = existing.max_renewals ?? "";
+        document.getElementById("ruleBlockRenew").value = String(Boolean(existing.block_renew_if_overdue));
+      } else if (currentDefaults){
+        document.getElementById("ruleLoanDays").value = currentDefaults.loan_period_days ?? "";
+        document.getElementById("ruleBorrowLimit").value = currentDefaults.max_borrow_limit ?? "";
+        document.getElementById("ruleFinePerDay").value = currentDefaults.fine_per_day ?? "";
+        document.getElementById("ruleRenewals").value = currentDefaults.max_renewals ?? "";
+        document.getElementById("ruleBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
+      } else {
+        document.getElementById("ruleLoanDays").value = "";
+        document.getElementById("ruleBorrowLimit").value = "";
+        document.getElementById("ruleFinePerDay").value = "";
+        document.getElementById("ruleRenewals").value = "";
+        document.getElementById("ruleBlockRenew").value = "true";
+      }
+    }
+
+    async function loadMe(){
+      const data = await apiFetch("/api/settings/me");
+      document.getElementById("meUsername").value = data.username || "";
+      document.getElementById("meEmail").value = data.email || "";
+      document.getElementById("meFirstName").value = data.first_name || "";
+      document.getElementById("meLastName").value = data.last_name || "";
+    }
+
+    async function saveProfile(){
+      const first_name = document.getElementById("meFirstName").value.trim();
+      const last_name = document.getElementById("meLastName").value.trim();
+      const email = document.getElementById("meEmail").value.trim();
+
+      await apiFetch("/api/settings/me?" + qs({ first_name, last_name, email }), {
+        method: "PUT"
+      });
+
+      document.getElementById("profileStatus").textContent = "Profile updated successfully.";
+      showToast("Profile updated");
+      await loadMe();
+    }
+
+    async function changePassword(){
+      const current_password = document.getElementById("currentPassword").value;
+      const new_password = document.getElementById("newPassword").value;
+      const confirm_password = document.getElementById("confirmPassword").value;
+
+      if (!current_password || !new_password || !confirm_password){
+        showToast("Please complete all password fields");
+        return;
+      }
+      if (new_password !== confirm_password){
+        showToast("New passwords do not match");
+        return;
+      }
+
+      await apiFetch("/api/settings/change-password?" + qs({ current_password, new_password }), {
+        method: "POST"
+      });
+
+      document.getElementById("passwordStatus").textContent = "Password changed successfully.";
+      document.getElementById("currentPassword").value = "";
+      document.getElementById("newPassword").value = "";
+      document.getElementById("confirmPassword").value = "";
+      showToast("Password changed");
+    }
+
+    async function loadGlobalSettings(){
+      const data = await apiFetch("/api/settings/circulation");
+      currentDefaults = data || {};
+
+      document.getElementById("viewLoanDays").textContent = currentDefaults.loan_period_days ?? "—";
+      document.getElementById("viewFinePerDay").textContent = currentDefaults.fine_per_day ?? "—";
+      document.getElementById("viewBorrowLimit").textContent = currentDefaults.max_borrow_limit ?? "—";
+      document.getElementById("viewRenewals").textContent = currentDefaults.max_renewals ?? "—";
+      document.getElementById("viewBlockRenew").textContent = currentDefaults.block_renew_if_overdue ? "Yes" : "No";
+
+      document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days ?? "";
+      document.getElementById("globalFinePerDay").value = currentDefaults.fine_per_day ?? "";
+      document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit ?? "";
+      document.getElementById("globalRenewals").value = currentDefaults.max_renewals ?? "";
+      document.getElementById("globalBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
+
+      fillRuleFormFromSelectedGrade();
+    }
+
+    async function saveGlobalSettings(){
+      const loan_period_days = document.getElementById("globalLoanDays").value;
+      const fine_per_day = document.getElementById("globalFinePerDay").value;
+      const max_borrow_limit = document.getElementById("globalBorrowLimit").value;
+      const max_renewals = document.getElementById("globalRenewals").value;
+      const block_renew_if_overdue = document.getElementById("globalBlockRenew").value;
+
+      await apiFetch("/api/settings/circulation?" + qs({
+        loan_period_days,
+        fine_per_day,
+        max_borrow_limit,
+        max_renewals,
+        block_renew_if_overdue
+      }), { method: "PUT" });
+
+      document.getElementById("globalStatus").textContent = "Default configuration updated successfully.";
+      showToast("Defaults updated");
+      toggleDefaultEdit(false);
+      await loadGlobalSettings();
+    }
+
+    async function loadGradeRules(){
+      const rows = await apiFetch("/api/settings/grade-rules");
+      latestGradeRules = latestRulesByGrade(Array.isArray(rows) ? rows : []);
+      const sorted = Object.values(latestGradeRules).sort((a,b) => Number(a.grade) - Number(b.grade));
+      const tbody = document.getElementById("rulesTableBody");
+
+      if (!sorted.length){
+        tbody.innerHTML = `<tr><td colspan="7">No grade rules yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = sorted.map(r => `
+          <tr>
+            <td>${esc(r.grade ?? "—")}</td>
+            <td>${esc(r.loan_period_days ?? "—")}</td>
+            <td>${esc(r.fine_per_day ?? "—")}</td>
+            <td>${esc(r.max_borrow_limit ?? "—")}</td>
+            <td>${esc(r.max_renewals ?? "—")}</td>
+            <td>${esc(r.block_renew_if_overdue ? "Yes" : "No")}</td>
+            <td>${esc(fmtDateTime(r.updated_at))}</td>
+          </tr>
+        `).join("");
+      }
+
+      fillRuleFormFromSelectedGrade();
+    }
+
+    async function saveGradeRule(){
+      const grade = document.getElementById("ruleGrade").value;
+      const loan_period_days = document.getElementById("ruleLoanDays").value;
+      const fine_per_day = document.getElementById("ruleFinePerDay").value;
+      const max_borrow_limit = document.getElementById("ruleBorrowLimit").value;
+      const max_renewals = document.getElementById("ruleRenewals").value;
+      const block_renew_if_overdue = document.getElementById("ruleBlockRenew").value;
+
+      if (!grade){
+        showToast("Please select a grade");
+        return;
+      }
+
+      await apiFetch("/api/settings/grade-rules?" + qs({
+        grade,
+        loan_period_days,
+        fine_per_day,
+        max_borrow_limit,
+        max_renewals,
+        block_renew_if_overdue
+      }), { method: "POST" });
+
+      document.getElementById("ruleStatus").textContent = `Rule for ${grade} saved successfully.`;
+      showToast(`Rule ${grade} saved`);
+      await loadGradeRules();
+    }
+
+    async function loadStudentOptions(){
+      let data = null;
+
+      try{
+        data = await apiFetch("/api/students/meta");
+      }catch(err){
+        data = { grades: ["7","8","9","10","11","12"], sections_by_grade: {} };
+      }
+
+      studentMeta = {
+        grades: Array.isArray(data?.grades) ? data.grades.map(v => String(v).trim()) : ["7","8","9","10","11","12"],
+        sections_by_grade: data?.sections_by_grade || data?.sections || {}
+      };
+
+      buildGradeSelect(document.getElementById("ruleGrade"), false);
+      buildGradeSelect(document.getElementById("promoteFromGrade"), false);
+      buildGradeSelect(document.getElementById("graduateGrade"), false);
+
+      const gradSelect = document.getElementById("graduateGrade");
+      gradSelect.value = studentMeta.grades.includes("12") ? "12" : (studentMeta.grades[0] || "12");
+
+      syncSectionsForGrade("promoteFromGrade", "promoteFromSection", false);
+      syncSectionsForGrade("graduateGrade", "graduateSection", true);
+
+      fillRuleFormFromSelectedGrade();
+    }
+
+    async function promoteStudents(){
+      const from_grade = document.getElementById("promoteFromGrade").value.trim();
+      const from_section = document.getElementById("promoteFromSection").value.trim();
+      const to_grade = document.getElementById("promoteToGrade").value.trim();
+      const to_section = document.getElementById("promoteToSection").value.trim();
+
+      if (!from_grade || !to_grade){
+        showToast("Please complete the promotion fields");
+        return;
+      }
+
+      const data = await apiFetch("/api/students/bulk-promote?" + qs({
+        from_grade,
+        to_grade,
+        only_status: "active"
+      }), { method: "POST" });
+
+      document.getElementById("promoteStatus").textContent = "Promotion completed.";
+
+      const success = document.getElementById("promoteSuccess");
+      let extra = "";
+      if (from_section) extra += ` from section ${from_section}`;
+      if (to_section) extra += ` to section ${to_section}`;
+      success.textContent = `${data?.updated_count ?? 0} student(s) promoted from ${from_grade}${extra ? extra : ""} to ${to_grade}.`;
+      success.classList.add("show");
+
+      showToast("Students promoted");
+      document.getElementById("promoteToGrade").value = "";
+      document.getElementById("promoteToSection").value = "";
+      await loadStudentOptions();
+    }
+
+    async function graduateStudents(){
+      const grade = document.getElementById("graduateGrade").value.trim();
+      const section = document.getElementById("graduateSection").value.trim();
+
+      if (!grade){
+        showToast("Please select a grade");
+        return;
+      }
+
+      const data = await apiFetch("/api/students/bulk-status?" + qs({
+        from_status: "active",
+        to_status: "graduated",
+        grade,
+        section
+      }), { method: "POST" });
+
+      document.getElementById("graduateStatus").textContent = "Graduation update completed.";
+
+      const success = document.getElementById("graduateSuccess");
+      success.textContent = `${data?.updated_count ?? 0} student(s) marked as graduated.`;
+      success.classList.add("show");
+
+      showToast("Students graduated");
+      await loadStudentOptions();
+    }
+
+    async function loadLibrarians(){
+      try{
+        const rows = await apiFetch("/api/settings/librarians");
+        const tbody = document.getElementById("librariansTableBody");
+
+        if (!Array.isArray(rows) || !rows.length){
+          tbody.innerHTML = `<tr><td colspan="4">No librarian accounts found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = rows.map(r => `
+          <tr>
+            <td>${esc(r.username ?? "—")}</td>
+            <td>${esc([r.first_name, r.last_name].filter(Boolean).join(" ") || "—")}</td>
+            <td>${esc(r.email ?? "—")}</td>
+            <td>${esc(r.is_active === false ? "Inactive" : "Active")}</td>
+          </tr>
+        `).join("");
+      }catch(err){
+        document.getElementById("librariansTableBody").innerHTML = `<tr><td colspan="4">Unable to load librarians.</td></tr>`;
+      }
+    }
+
+    async function createLibrarian(){
+      const username = document.getElementById("newLibUsername").value.trim();
+      const email = document.getElementById("newLibEmail").value.trim();
+      const first_name = document.getElementById("newLibFirst").value.trim();
+      const last_name = document.getElementById("newLibLast").value.trim();
+      const password = document.getElementById("newLibPassword").value;
+
+      if (!username || !email || !password){
+        showToast("Username, email, and password are required");
+        return;
+      }
+
+      await apiFetch("/api/settings/librarians/create?" + qs({
+        username,
+        email,
+        first_name,
+        last_name,
+        password
+      }), { method: "POST" });
+
+      document.getElementById("createLibStatus").textContent = "Librarian profile created successfully.";
+      document.getElementById("newLibUsername").value = "";
+      document.getElementById("newLibEmail").value = "";
+      document.getElementById("newLibFirst").value = "";
+      document.getElementById("newLibLast").value = "";
+      document.getElementById("newLibPassword").value = "";
+
+      showToast("Librarian created");
+      await loadLibrarians();
+    }
+
+    document.getElementById("reloadMeBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await loadMe();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Reload failed");
+      }
+    });
+
+    document.getElementById("saveProfileBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await saveProfile();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Profile save failed");
+      }
+    });
+
+    document.getElementById("changePasswordBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await changePassword();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Password change failed");
+      }
+    });
+
+    document.getElementById("editDefaultsBtn").addEventListener("click", () => {
+      toggleDefaultEdit(true);
+    });
+
+    document.getElementById("cancelDefaultsBtn").addEventListener("click", () => {
+      toggleDefaultEdit(false);
+      if (currentDefaults){
+        document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days ?? "";
+        document.getElementById("globalFinePerDay").value = currentDefaults.fine_per_day ?? "";
+        document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit ?? "";
+        document.getElementById("globalRenewals").value = currentDefaults.max_renewals ?? "";
+        document.getElementById("globalBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
+      }
+    });
+
+    document.getElementById("saveGlobalBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await saveGlobalSettings();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Saving defaults failed");
+      }
+    });
+
+    document.getElementById("ruleGrade").addEventListener("change", fillRuleFormFromSelectedGrade);
+
+    document.getElementById("saveRuleBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await saveGradeRule();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Saving grade rule failed");
+      }
+    });
+
+    document.getElementById("promoteFromGrade").addEventListener("change", () => {
+      syncSectionsForGrade("promoteFromGrade", "promoteFromSection", false);
+    });
+
+    document.getElementById("graduateGrade").addEventListener("change", () => {
+      syncSectionsForGrade("graduateGrade", "graduateSection", true);
+    });
+
+    document.getElementById("promoteBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await promoteStudents();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Promotion failed");
+      }
+    });
+
+    document.getElementById("graduateBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await graduateStudents();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Graduation update failed");
+      }
+    });
+
+    document.getElementById("createLibBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await createLibrarian();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Creating librarian failed");
+      }
+    });
+
+    async function init(){
+      try{
+        setProgress(true, 15);
+
+        await Promise.allSettled([
+          loadMe(),
+          loadGlobalSettings(),
+          loadGradeRules(),
+          loadStudentOptions(),
+          loadLibrarians()
+        ]);
+
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 200);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Failed to load settings");
+      }
+    }
+
+    toggleDefaultEdit(false);
+    init();
+  </script>
+</body>
+</html>

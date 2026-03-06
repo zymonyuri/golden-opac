@@ -1153,7 +1153,47 @@ def search_students(q: str = "", current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
+@app.get("/api/students/meta")
+def get_student_meta(current=Depends(get_current_librarian)):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT DISTINCT grade
+            FROM student
+            WHERE grade IS NOT NULL AND TRIM(grade) <> ''
+            ORDER BY grade ASC
+            """
+        )
+        grades = [r["grade"] for r in cur.fetchall()]
 
+        cur.execute(
+            """
+            SELECT DISTINCT grade, section
+            FROM student
+            WHERE grade IS NOT NULL
+              AND TRIM(grade) <> ''
+              AND section IS NOT NULL
+              AND TRIM(section) <> ''
+            ORDER BY grade ASC, section ASC
+            """
+        )
+        rows = cur.fetchall()
+
+        sections_by_grade = {}
+        for r in rows:
+            g = str(r["grade"]).strip()
+            s = str(r["section"]).strip()
+            sections_by_grade.setdefault(g, []).append(s)
+
+        return {
+            "grades": grades,
+            "sections_by_grade": sections_by_grade,
+        }
+    finally:
+        cur.close()
+        conn.close()
 
 @app.get("/api/students/{student_id}")
 def get_student(student_id: int, current=Depends(get_current_librarian)):
@@ -3609,8 +3649,8 @@ def update_my_profile(
 @app.get("/api/settings/circulation")
 def get_circulation_settings(current=Depends(get_current_librarian)):
     """
-    Returns global circulation defaults from system_settings (row id=1).
-    Frontend uses this for Settings -> Circulation Settings.
+    Returns global circulation defaults.
+    If system_settings is empty, auto-creates a default row.
     """
     conn = get_connection()
     cur = conn.cursor()
@@ -3620,13 +3660,29 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
             SELECT settings_id, loan_period_days, fine_per_day, max_borrow_limit,
                    max_renewals, block_renew_if_overdue, updated_at, updated_by
             FROM system_settings
-            WHERE settings_id = 1
+            ORDER BY settings_id ASC
+            LIMIT 1
             """
         )
         row = cur.fetchone()
+
         if not row:
-            raise HTTPException(status_code=500, detail="system_settings row missing (settings_id=1)")
+            cur.execute(
+                """
+                INSERT INTO system_settings
+                    (loan_period_days, fine_per_day, max_borrow_limit, max_renewals,
+                     block_renew_if_overdue, updated_at, updated_by)
+                VALUES (7, 5.00, 3, 1, TRUE, NOW(), %s)
+                RETURNING settings_id, loan_period_days, fine_per_day, max_borrow_limit,
+                          max_renewals, block_renew_if_overdue, updated_at, updated_by
+                """,
+                (current["librarian_id"],),
+            )
+            row = cur.fetchone()
+            conn.commit()
+
         return row
+
     finally:
         cur.close()
         conn.close()
@@ -4079,14 +4135,29 @@ def update_circulation_settings(
     block_renew_if_overdue: bool | None = None,
     current=Depends(get_current_librarian),
 ):
-    """
-    Updates global circulation defaults.
-    Only fields provided will be updated.
-    """
     conn = get_connection()
     cur = conn.cursor()
 
     try:
+        # ensure one row exists
+        cur.execute("SELECT settings_id FROM system_settings ORDER BY settings_id ASC LIMIT 1")
+        existing = cur.fetchone()
+
+        if not existing:
+            cur.execute(
+                """
+                INSERT INTO system_settings
+                    (loan_period_days, fine_per_day, max_borrow_limit, max_renewals,
+                     block_renew_if_overdue, updated_at, updated_by)
+                VALUES (7, 5.00, 3, 1, TRUE, NOW(), %s)
+                RETURNING settings_id
+                """,
+                (current["librarian_id"],),
+            )
+            existing = cur.fetchone()
+
+        settings_id = existing["settings_id"]
+
         updates = []
         params = []
 
@@ -4121,13 +4192,10 @@ def update_circulation_settings(
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided to update")
 
-        # Always update audit fields
         updates.append("updated_at = NOW()")
         updates.append("updated_by = %s")
         params.append(current["librarian_id"])
-
-        # WHERE clause param
-        params.append(1)
+        params.append(settings_id)
 
         cur.execute(
             f"""
@@ -4151,6 +4219,60 @@ def update_circulation_settings(
         cur.close()
         conn.close()
 
+
+
+
+
+
+@app.post("/api/settings/librarians/create")
+def create_librarian_profile(
+    username: str,
+    email: str,
+    password: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    if not username.strip():
+        raise HTTPException(status_code=400, detail="username is required")
+    if not email.strip():
+        raise HTTPException(status_code=400, detail="email is required")
+
+    validate_new_password(password)
+    pw_hash = hash_password(password)
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO librarian (username, email, password_hash, first_name, last_name, is_active, created_at)
+            VALUES (%s, %s, %s, %s, %s, TRUE, NOW())
+            RETURNING librarian_id, username, email, first_name, last_name, is_active, created_at
+            """,
+            (
+                username.strip(),
+                email.strip(),
+                pw_hash,
+                first_name.strip() if first_name else None,
+                last_name.strip() if last_name else None,
+            ),
+        )
+        new_lib = cur.fetchone()
+        conn.commit()
+
+        return {
+            "message": "Librarian created successfully",
+            "librarian": new_lib,
+        }
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Create librarian failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 # -----------------------------
 # PASSWORD RULES
 # -----------------------------
@@ -4241,6 +4363,57 @@ def change_password(
     finally:
         cur.close()
         conn.close()
+
+@app.post("/api/settings/librarians/create")
+def create_librarian_profile(
+    username: str,
+    email: str,
+    password: str,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    if not username.strip():
+        raise HTTPException(status_code=400, detail="username is required")
+    if not email.strip():
+        raise HTTPException(status_code=400, detail="email is required")
+
+    validate_new_password(password)
+    pw_hash = hash_password(password)
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO librarian (username, email, password_hash, first_name, last_name, is_active, created_at)
+            VALUES (%s, %s, %s, %s, %s, TRUE, NOW())
+            RETURNING librarian_id, username, email, first_name, last_name, is_active, created_at
+            """,
+            (
+                username.strip(),
+                email.strip(),
+                pw_hash,
+                first_name.strip() if first_name else None,
+                last_name.strip() if last_name else None,
+            ),
+        )
+        new_lib = cur.fetchone()
+        conn.commit()
+
+        return {
+            "message": "Librarian created successfully",
+            "librarian": new_lib,
+        }
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Create librarian failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
 
 # -----------------------------
 # SETTINGS: ENROLL NEW LIBRARIAN (New Profile) (Librarian Only)
