@@ -299,6 +299,33 @@ input[type="password"]::-webkit-credentials-auto-fill-button,
 input[type="password"]::-webkit-textfield-decoration-container {
   display: none !important;
 }
+.back-row{
+  display:flex;
+  justify-content:flex-start;
+  margin-bottom:10px;
+}
+
+.back-btn{
+  text-decoration:none;
+  font-weight:900;
+  font-size:13px;
+  padding:8px 14px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.18);
+  border:1px solid rgba(255,255,255,0.25);
+  color:rgba(255,255,255,0.9);
+  backdrop-filter: blur(10px);
+  transition:transform 160ms ease, background 160ms ease;
+}
+
+.back-btn:hover{
+  transform:translateY(-1px);
+  background:rgba(255,255,255,0.28);
+}
+
+.back-btn:active{
+  transform:translateY(1px);
+}
 
 /* Extra Edge safeguard */
 input::-ms-reveal {
@@ -313,6 +340,11 @@ input::-ms-reveal {
 
   <main class="wrap">
     <section class="card" aria-label="Librarian Login">
+      <div class="back-row">
+  <a href="index.html" class="back-btn">
+    <
+  </a>
+</div>
       <div class="logo">
         <img src="assets/school_logo.png" alt="Golden Key Logo">
       </div>
