@@ -4,6 +4,7 @@ psycopg[binary]
 python-dotenv
 requests
 passlib[bcrypt]
+bcrypt==4.0.1
 python-jose
 python-multipart
 reportlab
