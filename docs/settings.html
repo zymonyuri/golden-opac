@@ -609,44 +609,68 @@
                       <div class="formGrid" id="defaultViewMode">
                         <div class="field">
                           <label>Loan Period (Days)</label>
-                          <div class="valueBox" id="viewLoanDays">—</div>
+                          <div class="valueBox" id="viewLoanDays">7</div>
                         </div>
                         <div class="field">
                           <label>Fine Per Day</label>
-                          <div class="valueBox" id="viewFinePerDay">—</div>
+                          <div class="valueBox" id="viewFinePerDay">₱5.00</div>
                         </div>
                         <div class="field">
                           <label>Max Borrow Limit</label>
-                          <div class="valueBox" id="viewBorrowLimit">—</div>
+                          <div class="valueBox" id="viewBorrowLimit">3</div>
                         </div>
                         <div class="field">
                           <label>Max Renewals</label>
-                          <div class="valueBox" id="viewRenewals">—</div>
+                          <div class="valueBox" id="viewRenewals">1</div>
                         </div>
-                        <div class="field full">
+                        <div class="field">
+                          <label>Damage Fine (Minor)</label>
+                          <div class="valueBox" id="viewDamageMinor">₱50.00</div>
+                        </div>
+                        <div class="field">
+                          <label>Damage Fine (Major)</label>
+                          <div class="valueBox" id="viewDamageMajor">₱200.00</div>
+                        </div>
+                        <div class="field">
+                          <label>Lost Book Fine</label>
+                          <div class="valueBox" id="viewLostFine">₱500.00</div>
+                        </div>
+                        <div class="field">
                           <label>Block Renew If Overdue</label>
-                          <div class="valueBox" id="viewBlockRenew">—</div>
+                          <div class="valueBox" id="viewBlockRenew">Yes</div>
                         </div>
                       </div>
 
                       <div class="formGrid" id="defaultEditMode" style="display:none;">
                         <div class="field">
                           <label>Loan Period (Days)</label>
-                          <input id="globalLoanDays" type="number" min="1">
+                          <input id="globalLoanDays" type="number" min="1" value="7">
                         </div>
                         <div class="field">
                           <label>Fine Per Day</label>
-                          <input id="globalFinePerDay" type="number" min="0" step="0.01">
+                          <input id="globalFinePerDay" type="number" min="0" step="0.01" value="5.00">
                         </div>
                         <div class="field">
                           <label>Max Borrow Limit</label>
-                          <input id="globalBorrowLimit" type="number" min="1">
+                          <input id="globalBorrowLimit" type="number" min="1" value="3">
                         </div>
                         <div class="field">
                           <label>Max Renewals</label>
-                          <input id="globalRenewals" type="number" min="0">
+                          <input id="globalRenewals" type="number" min="0" value="1">
                         </div>
-                        <div class="field full">
+                        <div class="field">
+                          <label>Damage Fine (Minor)</label>
+                          <input id="globalDamageMinor" type="number" min="0" step="0.01" value="50.00">
+                        </div>
+                        <div class="field">
+                          <label>Damage Fine (Major)</label>
+                          <input id="globalDamageMajor" type="number" min="0" step="0.01" value="200.00">
+                        </div>
+                        <div class="field">
+                          <label>Lost Book Fine</label>
+                          <input id="globalLostFine" type="number" min="0" step="0.01" value="500.00">
+                        </div>
+                        <div class="field">
                           <label>Block Renew If Overdue</label>
                           <select id="globalBlockRenew">
                             <option value="true">Yes</option>
@@ -1044,6 +1068,43 @@
     let latestGradeRules = {};
     let studentMeta = { grades: [], sections_by_grade: {} };
 
+    function getSystemDefaultSettings(){
+      return {
+        loan_period_days: 7,
+        fine_per_day: 5.00,
+        max_borrow_limit: 3,
+        max_renewals: 1,
+        block_renew_if_overdue: true,
+        damage_fine_minor: 50.00,
+        damage_fine_major: 200.00,
+        lost_book_fine: 500.00
+      };
+    }
+
+    function coalesceSetting(value, fallback){
+      return value === null || value === undefined || value === "" ? fallback : value;
+    }
+
+    function normalizeDefaults(data){
+      const fallback = getSystemDefaultSettings();
+      const source = data || {};
+      return {
+        loan_period_days: Number(coalesceSetting(source.loan_period_days, fallback.loan_period_days)),
+        fine_per_day: Number(coalesceSetting(source.fine_per_day, fallback.fine_per_day)),
+        max_borrow_limit: Number(coalesceSetting(source.max_borrow_limit, fallback.max_borrow_limit)),
+        max_renewals: Number(coalesceSetting(source.max_renewals, fallback.max_renewals)),
+        block_renew_if_overdue: String(coalesceSetting(source.block_renew_if_overdue, fallback.block_renew_if_overdue)).toLowerCase() !== "false",
+        damage_fine_minor: Number(coalesceSetting(source.damage_fine_minor, fallback.damage_fine_minor)),
+        damage_fine_major: Number(coalesceSetting(source.damage_fine_major, fallback.damage_fine_major)),
+        lost_book_fine: Number(coalesceSetting(source.lost_book_fine, fallback.lost_book_fine))
+      };
+    }
+
+    function fmtCurrency(value){
+      const n = Number(value);
+      return Number.isFinite(n) ? `₱${n.toFixed(2)}` : "—";
+    }
+
     function toggleDefaultEdit(isEditing){
       document.getElementById("defaultViewMode").style.display = isEditing ? "none" : "grid";
       document.getElementById("defaultEditMode").style.display = isEditing ? "grid" : "none";
@@ -1193,18 +1254,24 @@
 
     async function loadGlobalSettings(){
       const data = await apiFetch("/api/settings/circulation");
-      currentDefaults = data || {};
+      currentDefaults = normalizeDefaults(data);
 
-      document.getElementById("viewLoanDays").textContent = currentDefaults.loan_period_days ?? "—";
-      document.getElementById("viewFinePerDay").textContent = currentDefaults.fine_per_day ?? "—";
-      document.getElementById("viewBorrowLimit").textContent = currentDefaults.max_borrow_limit ?? "—";
-      document.getElementById("viewRenewals").textContent = currentDefaults.max_renewals ?? "—";
+      document.getElementById("viewLoanDays").textContent = currentDefaults.loan_period_days;
+      document.getElementById("viewFinePerDay").textContent = fmtCurrency(currentDefaults.fine_per_day);
+      document.getElementById("viewBorrowLimit").textContent = currentDefaults.max_borrow_limit;
+      document.getElementById("viewRenewals").textContent = currentDefaults.max_renewals;
+      document.getElementById("viewDamageMinor").textContent = fmtCurrency(currentDefaults.damage_fine_minor);
+      document.getElementById("viewDamageMajor").textContent = fmtCurrency(currentDefaults.damage_fine_major);
+      document.getElementById("viewLostFine").textContent = fmtCurrency(currentDefaults.lost_book_fine);
       document.getElementById("viewBlockRenew").textContent = currentDefaults.block_renew_if_overdue ? "Yes" : "No";
 
-      document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days ?? "";
-      document.getElementById("globalFinePerDay").value = currentDefaults.fine_per_day ?? "";
-      document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit ?? "";
-      document.getElementById("globalRenewals").value = currentDefaults.max_renewals ?? "";
+      document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days;
+      document.getElementById("globalFinePerDay").value = currentDefaults.fine_per_day.toFixed(2);
+      document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit;
+      document.getElementById("globalRenewals").value = currentDefaults.max_renewals;
+      document.getElementById("globalDamageMinor").value = currentDefaults.damage_fine_minor.toFixed(2);
+      document.getElementById("globalDamageMajor").value = currentDefaults.damage_fine_major.toFixed(2);
+      document.getElementById("globalLostFine").value = currentDefaults.lost_book_fine.toFixed(2);
       document.getElementById("globalBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
 
       fillRuleFormFromSelectedGrade();
@@ -1215,6 +1282,9 @@
       const fine_per_day = document.getElementById("globalFinePerDay").value;
       const max_borrow_limit = document.getElementById("globalBorrowLimit").value;
       const max_renewals = document.getElementById("globalRenewals").value;
+      const damage_fine_minor = document.getElementById("globalDamageMinor").value;
+      const damage_fine_major = document.getElementById("globalDamageMajor").value;
+      const lost_book_fine = document.getElementById("globalLostFine").value;
       const block_renew_if_overdue = document.getElementById("globalBlockRenew").value;
 
       await apiFetch("/api/settings/circulation?" + qs({
@@ -1222,6 +1292,9 @@
         fine_per_day,
         max_borrow_limit,
         max_renewals,
+        damage_fine_minor,
+        damage_fine_major,
+        lost_book_fine,
         block_renew_if_overdue
       }), { method: "PUT" });
 
@@ -1465,10 +1538,13 @@
     document.getElementById("cancelDefaultsBtn").addEventListener("click", () => {
       toggleDefaultEdit(false);
       if (currentDefaults){
-        document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days ?? "";
-        document.getElementById("globalFinePerDay").value = currentDefaults.fine_per_day ?? "";
-        document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit ?? "";
-        document.getElementById("globalRenewals").value = currentDefaults.max_renewals ?? "";
+        document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days;
+        document.getElementById("globalFinePerDay").value = Number(currentDefaults.fine_per_day).toFixed(2);
+        document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit;
+        document.getElementById("globalRenewals").value = currentDefaults.max_renewals;
+        document.getElementById("globalDamageMinor").value = Number(currentDefaults.damage_fine_minor).toFixed(2);
+        document.getElementById("globalDamageMajor").value = Number(currentDefaults.damage_fine_major).toFixed(2);
+        document.getElementById("globalLostFine").value = Number(currentDefaults.lost_book_fine).toFixed(2);
         document.getElementById("globalBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
       }
     });
