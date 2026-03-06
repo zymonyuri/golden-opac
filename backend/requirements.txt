@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+psycopg[binary]
+python-dotenv
+requests
+passlib[bcrypt]
+python-jose
+python-multipart
+reportlab
+pydantic
