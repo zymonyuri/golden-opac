@@ -3646,6 +3646,9 @@ def update_my_profile(
 # -----------------------------
 # SETTINGS: CIRCULATION DEFAULTS (Librarian Only)
 # -----------------------------
+# -----------------------------
+# SETTINGS: CIRCULATION DEFAULTS (Librarian Only)
+# -----------------------------
 @app.get("/api/settings/circulation")
 def get_circulation_settings(current=Depends(get_current_librarian)):
     """
@@ -3657,8 +3660,18 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
     try:
         cur.execute(
             """
-            SELECT settings_id, loan_period_days, fine_per_day, max_borrow_limit,
-                   max_renewals, block_renew_if_overdue, updated_at, updated_by
+            SELECT
+                settings_id,
+                loan_period_days,
+                fine_per_day,
+                max_borrow_limit,
+                max_renewals,
+                block_renew_if_overdue,
+                COALESCE(damage_fine_minor, 50.00) AS damage_fine_minor,
+                COALESCE(damage_fine_major, 200.00) AS damage_fine_major,
+                COALESCE(lost_book_fine, 500.00) AS lost_book_fine,
+                updated_at,
+                updated_by
             FROM system_settings
             ORDER BY settings_id ASC
             LIMIT 1
@@ -3670,11 +3683,32 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
             cur.execute(
                 """
                 INSERT INTO system_settings
-                    (loan_period_days, fine_per_day, max_borrow_limit, max_renewals,
-                     block_renew_if_overdue, updated_at, updated_by)
-                VALUES (7, 5.00, 3, 1, TRUE, NOW(), %s)
-                RETURNING settings_id, loan_period_days, fine_per_day, max_borrow_limit,
-                          max_renewals, block_renew_if_overdue, updated_at, updated_by
+                    (
+                        loan_period_days,
+                        fine_per_day,
+                        max_borrow_limit,
+                        max_renewals,
+                        block_renew_if_overdue,
+                        damage_fine_minor,
+                        damage_fine_major,
+                        lost_book_fine,
+                        updated_at,
+                        updated_by
+                    )
+                VALUES
+                    (7, 5.00, 3, 1, TRUE, 50.00, 200.00, 500.00, NOW(), %s)
+                RETURNING
+                    settings_id,
+                    loan_period_days,
+                    fine_per_day,
+                    max_borrow_limit,
+                    max_renewals,
+                    block_renew_if_overdue,
+                    damage_fine_minor,
+                    damage_fine_major,
+                    lost_book_fine,
+                    updated_at,
+                    updated_by
                 """,
                 (current["librarian_id"],),
             )
@@ -3686,29 +3720,151 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
+
+
+@app.put("/api/settings/circulation")
+def update_circulation_settings(
+    loan_period_days: int,
+    fine_per_day: float,
+    max_borrow_limit: int,
+    max_renewals: int,
+    damage_fine_minor: float,
+    damage_fine_major: float,
+    lost_book_fine: float,
+    block_renew_if_overdue: bool,
+    current=Depends(get_current_librarian),
+):
+    """
+    Updates the single global circulation settings row.
+    """
+    if loan_period_days < 1:
+        raise HTTPException(status_code=400, detail="loan_period_days must be >= 1")
+    if max_borrow_limit < 1:
+        raise HTTPException(status_code=400, detail="max_borrow_limit must be >= 1")
+    if max_renewals < 0:
+        raise HTTPException(status_code=400, detail="max_renewals must be >= 0")
+    if fine_per_day < 0:
+        raise HTTPException(status_code=400, detail="fine_per_day must be >= 0")
+    if damage_fine_minor < 0:
+        raise HTTPException(status_code=400, detail="damage_fine_minor must be >= 0")
+    if damage_fine_major < 0:
+        raise HTTPException(status_code=400, detail="damage_fine_major must be >= 0")
+    if lost_book_fine < 0:
+        raise HTTPException(status_code=400, detail="lost_book_fine must be >= 0")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Make sure at least one row exists
+        cur.execute("SELECT settings_id FROM system_settings ORDER BY settings_id ASC LIMIT 1")
+        existing = cur.fetchone()
+
+        if not existing:
+            cur.execute(
+                """
+                INSERT INTO system_settings
+                    (
+                        loan_period_days,
+                        fine_per_day,
+                        max_borrow_limit,
+                        max_renewals,
+                        block_renew_if_overdue,
+                        damage_fine_minor,
+                        damage_fine_major,
+                        lost_book_fine,
+                        updated_at,
+                        updated_by
+                    )
+                VALUES
+                    (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                RETURNING settings_id
+                """,
+                (
+                    loan_period_days,
+                    fine_per_day,
+                    max_borrow_limit,
+                    max_renewals,
+                    block_renew_if_overdue,
+                    damage_fine_minor,
+                    damage_fine_major,
+                    lost_book_fine,
+                    current["librarian_id"],
+                ),
+            )
+        else:
+            cur.execute(
+                """
+                UPDATE system_settings
+                SET
+                    loan_period_days = %s,
+                    fine_per_day = %s,
+                    max_borrow_limit = %s,
+                    max_renewals = %s,
+                    block_renew_if_overdue = %s,
+                    damage_fine_minor = %s,
+                    damage_fine_major = %s,
+                    lost_book_fine = %s,
+                    updated_at = NOW(),
+                    updated_by = %s
+                WHERE settings_id = %s
+                """,
+                (
+                    loan_period_days,
+                    fine_per_day,
+                    max_borrow_limit,
+                    max_renewals,
+                    block_renew_if_overdue,
+                    damage_fine_minor,
+                    damage_fine_major,
+                    lost_book_fine,
+                    current["librarian_id"],
+                    existing["settings_id"],
+                ),
+            )
+
+        conn.commit()
+        return {"message": "Circulation settings updated successfully"}
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+
 from fastapi import HTTPException, Depends
-
-
 from datetime import date, timedelta
 
 
 def get_system_settings(cur):
     cur.execute("""
-        SELECT loan_period_days, fine_per_day, max_borrow_limit, max_renewals, block_renew_if_overdue,
-               COALESCE(damage_fine_minor, 0) AS damage_fine_minor,
-               COALESCE(damage_fine_major, 0) AS damage_fine_major,
-               COALESCE(lost_book_fine, 0) AS lost_book_fine
+        SELECT
+            loan_period_days,
+            fine_per_day,
+            max_borrow_limit,
+            max_renewals,
+            block_renew_if_overdue,
+            COALESCE(damage_fine_minor, 50.00) AS damage_fine_minor,
+            COALESCE(damage_fine_major, 200.00) AS damage_fine_major,
+            COALESCE(lost_book_fine, 500.00) AS lost_book_fine
         FROM system_settings
         ORDER BY settings_id ASC
         LIMIT 1
     """)
     s = cur.fetchone()
     return s or {
-        "fine_per_day": 0,
-        "damage_fine_minor": 0,
-        "damage_fine_major": 0,
-        "lost_book_fine": 0,
+        "loan_period_days": 7,
+        "fine_per_day": 5.00,
+        "max_borrow_limit": 3,
+        "max_renewals": 1,
+        "block_renew_if_overdue": True,
+        "damage_fine_minor": 50.00,
+        "damage_fine_major": 200.00,
+        "lost_book_fine": 500.00,
     }
+
+
 def _get_settings_for_grade(cur, grade: str | None):
     # Try grade_rule first
     if grade:
@@ -3737,7 +3893,6 @@ def _get_settings_for_grade(cur, grade: str | None):
     )
     s = cur.fetchone()
     if not s:
-        # Absolute fallback if table is empty
         return {
             "loan_period_days": 7,
             "max_borrow_limit": 3,
@@ -3746,6 +3901,7 @@ def _get_settings_for_grade(cur, grade: str | None):
             "block_renew_if_overdue": True,
         }
     return s
+
 
 @app.post("/api/circulation/lost")
 def mark_loan_lost(
