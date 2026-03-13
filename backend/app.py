@@ -50,6 +50,36 @@ import string
 
 from pydantic import BaseModel
 
+from typing import Optional
+from pydantic import BaseModel
+
+from pathlib import Path
+from uuid import uuid4
+from fastapi.staticfiles import StaticFiles
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+from typing import Optional
+from pydantic import BaseModel
+
+class DisplaySettingsPayload(BaseModel):
+    school_name: Optional[str] = None
+    system_name: Optional[str] = None
+    header_subtitle: Optional[str] = None
+    librarian_portal_title: Optional[str] = None
+    brand_primary: Optional[str] = None
+    brand_secondary: Optional[str] = None
+    theme_mode: Optional[str] = "light"
+    logo_url: Optional[str] = None
+    footer_title: Optional[str] = None
+    footer_description: Optional[str] = None
+    footer_address: Optional[str] = None
+    footer_phone: Optional[str] = None
+    footer_email: Optional[str] = None
+    footer_website: Optional[str] = None
+    footer_facebook: Optional[str] = None
+    footer_copyright: Optional[str] = None
 class CheckoutRequest(BaseModel):
     barcode: str
     student_code: str
@@ -68,6 +98,145 @@ class BookUpdate(BaseModel):
 
 import re
 from fastapi import HTTPException
+app = FastAPI()
+
+
+BASE_DIR = Path(__file__).resolve().parent
+UPLOADS_DIR = BASE_DIR / "uploads"
+BRANDING_UPLOADS_DIR = UPLOADS_DIR / "branding"
+BRANDING_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+
+@app.get("/api/public/display")
+def get_public_display():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT
+                school_name,
+                system_name,
+                header_subtitle,
+                logo_url,
+                brand_primary,
+                brand_secondary,
+                footer_title,
+                footer_description,
+                footer_address,
+                footer_phone,
+                footer_email,
+                footer_website,
+                footer_facebook
+            FROM display_settings
+            ORDER BY display_id DESC
+            LIMIT 1
+        """)
+        row = cur.fetchone()
+
+        if not row:
+            return {
+                "school_name": "Your School Name",
+                "system_name": "Library Management System",
+                "header_subtitle": "Librarian Portal",
+                "logo_url": "",
+                "brand_primary": "#2563eb",
+                "brand_secondary": "#94a3b8",
+                "footer_title": "Library Management System",
+                "footer_description": "Customize your school branding, contact details, and interface appearance in Display Settings.",
+                "footer_address": "",
+                "footer_phone": "",
+                "footer_email": "",
+                "footer_website": "",
+                "footer_facebook": ""
+            }
+
+        return dict(row)
+    finally:
+        cur.close()
+        conn.close()
+
+
+
+def get_current_librarian(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = decode_token(token)
+        librarian_id = int(payload["sub"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT librarian_id, username, email, first_name, last_name, is_active
+        FROM librarian
+        WHERE librarian_id = %s
+        """,
+        (librarian_id,)
+    )
+    librarian = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not librarian or not librarian["is_active"]:
+        raise HTTPException(status_code=401, detail="Account not found or inactive")
+
+    return librarian
+
+@app.post("/api/settings/display/logo")
+async def upload_display_logo(
+    file: UploadFile = File(...),
+    current=Depends(get_current_librarian)
+):
+    try:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No file selected")
+
+        allowed_types = {
+            "image/png": ".png",
+            "image/jpeg": ".jpg",
+            "image/jpg": ".jpg",
+            "image/webp": ".webp",
+            "image/gif": ".gif",
+            "image/svg+xml": ".svg",
+        }
+
+        content_type = (file.content_type or "").lower()
+        ext = allowed_types.get(content_type)
+
+        if not ext:
+            raise HTTPException(
+                status_code=400,
+                detail="Only PNG, JPG, JPEG, WEBP, GIF, and SVG files are allowed"
+            )
+
+        filename = f"logo_{uuid4().hex}{ext}"
+        save_path = BRANDING_UPLOADS_DIR / filename
+
+        contents = await file.read()
+        if not contents:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+        # Optional size guard: 3 MB
+        if len(contents) > 3 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Logo file is too large (max 3 MB)")
+
+        with open(save_path, "wb") as f:
+            f.write(contents)
+
+        logo_url = f"/uploads/branding/{filename}"
+        return {
+            "message": "Logo uploaded successfully",
+            "logo_url": logo_url
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload logo: {str(e)}")
 
 def generate_barcode(prefix: str = "GK") -> str:
     """
@@ -107,8 +276,184 @@ def normalize_grade(raw: str) -> str:
 
     return str(g)
 
-# Path to logo file 
-SCHOOL_LOGO_PATH = "assets/school_logo.png"
+def get_display_settings_row(cur):
+    cur.execute(
+        """
+        SELECT *
+        FROM display_settings
+        ORDER BY updated_at DESC, display_id DESC
+        LIMIT 1
+        """
+    )
+    row = cur.fetchone()
+
+    if row:
+        return row
+
+    # fallback auto-create if table is empty
+    cur.execute(
+        """
+        INSERT INTO display_settings (
+            school_name,
+            system_name,
+            header_subtitle,
+            librarian_portal_title,
+            brand_primary,
+            brand_secondary,
+            theme_mode,
+            logo_url,
+            footer_title,
+            footer_description,
+            footer_address,
+            footer_phone,
+            footer_email,
+            footer_website,
+            footer_facebook,
+            footer_copyright,
+            updated_at
+        )
+        VALUES (
+            'Your School Name',
+            'Library Management System',
+            'Online Public Access Catalogue',
+            'Librarian Portal',
+            '#d4af37',
+            '#6aa84f',
+            'light',
+            'assets/default-school-logo.png',
+            'Library Management System',
+            'Customize your school branding, contact details, and interface appearance in Display Settings.',
+            'School Address',
+            'School Contact Number',
+            'library@school.edu',
+            NULL,
+            NULL,
+            'Your School Name — All Rights Reserved.',
+            NOW()
+        )
+        RETURNING *
+        """
+    )
+    return cur.fetchone()
+
+def get_display_logo_path(cur):
+    row = get_display_settings_row(cur)
+    if row and row.get("logo_url"):
+        return row["logo_url"]
+    return "assets/default-school-logo.png"
+
+def resolve_pdf_logo_path(cur):
+    row = get_display_settings_row(cur)
+    raw_logo = (row.get("logo_url") or "").strip()
+
+    if not raw_logo:
+        return None
+
+    candidates = [
+        raw_logo,
+        os.path.join(os.getcwd(), raw_logo),
+        os.path.join(os.path.dirname(__file__), raw_logo),
+        os.path.join(os.getcwd(), raw_logo.lstrip("/")),
+        os.path.join(os.path.dirname(__file__), raw_logo.lstrip("/")),
+    ]
+
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+
+    return None
+
+@app.get("/api/settings/display")
+def get_display_settings(current=Depends(get_current_librarian)):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        row = get_display_settings_row(cur)
+        return row
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.put("/api/settings/display")
+def save_display_settings(payload: DisplaySettingsPayload, current=Depends(get_current_librarian)):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        current_row = get_display_settings_row(cur)
+
+        school_name = (payload.school_name or current_row["school_name"] or "").strip()
+        system_name = (payload.system_name or current_row["system_name"] or "").strip()
+        header_subtitle = (payload.header_subtitle or current_row["header_subtitle"] or "").strip()
+        librarian_portal_title = (payload.librarian_portal_title or current_row["librarian_portal_title"] or "").strip()
+        brand_primary = (payload.brand_primary or current_row["brand_primary"] or "#2563eb").strip()
+        brand_secondary = (payload.brand_secondary or current_row["brand_secondary"] or "#94a3b8").strip()
+        theme_mode = (payload.theme_mode or current_row["theme_mode"] or "light").strip().lower()
+        logo_url = (payload.logo_url if payload.logo_url is not None else current_row.get("logo_url"))
+        footer_title = (payload.footer_title or current_row["footer_title"] or "").strip()
+        footer_description = (payload.footer_description or current_row["footer_description"] or "").strip()
+        footer_address = (payload.footer_address if payload.footer_address is not None else current_row.get("footer_address"))
+        footer_phone = (payload.footer_phone if payload.footer_phone is not None else current_row.get("footer_phone"))
+        footer_email = (payload.footer_email if payload.footer_email is not None else current_row.get("footer_email"))
+        footer_website = (payload.footer_website if payload.footer_website is not None else current_row.get("footer_website"))
+        footer_facebook = (payload.footer_facebook if payload.footer_facebook is not None else current_row.get("footer_facebook"))
+        footer_copyright = (payload.footer_copyright if payload.footer_copyright is not None else current_row.get("footer_copyright"))
+
+        cur.execute(
+            """
+            UPDATE display_settings
+            SET school_name = %s,
+                system_name = %s,
+                header_subtitle = %s,
+                librarian_portal_title = %s,
+                brand_primary = %s,
+                brand_secondary = %s,
+                theme_mode = %s,
+                logo_url = %s,
+                footer_title = %s,
+                footer_description = %s,
+                footer_address = %s,
+                footer_phone = %s,
+                footer_email = %s,
+                footer_website = %s,
+                footer_facebook = %s,
+                footer_copyright = %s,
+                updated_at = NOW()
+            WHERE display_id = %s
+            RETURNING *
+            """,
+            (
+                school_name,
+                system_name,
+                header_subtitle,
+                librarian_portal_title,
+                brand_primary,
+                brand_secondary,
+                theme_mode,
+                logo_url.strip() if isinstance(logo_url, str) and logo_url.strip() else None,
+                footer_title,
+                footer_description,
+                footer_address.strip() if isinstance(footer_address, str) and footer_address.strip() else None,
+                footer_phone.strip() if isinstance(footer_phone, str) and footer_phone.strip() else None,
+                footer_email.strip() if isinstance(footer_email, str) and footer_email.strip() else None,
+                footer_website.strip() if isinstance(footer_website, str) and footer_website.strip() else None,
+                footer_facebook.strip() if isinstance(footer_facebook, str) and footer_facebook.strip() else None,
+                footer_copyright.strip() if isinstance(footer_copyright, str) and footer_copyright.strip() else None,
+                current_row["display_id"],
+            ),
+        )
+
+        row = cur.fetchone()
+        conn.commit()
+        return {"message": "Display settings updated", "settings": dict(row)}
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to save display settings: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
 
 
 
@@ -131,9 +476,7 @@ from fastapi import FastAPI
 # Import database functions
 from db import test_connection, get_connection
 
-# Create FastAPI app instance
-app = FastAPI()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -145,33 +488,6 @@ app.add_middleware(
     allow_headers=["*"],  # includes Authorization, Content-Type
 )
 
-def get_current_librarian(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = decode_token(token)
-        librarian_id = int(payload["sub"])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT librarian_id, username, email, first_name, last_name, is_active
-        FROM librarian
-        WHERE librarian_id = %s
-        """,
-        (librarian_id,)
-    )
-    librarian = cur.fetchone()
-
-    cur.close()
-    conn.close()
-
-    if not librarian or not librarian["is_active"]:
-        raise HTTPException(status_code=401, detail="Account not found or inactive")
-
-    return librarian
 
 # -----------------------------
 # ROOT ENDPOINT (Health Check)
@@ -322,8 +638,7 @@ def get_book_details(book_id: int):
     cur.close()
     conn.close()
 
-    # NOTE: If you applied row_factory=dict_row in db.py, `book` and `counts` are dicts.
-    # If not, tell me and I'll adapt to tuple-indexing.
+ 
     return {
         "book_id": book["book_id"],
         "title": book["title"],
@@ -411,10 +726,10 @@ from datetime import datetime
 
 @app.post("/api/cataloging/add-book")
 def add_book_by_isbn(
-    isbn: str = Form(...),
+    isbn: str | None = Form(None),
     copies: int = Form(1),
 
-    # Optional overrides (librarian can edit anything)
+    # Optional overrides / manual entry fields
     title: str | None = Form(None),
     author: str | None = Form(None),
     publisher: str | None = Form(None),
@@ -422,8 +737,6 @@ def add_book_by_isbn(
     genre: str | None = Form(None),
     subject: str | None = Form(None),
     section: str | None = Form(None),
-
-    # cover can be stored as a URL or a data URL (base64) from the frontend
     cover_url: str | None = Form(None),
 
     current=Depends(get_current_librarian),
@@ -431,79 +744,120 @@ def add_book_by_isbn(
     if copies < 1 or copies > 100:
         raise HTTPException(status_code=400, detail="copies must be between 1 and 100")
 
-    meta = lookup_isbn(isbn)
-    if not meta.get("found"):
-        # still allow manual entry if you want:
-        # meta = {"isbn": isbn, "found": True}
-        raise HTTPException(status_code=404, detail="ISBN not found in Google Books/Open Library")
+    isbn_clean = (isbn or "").strip()
+    manual_mode = not isbn_clean
 
-    # librarian overrides win, else API meta
-    final_title = title or meta.get("title")
-    final_author = author or meta.get("author")
-    final_publisher = publisher or meta.get("publisher")
+    meta = {}
+    normalized_isbn = None
+
+    # Try ISBN lookup only when ISBN is provided
+    if not manual_mode:
+        try:
+            meta = lookup_isbn(isbn_clean) or {}
+            if meta.get("found"):
+                normalized_isbn = meta.get("isbn") or isbn_clean
+            else:
+                # If ISBN lookup fails, still allow manual entry as long as required fields are present
+                meta = {"isbn": isbn_clean, "found": False}
+                normalized_isbn = isbn_clean
+        except Exception:
+            meta = {"isbn": isbn_clean, "found": False}
+            normalized_isbn = isbn_clean
+
+    # Manual fields override API fields
+    final_title = (title or meta.get("title") or "").strip()
+    final_author = (author or meta.get("author") or "").strip()
+    final_publisher = (publisher or meta.get("publisher") or "").strip() or None
     final_pub_year = pub_year or meta.get("pub_year")
-    final_genre = genre or meta.get("genre")
-    final_subject = subject or meta.get("subject")
-    final_section = section
-
-    # cover priority: librarian upload/url override, else API cover
-    final_cover = cover_url or meta.get("cover_url")
+    final_genre = (genre or meta.get("genre") or "").strip() or None
+    final_subject = (subject or meta.get("subject") or "").strip() or None
+    final_section = (section or "").strip()
+    final_cover = (cover_url or meta.get("cover_url") or "").strip() or None
 
     missing_required = []
-    if not final_title: missing_required.append("title")
-    if not final_author: missing_required.append("author")
-    if not final_section: missing_required.append("section")
+    if not final_title:
+        missing_required.append("title")
+    if not final_author:
+        missing_required.append("author")
+    if not final_section:
+        missing_required.append("section")
 
     if missing_required:
         raise HTTPException(
             status_code=400,
-            detail={"message": "Missing required fields", "missing": missing_required, "autofill": meta},
+            detail={
+                "message": "Missing required fields",
+                "missing": missing_required,
+                "autofill": meta,
+            },
         )
 
     conn = get_connection()
     cur = conn.cursor()
+
     try:
-        # Find existing book by ISBN
-        cur.execute(
-            """
-            SELECT b.book_id
-            FROM book b
-            JOIN book_identifier bi ON bi.book_id = b.book_id
-            WHERE bi.id_type = 'isbn' AND bi.id_value = %s
-            ORDER BY bi.is_primary DESC
-            LIMIT 1
-            """,
-            (meta["isbn"],),
-        )
-        row = cur.fetchone()
-        existing_book_id = row["book_id"] if row else None
+        existing_book_id = None
+
+        # Only try to match an existing book by ISBN if an ISBN was provided
+        if normalized_isbn:
+            cur.execute(
+                """
+                SELECT b.book_id
+                FROM book b
+                JOIN book_identifier bi ON bi.book_id = b.book_id
+                WHERE UPPER(COALESCE(bi.id_type, '')) = 'ISBN'
+                  AND bi.id_value = %s
+                ORDER BY bi.is_primary DESC
+                LIMIT 1
+                """,
+                (normalized_isbn,),
+            )
+            row = cur.fetchone()
+            existing_book_id = row["book_id"] if row else None
 
         book_id = existing_book_id
 
         if not book_id:
-            catalog_key = f"ISBN:{meta['isbn']}"
+            # Keep catalog_key not null even for manual entries
+            if normalized_isbn:
+                catalog_key = f"ISBN:{normalized_isbn}"
+            else:
+                catalog_key = f"MANUAL:{uuid4().hex[:12].upper()}"
+
             cur.execute(
                 """
-                INSERT INTO book (title, author, publisher, pub_year, genre, subject, section, catalog_key, cover_url, created_at, updated_at)
+                INSERT INTO book (
+                    title, author, publisher, pub_year, genre, subject, section,
+                    catalog_key, cover_url, created_at, updated_at
+                )
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW(),NOW())
                 RETURNING book_id
                 """,
                 (
-                    final_title, final_author, final_publisher, final_pub_year,
-                    final_genre, final_subject, final_section, catalog_key, final_cover
+                    final_title,
+                    final_author,
+                    final_publisher,
+                    final_pub_year,
+                    final_genre,
+                    final_subject,
+                    final_section,
+                    catalog_key,
+                    final_cover,
                 ),
             )
             book_id = cur.fetchone()["book_id"]
 
-            cur.execute(
-                """
-                INSERT INTO book_identifier (book_id, id_type, id_value, is_primary, created_at)
-                VALUES (%s, 'isbn', %s, TRUE, NOW())
-                """,
-                (book_id, meta["isbn"]),
-            )
+            # Only create ISBN identifier if ISBN exists
+            if normalized_isbn:
+                cur.execute(
+                    """
+                    INSERT INTO book_identifier (book_id, id_type, id_value, is_primary, created_at)
+                    VALUES (%s, 'isbn', %s, TRUE, NOW())
+                    """,
+                    (book_id, normalized_isbn),
+                )
         else:
-            # IMPORTANT: Update the BOOK record so ALL copies reflect the edited details
+            # Update existing record
             cur.execute(
                 """
                 UPDATE book
@@ -519,8 +873,15 @@ def add_book_by_isbn(
                 WHERE book_id=%s
                 """,
                 (
-                    final_title, final_author, final_publisher, final_pub_year,
-                    final_genre, final_subject, final_section, final_cover, book_id
+                    final_title,
+                    final_author,
+                    final_publisher,
+                    final_pub_year,
+                    final_genre,
+                    final_subject,
+                    final_section,
+                    final_cover,
+                    book_id,
                 ),
             )
 
@@ -542,14 +903,14 @@ def add_book_by_isbn(
 
         conn.commit()
 
-        # total copies after add
         cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id=%s", (book_id,))
         total = cur.fetchone()["total"]
 
         return {
             "message": "Book saved successfully",
             "book_id": book_id,
-            "isbn": meta["isbn"],
+            "isbn": normalized_isbn,
+            "manual_mode": manual_mode,
             "copies_created": len(created),
             "total_copies": int(total),
             "barcodes": created,
@@ -1064,6 +1425,57 @@ def upsert_grade_rule(
 # -----------------------------
 # STUDENTS: ADD + SEARCH + VIEW (Librarian Only)
 # -----------------------------
+
+from pydantic import BaseModel
+
+class StudentCreate(BaseModel):
+    student_code: str
+    last_name: str
+    first_name: str
+    grade: str
+    section: str
+    status: str = "active"
+
+
+@app.post("/api/students")
+def add_student(
+    payload: StudentCreate,
+    current=Depends(get_current_librarian),
+):
+    if not payload.student_code.strip():
+        raise HTTPException(status_code=400, detail="student_code is required")
+    if not payload.last_name.strip() or not payload.first_name.strip():
+        raise HTTPException(status_code=400, detail="student name is required")
+    if not payload.grade.strip() or not payload.section.strip():
+        raise HTTPException(status_code=400, detail="grade and section are required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO student (student_code, last_name, first_name, grade, section, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            RETURNING student_id
+            """,
+            (
+                payload.student_code.strip(),
+                payload.last_name.strip(),
+                payload.first_name.strip(),
+                payload.grade.strip(),
+                payload.section.strip(),
+                payload.status.strip(),
+            ),
+        )
+        student_id = cur.fetchone()["student_id"]
+        conn.commit()
+        return {"message": "Student added", "student_id": student_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add student: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 @app.post("/api/students")
 def add_student(
     student_code: str,
@@ -1852,134 +2264,101 @@ def student_profile(student_id: int, current=Depends(get_current_librarian)):
 # -----------------------------
 # REPORTS: DASHBOARD (Librarian Only) - Upgraded
 # -----------------------------
+from fastapi import Query
+from datetime import datetime, timedelta
+
 @app.get("/api/reports/dashboard")
 def reports_dashboard(
-    date_from: str | None = None,
-    date_to: str | None = None,
+    period: str = Query("monthly"),
     current=Depends(get_current_librarian),
 ):
-    """
-    Dashboard analytics for Reports Module (Upgraded).
-
-    Optional filters:
-      - date_from (YYYY-MM-DD)
-      - date_to (YYYY-MM-DD)
-
-    Adds:
-      - copy_status_distribution
-      - barcode_print_status
-      - fine_analytics (outstanding + collected this month)
-      - overdue_by_grade / overdue_by_section
-      - daily_borrow_trend (last 30 days)
-    """
-
     conn = get_connection()
     cur = conn.cursor()
-
     try:
-        # --------- Date filter handling (optional) ----------
-        # Used for TOP lists and trends (not for total books/copies).
-        date_where = "TRUE"
-        date_params: list = []
+        period = (period or "monthly").strip().lower()
+        now = datetime.now()
 
-        if date_from and date_to:
-            date_where = "borrowed_at::date BETWEEN %s::date AND %s::date"
-            date_params = [date_from, date_to]
-        elif date_from:
-            date_where = "borrowed_at::date >= %s::date"
-            date_params = [date_from]
-        elif date_to:
-            date_where = "borrowed_at::date <= %s::date"
-            date_params = [date_to]
+        if period == "daily":
+            range_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            trend_sql_label = "TO_CHAR(DATE(l.borrowed_at), 'Mon DD')"
+            trend_group_sql = "DATE(l.borrowed_at)"
+        elif period == "weekly":
+            range_start = now - timedelta(days=6)
+            range_start = range_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            trend_sql_label = "TO_CHAR(DATE(l.borrowed_at), 'Mon DD')"
+            trend_group_sql = "DATE(l.borrowed_at)"
+        else:
+            period = "monthly"
+            range_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            trend_sql_label = "TO_CHAR(DATE_TRUNC('week', l.borrowed_at), 'Mon DD')"
+            trend_group_sql = "DATE_TRUNC('week', l.borrowed_at)"
 
-        # --- Total students (users) ---
-        cur.execute("SELECT COUNT(*) AS total_students FROM student;")
-        total_students = int(cur.fetchone()["total_students"])
+        # Totals
+        cur.execute("SELECT COUNT(*) AS total_books FROM book")
+        total_books = cur.fetchone()["total_books"]
 
-        # --- Total books (bibliographic records) ---
-        cur.execute("SELECT COUNT(*) AS total_books FROM book;")
-        total_books = int(cur.fetchone()["total_books"])
+        cur.execute("SELECT COUNT(*) AS total_copies FROM book_copy")
+        total_copies = cur.fetchone()["total_copies"]
 
-        # --- Total copies (physical copies) ---
-        cur.execute("SELECT COUNT(*) AS total_copies FROM book_copy;")
-        total_copies = int(cur.fetchone()["total_copies"])
+        cur.execute("SELECT COUNT(*) AS total_students FROM student")
+        total_students = cur.fetchone()["total_students"]
 
-        # --- Active loans (not returned) ---
-        cur.execute("SELECT COUNT(*) AS active_loans FROM loan WHERE returned_at IS NULL;")
-        active_loans = int(cur.fetchone()["active_loans"])
+        cur.execute("SELECT COUNT(*) AS active_loans FROM loan WHERE returned_at IS NULL")
+        active_loans = cur.fetchone()["active_loans"]
 
-        # --- Overdue loans (not returned AND due_at < now) ---
-        cur.execute(
-            """
-            SELECT COUNT(*) AS overdue_loans
-            FROM loan
-            WHERE returned_at IS NULL AND due_at < NOW();
-            """
-        )
-        overdue_loans = int(cur.fetchone()["overdue_loans"])
+        cur.execute("SELECT COUNT(*) AS overdue_loans FROM loan WHERE returned_at IS NULL AND due_at < NOW()")
+        overdue_loans = cur.fetchone()["overdue_loans"]
 
-        # -----------------------------
-        # NEW: Copy status distribution
-        # -----------------------------
-        cur.execute(
-            """
+        # Fines
+        cur.execute("""
             SELECT
-                COALESCE(NULLIF(TRIM(status), ''), 'unknown') AS status,
-                COUNT(*)::int AS count
+                COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount - amount_paid ELSE 0 END), 0) AS outstanding_total,
+                COUNT(*) FILTER (WHERE status = 'unpaid') AS unpaid_fine_count
+            FROM fine
+        """)
+        fines = cur.fetchone()
+
+        # Inventory
+        cur.execute("""
+            SELECT status, COUNT(*) AS count
             FROM book_copy
-            GROUP BY COALESCE(NULLIF(TRIM(status), ''), 'unknown')
-            ORDER BY count DESC;
-            """
-        )
+            GROUP BY status
+            ORDER BY status
+        """)
         copy_status_distribution = cur.fetchall()
 
-        # -----------------------------
-        # NEW: Barcode printed status
-        # -----------------------------
-        cur.execute(
-            """
+        # Trend
+        cur.execute(f"""
             SELECT
-                CASE WHEN is_printed THEN 'printed' ELSE 'unprinted' END AS printed_status,
-                COUNT(*)::int AS count
-            FROM book_copy
-            GROUP BY CASE WHEN is_printed THEN 'printed' ELSE 'unprinted' END
-            ORDER BY count DESC;
-            """
-        )
-        barcode_print_status = cur.fetchall()
+                {trend_sql_label} AS label,
+                COUNT(*) AS borrow_count
+            FROM loan l
+            WHERE l.borrowed_at >= %s
+            GROUP BY {trend_group_sql}
+            ORDER BY {trend_group_sql}
+        """, (range_start,))
+        borrow_trend = cur.fetchall()
 
-        # -----------------------------
-        # Most borrowed books (Top 5) - filtered by date range
-        # + include cover + availability
-        # -----------------------------
-        cur.execute(
-            f"""
+        # Top books within selected period
+        cur.execute("""
             SELECT
                 b.book_id,
                 b.title,
                 b.author,
                 b.cover_url,
-                COUNT(*)::int AS borrow_count,
-                COUNT(bc_all.copy_id)::int AS total_copies,
-                COUNT(CASE WHEN bc_all.status='available' THEN 1 END)::int AS available_copies
+                COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN book_copy bc ON bc.copy_id = l.copy_id
             JOIN book b ON b.book_id = bc.book_id
-            LEFT JOIN book_copy bc_all ON bc_all.book_id = b.book_id
-            WHERE {date_where}
-            GROUP BY b.book_id
-            ORDER BY borrow_count DESC
-            LIMIT 5;
-            """,
-            tuple(date_params),
-        )
+            WHERE l.borrowed_at >= %s
+            GROUP BY b.book_id, b.title, b.author, b.cover_url
+            ORDER BY borrow_count DESC, b.title ASC
+            LIMIT 10
+        """, (range_start,))
         most_borrowed_books = cur.fetchall()
 
-        # -----------------------------
-        # Most active students (Top 5) - filtered by date range
-        # -----------------------------
-        cur.execute(
-            f"""
+        # Top students within selected period
+        cur.execute("""
             SELECT
                 s.student_id,
                 s.student_code,
@@ -1987,171 +2366,88 @@ def reports_dashboard(
                 s.first_name,
                 s.grade,
                 s.section,
-                COUNT(*)::int AS borrow_count
+                COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
-            WHERE {date_where}
-            GROUP BY s.student_id
-            ORDER BY borrow_count DESC
-            LIMIT 5;
-            """,
-            tuple(date_params),
-        )
+            WHERE l.borrowed_at >= %s
+            GROUP BY s.student_id, s.student_code, s.last_name, s.first_name, s.grade, s.section
+            ORDER BY borrow_count DESC, s.last_name ASC, s.first_name ASC
+            LIMIT 10
+        """, (range_start,))
         most_active_students = cur.fetchall()
 
-        # -----------------------------
-        # Monthly borrowing trend (last 12 months) - always last 12 months
-        # -----------------------------
-        cur.execute(
-            """
-            SELECT
-                TO_CHAR(DATE_TRUNC('month', borrowed_at), 'YYYY-MM') AS month,
-                COUNT(*)::int AS borrow_count
-            FROM loan
-            WHERE borrowed_at >= (DATE_TRUNC('month', NOW()) - INTERVAL '11 months')
-            GROUP BY DATE_TRUNC('month', borrowed_at)
-            ORDER BY month ASC;
-            """
-        )
-        monthly_borrow_trend = cur.fetchall()
-
-        # -----------------------------
-        # NEW: Daily borrowing trend (last 30 days)
-        # -----------------------------
-        cur.execute(
-            """
-            SELECT
-                TO_CHAR(borrowed_at::date, 'YYYY-MM-DD') AS day,
-                COUNT(*)::int AS borrow_count
-            FROM loan
-            WHERE borrowed_at >= (NOW() - INTERVAL '30 days')
-            GROUP BY borrowed_at::date
-            ORDER BY day ASC;
-            """
-        )
-        daily_borrow_trend = cur.fetchall()
-
-        # -----------------------------
-        # Books by genre distribution (top 10)
-        # -----------------------------
-        cur.execute(
-            """
-            SELECT
-                COALESCE(NULLIF(TRIM(genre), ''), 'Unknown') AS genre,
-                COUNT(*)::int AS book_count
-            FROM book
-            GROUP BY COALESCE(NULLIF(TRIM(genre), ''), 'Unknown')
-            ORDER BY book_count DESC
-            LIMIT 10;
-            """
-        )
-        genre_distribution = cur.fetchall()
-
-        # -----------------------------
-        # NEW: Overdue breakdown by grade / section
-        # -----------------------------
-        cur.execute(
-            """
-            SELECT
-                COALESCE(s.grade, 'Unknown') AS grade,
-                COUNT(*)::int AS overdue_count
-            FROM loan l
-            JOIN student s ON s.student_id = l.student_id
-            WHERE l.returned_at IS NULL AND l.due_at < NOW()
-            GROUP BY COALESCE(s.grade, 'Unknown')
-            ORDER BY overdue_count DESC;
-            """
-        )
-        overdue_by_grade = cur.fetchall()
-
-        cur.execute(
-            """
-            SELECT
-                COALESCE(s.section, 'Unknown') AS section,
-                COUNT(*)::int AS overdue_count
-            FROM loan l
-            JOIN student s ON s.student_id = l.student_id
-            WHERE l.returned_at IS NULL AND l.due_at < NOW()
-            GROUP BY COALESCE(s.section, 'Unknown')
-            ORDER BY overdue_count DESC
-            LIMIT 15;
-            """
-        )
-        overdue_by_section = cur.fetchall()
-
-        # -----------------------------
-        # NEW: Fine analytics (outstanding + collected this month)
-        # -----------------------------
-        cur.execute(
-            """
-            SELECT
-                COALESCE(SUM(amount - amount_paid), 0)::numeric(10,2) AS outstanding_total,
-                COUNT(*) FILTER (WHERE status='unpaid')::int AS unpaid_fine_count
-            FROM fine;
-            """
-        )
-        fine_outstanding = cur.fetchone()
-
-        cur.execute(
-            """
-            SELECT
-                COALESCE(SUM(amount), 0)::numeric(10,2) AS collected_this_month
-            FROM fine_payment
-            WHERE DATE_TRUNC('month', paid_at) = DATE_TRUNC('month', NOW());
-            """
-        )
-        fine_collected_month = cur.fetchone()
-
-        # inside /api/reports/dashboard before return {...}
-
+        # Borrowed by grade within selected period
         cur.execute("""
-            SELECT COALESCE(TRIM(s.grade), 'Unknown') AS grade,
-                COUNT(*)::int AS borrow_count
+            SELECT
+                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
+                COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
-            GROUP BY COALESCE(TRIM(s.grade), 'Unknown')
-            ORDER BY borrow_count DESC, grade ASC
-        """)
+            WHERE l.borrowed_at >= %s
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
+            ORDER BY grade
+        """, (range_start,))
         borrowed_by_grade = cur.fetchall()
 
-        # then include in the response:
-        # "borrowed_by_grade": borrowed_by_grade,
+        # Subject / genre distribution within selected period
+        cur.execute("""
+            SELECT
+                COALESCE(NULLIF(TRIM(b.genre), ''), 'Unknown') AS genre,
+                COUNT(l.loan_id) AS book_count
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE l.borrowed_at >= %s
+            GROUP BY COALESCE(NULLIF(TRIM(b.genre), ''), 'Unknown')
+            ORDER BY book_count DESC, genre ASC
+            LIMIT 8
+        """, (range_start,))
+        genre_distribution = cur.fetchall()
+
+        # Overdue by grade
+        cur.execute("""
+            SELECT
+                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
+                COUNT(*) AS overdue_count
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE l.returned_at IS NULL
+              AND l.due_at < NOW()
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
+            ORDER BY grade
+        """)
+        overdue_by_grade = cur.fetchall()
 
         return {
+            "period": period,
+            "range_start": range_start.isoformat(),
             "totals": {
-                "total_books": total_books,
-                "total_copies": total_copies,
-                "active_loans": active_loans,
-                "overdue_loans": overdue_loans,
-                "total_students": total_students, 
+                "total_books": int(total_books or 0),
+                "total_copies": int(total_copies or 0),
+                "total_students": int(total_students or 0),
+                "active_loans": int(active_loans or 0),
+                "overdue_loans": int(overdue_loans or 0),
+            },
+            "fines": {
+                "outstanding_total": float(fines["outstanding_total"] or 0),
+                "unpaid_fine_count": int(fines["unpaid_fine_count"] or 0),
             },
             "inventory": {
                 "copy_status_distribution": copy_status_distribution,
-                "barcode_print_status": barcode_print_status,
             },
-            "fines": {
-                "outstanding_total": str(fine_outstanding["outstanding_total"]),
-                "unpaid_fine_count": int(fine_outstanding["unpaid_fine_count"]),
-                "collected_this_month": str(fine_collected_month["collected_this_month"]),
-            },
+            "borrow_trend": borrow_trend,
             "most_borrowed_books": most_borrowed_books,
             "most_active_students": most_active_students,
-            "monthly_borrow_trend": monthly_borrow_trend,
-            "daily_borrow_trend": daily_borrow_trend,
-            "genre_distribution": genre_distribution,
-            
             "borrowed_by_grade": borrowed_by_grade,
+            "genre_distribution": genre_distribution,
             "overdue_breakdown": {
                 "by_grade": overdue_by_grade,
-                "by_section": overdue_by_section,
             },
-            "filters_used": {"date_from": date_from, "date_to": date_to},
         }
-        
+
     finally:
         cur.close()
         conn.close()
-
 
 # -----------------------------
 # REPORTS: GENERATE REPORT (Preview JSON) (Librarian Only)
@@ -2408,6 +2704,18 @@ def build_report_pdf(report: dict) -> bytes:
     # Use landscape for reports (more horizontal space)
     page_size = landscape(letter)
 
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        display = get_display_settings_row(cur)
+        logo_path = resolve_pdf_logo_path(cur)
+    finally:
+        cur.close()
+        conn.close()
+
+    system_name = display.get("system_name") or "Library Management System"
+    school_name = display.get("school_name") or "Your School Name"
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=page_size,
@@ -2415,8 +2723,8 @@ def build_report_pdf(report: dict) -> bytes:
         rightMargin=28,
         topMargin=28,
         bottomMargin=28,
-        title="Golden Key OPAC Report",
-        author="Golden Key OPAC",
+        title=f"{system_name} Report",
+        author=school_name,
     )
 
     styles = getSampleStyleSheet()
@@ -2444,9 +2752,12 @@ def build_report_pdf(report: dict) -> bytes:
 
     # Build logo (if exists). If missing, we omit gracefully.
     try:
-        logo_flowable = Image(SCHOOL_LOGO_PATH)
-        logo_flowable.drawHeight = 0.85 * inch
-        logo_flowable.drawWidth = 0.85 * inch
+        if logo_path:
+            logo_flowable = Image(logo_path)
+            logo_flowable.drawHeight = 0.85 * inch
+            logo_flowable.drawWidth = 0.85 * inch
+        else:
+            logo_flowable = Paragraph("", styles["Normal"])
     except Exception:
         logo_flowable = Paragraph("", styles["Normal"])
 
@@ -2471,7 +2782,7 @@ def build_report_pdf(report: dict) -> bytes:
     )
 
     title_block = [
-        Paragraph("Golden Key OPAC Report", title_style),
+        Paragraph(f"{system_name} Report", title_style),
         Paragraph("Official Library Circulation & Catalog Report", subtitle_style),
     ]
 
@@ -2731,73 +3042,11 @@ def export_report_pdf(
     filename = f"opac_report_{report['filters']['date_from']}_to_{report['filters']['date_to']}.pdf"
 
     return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    content=pdf_bytes,
+    media_type="application/pdf",
+    headers={"Content-Disposition": f'inline; filename="{filename}"'},
+)
 
-
-# -----------------------------
-# TEMP TEST: PDF EXPORT WITH TOKEN IN QUERY (REMOVE LATER)
-# -----------------------------
-@app.get("/api/reports/export/pdf-test")
-def export_report_pdf_test(
-    token: str,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    grade: str | None = None,
-    section: str | None = None,
-    genre: str | None = None,
-    book_section: str | None = None,
-):
-    """
-    TEMPORARY: Use token in query so browser can download PDF easily.
-    REMOVE THIS ENDPOINT BEFORE DEPLOYMENT.
-    """
-    # Decode token using your existing function
-    try:
-        payload = decode_token(token)
-        librarian_id = int(payload["sub"])
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Load librarian (reuse your existing DB logic)
-    conn = get_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            """
-            SELECT librarian_id, username, email, is_active
-            FROM librarian
-            WHERE librarian_id = %s
-            """,
-            (librarian_id,),
-        )
-        librarian = cur.fetchone()
-        if not librarian or not librarian["is_active"]:
-            raise HTTPException(status_code=401, detail="Account not found or inactive")
-    finally:
-        cur.close()
-        conn.close()
-
-    # Generate report + PDF
-    report = generate_report(
-        date_from=date_from,
-        date_to=date_to,
-        grade=grade,
-        section=section,
-        genre=genre,
-        book_section=book_section,
-        current=librarian,
-    )
-    pdf_bytes = build_report_pdf(report)
-
-    filename = f"opac_report_{report['filters']['date_from']}_to_{report['filters']['date_to']}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
 
 # -----------------------------
 # FINES: LIST UNPAID FINES (Librarian Only)
@@ -3019,7 +3268,7 @@ def mark_book_lost(
         # --- 0) Load lost fee from system_settings ---
         cur.execute(
             """
-            SELECT COALESCE(lost_fee, 0) AS lost_fee
+            SELECT COALESCE(lost_book_fine, 0) AS lost_fee
             FROM system_settings
             ORDER BY updated_at DESC, settings_id DESC
             LIMIT 1
@@ -4987,43 +5236,26 @@ def opac_book_details(book_id: int):
 # -----------------------------
 @app.get("/api/opac/filters")
 def opac_filters():
-    """
-    Returns distinct filter options for genre/subject/section.
-    Useful for dropdowns in the public OPAC.
-    """
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT DISTINCT COALESCE(NULLIF(TRIM(genre), ''), NULL) AS v
+        cur.execute(
+            """
+            SELECT DISTINCT TRIM(genre) AS subject
             FROM book
-            WHERE genre IS NOT NULL AND TRIM(genre) <> ''
-            ORDER BY v ASC
-        """)
-        genres = [r["v"] for r in cur.fetchall()]
-
-        cur.execute("""
-            SELECT DISTINCT COALESCE(NULLIF(TRIM(subject), ''), NULL) AS v
-            FROM book
-            WHERE subject IS NOT NULL AND TRIM(subject) <> ''
-            ORDER BY v ASC
-        """)
-        subjects = [r["v"] for r in cur.fetchall()]
-
-        cur.execute("""
-            SELECT DISTINCT COALESCE(NULLIF(TRIM(section), ''), NULL) AS v
-            FROM book
-            WHERE section IS NOT NULL AND TRIM(section) <> ''
-            ORDER BY v ASC
-        """)
-        sections = [r["v"] for r in cur.fetchall()]
-
-        return {"genres": genres, "subjects": subjects, "sections": sections}
-
+            WHERE genre IS NOT NULL
+              AND TRIM(genre) <> ''
+            ORDER BY TRIM(genre) ASC
+            """
+        )
+        rows = cur.fetchall()
+        subjects = [r["subject"] for r in rows if r.get("subject")]
+        return {"subjects": subjects}
     finally:
         cur.close()
         conn.close()
 
+        
 from io import BytesIO
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -5069,6 +5301,14 @@ def build_title_barcode_labels_pdf(
 
     buffer = BytesIO()
 
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        display = get_display_settings_row(cur)
+    finally:
+        cur.close()
+        conn.close()
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=page_size,
@@ -5076,8 +5316,8 @@ def build_title_barcode_labels_pdf(
         rightMargin=0.35 * inch,
         topMargin=0.45 * inch,
         bottomMargin=0.45 * inch,
-        title="Barcode Labels",
-        author="Golden Key OPAC",
+        title=f"{display.get('system_name') or 'Library Management System'} - Barcode Labels",
+        author=display.get("school_name") or "Your School Name",
     )
 
     styles = getSampleStyleSheet()

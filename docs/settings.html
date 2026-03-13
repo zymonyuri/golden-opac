@@ -3,52 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Golden Key OPAC — Settings</title>
+<title>Settings</title>
+<script>
+document.documentElement.classList.add("branding-loading");
+</script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..900;1,17..18,400..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+
+<link rel="stylesheet" href="styles.css" />
 
   <style>
     :root{
-      --brand-yellow:#f4e32f;
-      --brand-green:#8dd959;
       --panelWhite: rgba(255,255,255,0.96);
       --panelBorder: rgba(0,0,0,0.06);
-      --panelShadow: 0 20px 50px rgba(0,0,0,0.20);
+      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
       --ink:#111;
+      --shadow: 0 26px 60px rgba(0,0,0,0.32);
     }
 
     *{ box-sizing:border-box; }
     html, body{ margin:0; padding:0; }
 
-    
+    body{
+      font-family:'Poppins',sans-serif;
+    }
 
     .page{
       position:relative;
       min-height:100vh;
       overflow:hidden;
     }
-    .page__bg{
-      position:absolute;
-      inset:0;
-      background:url("assets/bg.png") center/cover no-repeat;
-      filter: blur(2px) saturate(1.04) contrast(1.04);
-      transform: scale(1.04);
-      z-index:-2;
-    }
-    .page__overlay{
-      position:absolute;
-      inset:0;
-      background: linear-gradient(rgba(0,0,0,.60), rgba(0,0,0,.36));
-      z-index:-1;
-    }
 
     .wrap{
       position:relative;
       z-index:2;
-      padding:110px 16px 34px;
+      padding:110px 16px 80px;
     }
 
     .shell{
@@ -66,40 +54,52 @@
       border:1px solid rgba(255,255,255,0.12);
       backdrop-filter: blur(14px) saturate(140%);
       -webkit-backdrop-filter: blur(14px) saturate(140%);
-      box-shadow: 0 26px 60px rgba(0,0,0,0.32);
+      box-shadow: var(--shadow);
       overflow:hidden;
     }
+
     .side-item{
       height:78px;
       display:grid;
       place-items:center;
       border-bottom:1px solid rgba(255,255,255,0.10);
       text-decoration:none;
-      transition: background .16s ease;
+      transition: background 160ms ease;
     }
+
     .side-item:last-child{ border-bottom:0; }
-    .side-item:hover{ background: rgba(255,255,255,0.06); }
+
+    .side-item:hover img{
+      transform: scale(1.05);
+      filter: brightness(0.88);
+    }
+
     .side-item img{
       width:34px;
       height:34px;
       object-fit:contain;
-      filter: brightness(0) saturate(100%) invert(92%) sepia(2%) saturate(400%) hue-rotate(175deg) brightness(95%) contrast(90%);
       opacity:.92;
-      transition: filter .18s ease, transform .18s ease;
+      transition: transform 220ms ease, filter 220ms ease;
     }
+
+    .side-item.is-active{
+      background: color-mix(in srgb, var(--brand-yellow) 22%, transparent);
+      box-shadow: inset 3px 0 0 var(--brand-yellow);
+    }
+
     .side-item.is-active img{
-      filter: brightness(0) saturate(100%) invert(86%) sepia(33%) saturate(2100%) hue-rotate(5deg) brightness(108%) contrast(105%);
+      filter:none;
       opacity:1;
       transform: translateY(-1px);
     }
 
     .panel{
       border-radius:18px;
-      background:var(--panelWhite);
+      background: var(--panelWhite);
       border:1px solid var(--panelBorder);
-      box-shadow:var(--panelShadow);
+      box-shadow: var(--panelShadow);
       overflow:hidden;
-      color:var(--ink);
+      color: var(--ink);
     }
 
     .tabs{
@@ -110,6 +110,7 @@
       border-bottom:1px solid rgba(0,0,0,0.12);
       flex-wrap:wrap;
     }
+
     .tabs::after{
       content:"";
       position:absolute;
@@ -120,10 +121,11 @@
       background: rgba(255,255,255,0.60);
       border:1px solid rgba(0,0,0,0.10);
       border-top:0;
-      border-radius: 0 0 14px 14px;
+      border-radius:0 0 14px 14px;
       z-index:0;
       pointer-events:none;
     }
+
     .tab{
       position:relative;
       z-index:1;
@@ -139,8 +141,24 @@
       font-size:13px;
       cursor:pointer;
       font-family:inherit;
-      transition: transform .16s ease, background .16s ease, box-shadow .16s ease;
+      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
     }
+
+    .tab::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:14px 14px 0 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0));
+      opacity:.65;
+      pointer-events:none;
+    }
+
+    .tab:hover{
+      background: rgba(0,0,0,0.08);
+      transform: translateY(-1px);
+    }
+
     .tab.is-active{
       background: var(--brand-yellow);
       color:#111;
@@ -148,17 +166,26 @@
       box-shadow: 0 10px 22px rgba(0,0,0,0.12);
     }
 
+    .tab.is-active::before{
+      opacity:.22;
+    }
+
+    .tab.is-active:hover{
+      transform: translateY(1px);
+    }
+
     .search-progress{
       height:4px;
       width:100%;
-      background: rgba(141,217,89,0.55);
+      background: color-mix(in srgb, var(--brand-green) 72%, white);
       overflow:hidden;
       display:none;
     }
+
     .search-progress__bar{
       height:100%;
       width:0%;
-      background: rgba(244,227,47,0.95);
+      background: var(--brand-yellow);
       transition: width .2s ease;
     }
 
@@ -196,9 +223,9 @@
       overflow:hidden;
       display:flex;
       flex-direction:column;
-      height:100%;
       min-height:0;
     }
+
     .cardHead{
       padding:14px 16px;
       border-bottom:1px solid rgba(0,0,0,0.08);
@@ -208,6 +235,7 @@
       gap:10px;
       flex-wrap:wrap;
     }
+
     .cardTitle{
       font-weight:1000;
       letter-spacing:.05em;
@@ -215,19 +243,22 @@
       font-size:13px;
       color: rgba(0,0,0,0.75);
     }
+
     .cardBody{
-      padding:16px;
-      display:flex;
-      flex-direction:column;
-      gap:14px;
-      flex:1 1 auto;
-      min-height:0;
-    }
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  max-height:none;
+}
 
     .formGrid{
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:18px 20px;
+      gap:16px 18px;
       align-items:start;
     }
 
@@ -235,11 +266,13 @@
       display:grid;
       gap:8px;
       align-content:start;
+      min-width:0;
     }
+
     .field.full{ grid-column:1 / -1; }
 
     .field label{
-      font-size:13px;
+      font-size:12px;
       font-weight:900;
       letter-spacing:.06em;
       text-transform:uppercase;
@@ -247,11 +280,11 @@
       line-height:1.15;
     }
 
-    input, select{
+    input, select, textarea{
       width:100%;
-      min-height:56px;
-      padding:12px 18px;
-      border-radius:18px;
+      min-height:48px;
+      padding:11px 14px;
+      border-radius:14px;
       border:1px solid rgba(0,0,0,0.12);
       background: rgba(0,0,0,0.04);
       color:#111;
@@ -261,27 +294,36 @@
       font-family:inherit;
       transition: box-shadow .16s ease, border-color .16s ease, background .16s ease;
     }
-    input:focus, select:focus{
-      border-color: rgba(0,0,0,0.22);
-      box-shadow: 0 0 0 4px rgba(244,227,47,0.35);
+
+    textarea{
+      min-height:96px;
+      resize:vertical;
+      line-height:1.5;
+    }
+
+    input:focus, select:focus, textarea:focus{
+      border-color: color-mix(in srgb, var(--brand-yellow) 45%, rgba(0,0,0,0.16));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 28%, transparent);
       background: rgba(0,0,0,0.02);
     }
-    input[disabled]{
-      opacity:.85;
+
+    input[disabled], select[disabled], textarea[disabled]{
+      opacity:1;
       cursor:not-allowed;
       background: rgba(0,0,0,0.03);
+      color: rgba(0,0,0,0.78);
     }
 
     .valueBox{
-      min-height:58px;
+      min-height:50px;
       display:flex;
       align-items:center;
-      padding:12px 18px;
-      border-radius:18px;
+      padding:11px 14px;
+      border-radius:14px;
       border:1px solid rgba(0,0,0,0.10);
       background:#fff;
       font-weight:800;
-      font-size:16px;
+      font-size:15px;
       color:#111;
     }
 
@@ -294,42 +336,53 @@
       margin-top:auto;
     }
 
-    .btn, .btnGhost, .btnDark{
+    .btn, .btnGhost, .btnDark, .btnGreen{
       border-radius:999px;
-      padding:12px 22px;
-      min-height:46px;
+      padding:11px 18px;
+      min-height:42px;
       cursor:pointer;
       font-weight:1000;
-      font-size:14px;
+      font-size:13px;
       font-family:inherit;
       white-space:nowrap;
       transition: transform .16s ease, opacity .16s ease;
     }
+
     .btn{
       border:0;
       background:var(--brand-yellow);
       color:#111;
       box-shadow: 0 16px 34px rgba(0,0,0,0.18);
     }
+
     .btnGhost{
       background: rgba(0,0,0,0.05);
       border:1px solid rgba(0,0,0,0.10);
       color: rgba(0,0,0,0.78);
     }
+
     .btnDark{
       border:0;
       background:#111;
       color:#fff;
       box-shadow: 0 16px 34px rgba(0,0,0,0.18);
     }
-    .btn:hover, .btnGhost:hover, .btnDark:hover{
+
+    .btnGreen{
+      border:0;
+      background:var(--brand-green);
+      color:#111;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.18);
+    }
+
+    .btn:hover, .btnGhost:hover, .btnDark:hover, .btnGreen:hover{
       transform: translateY(-2px);
       opacity:.96;
     }
 
     .iconBtn{
-      width:19px;
-      height:19px;
+      width:34px;
+      height:34px;
       min-width:34px;
       border-radius:999px;
       border:1px solid rgba(0,0,0,0.10);
@@ -345,6 +398,7 @@
       padding:0;
       transition: transform .16s ease, opacity .16s ease, background .16s ease, color .16s ease;
     }
+
     .iconBtn:hover{
       transform: translateY(-1px);
       opacity:.96;
@@ -353,8 +407,8 @@
     }
 
     .statusLine{
-      min-height:20px;
-      font-size:13px;
+      min-height:18px;
+      font-size:12px;
       font-weight:900;
       color: rgba(0,0,0,0.62);
     }
@@ -362,13 +416,14 @@
     .successBox{
       display:none;
       border:1px solid rgba(0,0,0,0.08);
-      background: rgba(244,227,47,0.18);
+      background: color-mix(in srgb, var(--brand-yellow) 22%, white);
       border-radius:14px;
       padding:10px 12px;
       font-size:13px;
       font-weight:1000;
       color:#111;
     }
+
     .successBox.show{ display:block; }
 
     .rulesWrap{
@@ -381,21 +436,25 @@
       display:flex;
       flex-direction:column;
     }
+
     .rulesHead{
       flex:0 0 auto;
-      background: rgba(244,227,47,0.88);
+      background: color-mix(in srgb, var(--brand-yellow) 88%, white);
       border-bottom:1px solid rgba(0,0,0,0.08);
     }
+
     .rulesScroll{
       flex:1 1 auto;
       min-height:0;
       overflow:auto;
     }
+
     .rulesTable{
       width:100%;
       border-collapse:collapse;
       table-layout:fixed;
     }
+
     .rulesTable th,
     .rulesTable td{
       padding:12px;
@@ -405,6 +464,7 @@
       overflow:hidden;
       text-overflow:ellipsis;
     }
+
     .rulesTable th{
       text-align:left;
       font-weight:1000;
@@ -412,6 +472,7 @@
       text-transform:uppercase;
       color:#111;
     }
+
     .rulesTable td{
       background:#fff;
       font-weight:900;
@@ -430,6 +491,897 @@
     .rulesTable--libs col:nth-child(2){ width:28%; }
     .rulesTable--libs col:nth-child(3){ width:34%; }
     .rulesTable--libs col:nth-child(4){ width:14%; }
+
+    .hint{
+      margin-top:-4px;
+      font-size:12px;
+      font-weight:800;
+      color: rgba(0,0,0,0.54);
+      line-height:1.45;
+    }
+
+    .displayToolbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:2px;
+    }
+
+    .displayState{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.88);
+      border:1px solid rgba(0,0,0,0.08);
+      font-size:12px;
+      font-weight:1000;
+      color: rgba(0,0,0,0.74);
+      transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+    }
+
+    .stateDot{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background: var(--brand-green);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand-green) 16%, transparent);
+      transition: background 200ms ease, box-shadow 200ms ease;
+    }
+
+    .displayGridCompact{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px 16px;
+      align-items:start;
+      padding:0;
+    }
+    
+    .displayGridCompact .field{
+      gap:6px;
+    }
+    
+    .displayGridCompact label{
+      font-size:11px;
+      line-height:1.1;
+    }
+    
+    .displayGridCompact input,
+    .displayGridCompact textarea,
+    .displayGridCompact select{
+      min-height:42px;
+      font-size:13px;
+      padding:9px 12px;
+    }
+    
+    .displayGridCompact textarea{
+      min-height:80px;
+    }
+
+    .displayScroll{
+  max-height:600px;
+  overflow-y:auto;
+  padding-right:8px;
+  border-radius:12px;
+  padding:16px;
+  background: rgba(255,255,255,0.6);
+  border:1px solid rgba(0,0,0,0.06);
+}
+
+.displayScroll::-webkit-scrollbar{
+  width:8px;
+}
+
+.displayScroll::-webkit-scrollbar-track{
+  background: rgba(0,0,0,0.02);
+  border-radius:999px;
+}
+
+.displayScroll::-webkit-scrollbar-thumb{
+  background:rgba(0,0,0,0.20);
+  border-radius:999px;
+  transition: background 200ms ease;
+}
+
+.displayScroll::-webkit-scrollbar-thumb:hover{
+  background:rgba(0,0,0,0.35);
+}
+
+    .colorPickerWrap{
+      display:grid;
+      grid-template-columns:56px 1fr;
+      gap:10px;
+      align-items:center;
+    }
+
+    .colorPickerWrap input[type="color"]{
+      min-height:48px;
+      height:48px;
+      padding:4px;
+      border-radius:14px;
+      cursor:pointer;
+      background:#fff;
+    }
+
+    .uploadRow{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .uploadBtn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:42px;
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.10);
+      background:#fff;
+      color:#111;
+      font-weight:1000;
+      font-size:13px;
+      cursor:pointer;
+      transition: transform .16s ease, opacity .16s ease, background .16s ease;
+    }
+
+    .uploadBtn:hover{
+      transform: translateY(-1px);
+      opacity:.96;
+      background: rgba(255,255,255,0.92);
+    }
+
+    .uploadMeta{
+      min-height:42px;
+      display:flex;
+      align-items:center;
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.03);
+      font-size:12px;
+      font-weight:1000;
+      color: rgba(0,0,0,0.72);
+      min-width:180px;
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .displayCard.is-editing .displayState{
+      background: color-mix(in srgb, var(--brand-yellow) 22%, white);
+      border-color: color-mix(in srgb, var(--brand-yellow) 50%, rgba(0,0,0,0.12));
+      color: rgba(0,0,0,0.88);
+    }
+
+    .displayCard.is-editing .stateDot{
+      background: var(--brand-yellow);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--brand-yellow) 24%, transparent);
+    }
+
+    .displayCard.is-editing .field input:not([disabled]),
+    .displayCard.is-editing .field textarea:not([disabled]),
+    .displayCard.is-editing .field select:not([disabled]){
+      background: #fff;
+      border-color: var(--brand-yellow);
+      box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.04);
+    }
+    
+    .displayCard.is-editing .field input:not([disabled]):focus,
+    .displayCard.is-editing .field textarea:not([disabled]):focus,
+    .displayCard.is-editing .field select:not([disabled]):focus{
+      background: #fff;
+      box-shadow: inset 0 0 0 2px var(--brand-yellow), 0 0 0 3px rgba(0,0,0,0.08);
+    }
+
+    .editBanner{
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid color-mix(in srgb, var(--brand-yellow) 40%, rgba(0,0,0,0.08));
+      background: color-mix(in srgb, var(--brand-yellow) 14%, white);
+      color:#111;
+    }
+
+    .editBanner.show{ display:flex; }
+
+    .editBannerTitle{
+      font-size:13px;
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+
+    .editBannerText{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.68);
+    }
+
+    .logoPanel{
+      display:grid;
+      gap:12px;
+    }
+
+    .logoThumbWrap{
+      display:none;
+      align-items:flex-start;
+      gap:12px;
+      padding:10px;
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.94);
+      width:fit-content;
+      max-width:100%;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+    }
+
+    .logoThumbWrap.show{ display:flex; }
+
+    .logoThumbLink{
+      display:block;
+      width:74px;
+      height:74px;
+      border-radius:14px;
+      overflow:hidden;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(0,0,0,0.03);
+      flex:0 0 auto;
+      cursor:pointer;
+      position:relative;
+    }
+
+    .logoThumbLink img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .logoThumbInfo{
+      display:grid;
+      gap:6px;
+      min-width:0;
+      padding-top:2px;
+    }
+
+    .logoThumbTitle{
+      font-size:12px;
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.70);
+    }
+
+    .logoThumbText{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.62);
+      line-height:1.45;
+    }
+
+    .logoDeleteBtn{
+      width:28px;
+      height:28px;
+      min-width:28px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.10);
+      background:#fff;
+      color:#111;
+      font-weight:1000;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      transition: transform .16s ease, background .16s ease, opacity .16s ease;
+    }
+
+    .logoDeleteBtn:hover{
+      transform: translateY(-1px);
+      background: rgba(0,0,0,0.04);
+      opacity:.96;
+    }
+
+    .hiddenInput{
+      display:none !important;
+    }
+
+    .fullPagePreview{
+      border-radius:18px;
+      overflow:hidden;
+      border:1px solid rgba(0,0,0,0.08);
+      background:#f7f8fb;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.10);
+      width:100%;
+    }
+
+    .previewBrowserBar{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      background: rgba(255,255,255,0.88);
+      border-bottom:1px solid rgba(0,0,0,0.08);
+    }
+
+    .browserDot{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background: rgba(0,0,0,0.18);
+    }
+
+    .browserAddress{
+      margin-left:6px;
+      min-height:30px;
+      border-radius:999px;
+      background: rgba(0,0,0,0.04);
+      border:1px solid rgba(0,0,0,0.08);
+      padding:7px 12px;
+      font-size:11px;
+      font-weight:900;
+      color: rgba(0,0,0,0.62);
+      flex:1 1 auto;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .previewFrameWrap{
+      display:flex;
+      flex-direction:column;
+      flex:1 1 auto;
+      min-height:0;
+    }
+
+    .previewViewport{
+  display:flex;
+  align-items:stretch;
+  height:720px;
+  overflow:hidden;
+}
+
+    .previewCanvas{
+      padding:18px;
+      display:grid;
+      gap:18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.88));
+      overflow-y:auto;
+    }
+
+    .previewHeaderSection{
+      display:none;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .previewHeaderSection.show{ display:flex; }
+
+    .previewFooterSection{
+      display:none;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .previewFooterSection.show{ display:flex; }
+
+    .previewHeaderMock{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:14px 16px;
+      border-radius:14px;
+      background: rgba(15,23,42,0.85);
+      border:1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.20);
+    }
+
+    .previewBrandSection{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .previewLogo{
+      width:36px;
+      height:36px;
+      border-radius:8px;
+      background: rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.10);
+      flex:0 0 auto;
+    }
+
+    .previewBrandText{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+
+    .previewBrandName{
+      font-size:13px;
+      font-weight:1000;
+      color: var(--brand-yellow);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .previewBrandSubtitle{
+      font-size:10px;
+      font-weight:900;
+      color: var(--brand-green);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .previewNavMock{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .previewNavItem{
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.10);
+      color: rgba(255,255,255,0.88);
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+
+    .previewFooterMock{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:24px;
+      padding:16px;
+      border-radius:14px;
+      background: rgba(15,23,42,0.85);
+      border:1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.20);
+    }
+
+    .previewFooterRow{
+      display:flex;
+      gap:8px;
+      font-size:11px;
+      color: rgba(255,255,255,0.78);
+      font-weight:900;
+    }
+
+    .previewFooterTitle{
+      font-size:12px;
+      font-weight:1000;
+      color:#fff;
+      margin-bottom:4px;
+    }
+
+    .previewFooterDesc{
+      font-size:10px;
+      color: rgba(255,255,255,0.72);
+      line-height:1.4;
+      margin-bottom:8px;
+    }
+
+    .previewFooterCopy{
+      font-size:9px;
+      color: rgba(255,255,255,0.60);
+      font-weight:900;
+    }
+
+    .previewFooterSubtitle{
+      font-size:11px;
+      font-weight:1000;
+      color:#fff;
+      margin-bottom:6px;
+    }
+
+    .previewFooterContactItem{
+      font-size:10px;
+      color: rgba(255,255,255,0.80);
+      margin-bottom:4px;
+      display:flex;
+      gap:6px;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .previewFooterSocials{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .loadingModal{
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      bottom:0;
+      background: rgba(0,0,0,0.40);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+    }
+
+    .loadingModal.show{ display:flex; }
+
+    .loadingBox{
+      background: white;
+      border-radius:18px;
+      padding:32px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:20px;
+    }
+
+    .loadingText{
+      font-size:14px;
+      font-weight:1000;
+      color:#111;
+      letter-spacing:.02em;
+    }
+
+    .dots{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 14px;
+      border-radius:999px;
+      background: rgba(0,0,0,0.08);
+      border:1px solid rgba(0,0,0,0.08);
+    }
+
+    .dot{
+      width:9px;
+      height:9px;
+      border-radius:999px;
+      background: var(--brand-yellow);
+      animation: dotBounce 850ms infinite ease-in-out;
+    }
+
+    .dot:nth-child(1){ animation-delay:0ms; }
+    .dot:nth-child(2){ animation-delay:160ms; }
+    .dot:nth-child(3){ animation-delay:320ms; }
+
+    @keyframes dotBounce{
+      0%, 100%{ transform: translateY(0); opacity:0.55; }
+      50%{ transform: translateY(-5px); opacity:1; }
+    }
+
+    .previewButtonMock{
+      justify-content:center;
+      background: var(--preview-primary, var(--brand-yellow));
+      color:#111;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.10);
+    }
+
+    .previewCards{
+      display:grid;
+      gap:12px;
+      margin-top:14px;
+    }
+
+    .previewBookCard{
+      display:grid;
+      grid-template-columns:72px 1fr;
+      gap:12px;
+      padding:12px;
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.08);
+      background:#fff;
+    }
+
+    .previewBookCover{
+      border-radius:12px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--preview-primary, var(--brand-yellow)) 32%, white), color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 24%, white));
+      min-height:96px;
+      border:1px solid rgba(0,0,0,0.06);
+    }
+
+    .previewLine,
+    .previewTinyLine{
+      border-radius:999px;
+      background: rgba(0,0,0,0.08);
+    }
+
+    .previewLine{ height:12px; }
+    .previewTinyLine{ height:9px; }
+
+    .previewLine.w70{ width:70%; }
+    .previewLine.w55{ width:55%; }
+    .previewLine.w40{ width:40%; }
+    .previewTinyLine.w85{ width:85%; }
+    .previewTinyLine.w68{ width:68%; }
+    .previewTinyLine.w52{ width:52%; }
+
+    .previewMetaRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .previewBadge{
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:10px;
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      background: color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 14%, white);
+      border:1px solid color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 24%, rgba(0,0,0,0.08));
+      color:#111;
+    }
+
+    .previewSidePanel{
+      padding:16px;
+      display:grid;
+      gap:12px;
+    }
+
+    .previewMiniCard{
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.08);
+      background:#fff;
+      padding:12px;
+      display:grid;
+      gap:10px;
+    }
+
+
+
+    .headerFooterPreview{
+      border-radius:16px;
+      overflow:hidden;
+      border:1px solid rgba(0,0,0,0.08);
+      background:#fff;
+      box-shadow: 0 16px 34px rgba(0,0,0,0.10);
+    }
+
+    .previewHeader{
+      position:relative;
+      min-height:146px;
+      padding:18px;
+      background:
+        radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--preview-primary, var(--brand-yellow)) 35%, transparent), transparent 60%),
+        radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 35%, transparent), transparent 60%),
+        linear-gradient(0deg, rgba(0,0,0,0.22), rgba(0,0,0,0.22)),
+        url("assets/bg.png") center/cover no-repeat;
+    }
+
+    .previewHeader::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(rgba(0,0,0,.44), rgba(0,0,0,.22));
+      pointer-events:none;
+    }
+
+    .previewHeaderInner{
+      position:relative;
+      z-index:1;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .previewBrand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    .previewBrand img{
+      width:52px;
+      height:52px;
+      border-radius:14px;
+      object-fit:cover;
+      background:#fff;
+      border:1px solid rgba(255,255,255,0.28);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.20);
+      flex:0 0 auto;
+    }
+
+    .previewBrandTitle{
+      font-weight:1000;
+      font-size:16px;
+      color:#fff;
+      line-height:1.1;
+    }
+
+    .previewBrandSub{
+      margin-top:4px;
+      font-weight:800;
+      font-size:11px;
+      color: rgba(255,255,255,0.82);
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+
+    .previewHeroTitle{
+      position:relative;
+      z-index:1;
+      margin-top:26px;
+      font-size:24px;
+      font-weight:1000;
+      line-height:1.08;
+      color:#fff;
+      max-width:620px;
+    }
+
+    .previewHeroTitle .a{
+      color: var(--preview-primary, var(--brand-yellow));
+    }
+
+    .previewHeroTitle .b{
+      color: var(--preview-secondary, var(--brand-green));
+    }
+
+    .previewPill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:34px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.12);
+      color:#fff;
+      font-weight:1000;
+      font-size:12px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .previewFooter{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:14px;
+      align-items:start;
+      padding:14px 16px;
+      background: rgba(255,255,255,0.92);
+      border-top:1px solid rgba(0,0,0,0.08);
+    }
+
+    .previewFooter h4{
+      margin:0 0 6px;
+      font-size:13px;
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.78);
+    }
+
+    .previewFooter p{
+      margin:0;
+      font-size:12px;
+      font-weight:800;
+      color: rgba(0,0,0,0.64);
+      line-height:1.5;
+    }
+
+    .swatches{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .swatch{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:7px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.96);
+      border:1px solid rgba(0,0,0,0.08);
+      font-weight:1000;
+      font-size:11px;
+      color: rgba(0,0,0,0.78);
+    }
+
+    .swatchColor{
+      width:16px;
+      height:16px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.10);
+      flex:0 0 auto;
+    }
+
+    .logoImageModal{
+      position:fixed;
+      inset:0;
+      z-index:2500;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background: rgba(0,0,0,0.74);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .logoImageModal.show{ display:flex; }
+
+    .logoImageModalContent{
+      position:relative;
+      width:min(500px, 90vw);
+      height:auto;
+      max-height:85vh;
+      border-radius:18px;
+      overflow:hidden;
+      background:#fff;
+      box-shadow: 0 28px 70px rgba(0,0,0,0.32);
+      animation: modalIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes modalIn{
+      from{ opacity: 0; transform: scale(0.88); }
+      to{ opacity: 1; transform: scale(1); }
+    }
+
+    .logoImageModalImg{
+      width:100%;
+      height:auto;
+      display:block;
+      object-fit:contain;
+      max-height:85vh;
+    }
+
+    .logoImageModalClose{
+      position:absolute;
+      top:12px;
+      right:12px;
+      width:40px;
+      height:40px;
+      border-radius:999px;
+      background: rgba(0,0,0,0.6);
+      border:0;
+      color:#fff;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:24px;
+      font-weight:900;
+      transition: background 200ms ease, transform 200ms ease;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .logoImageModalClose:hover{
+      background: rgba(0,0,0,0.8);
+      transform: scale(1.08);
+    }
 
     .toast{
       position:fixed;
@@ -452,14 +1404,57 @@
       overflow:hidden;
       text-overflow:ellipsis;
     }
+
     .toast.show{
       opacity:1;
       transform: translateX(-50%) translateY(0);
     }
 
+    .topbar{
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
+    }
+
+    .topbar.is-scrolled{
+      background: rgba(0,0,0,0.22);
+      border-bottom: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+    }
+
+    .nav__link:hover{
+      color: rgba(255,255,255,0.78);
+    }
+
+    .brand__school{
+      color: var(--brand-yellow);
+      font-weight:900;
+    }
+
+    .brand__subtitle{
+      color: var(--brand-green);
+      font-weight:700;
+    }
+
+    .site-footer{
+      margin-top:0;
+    }
+
     @media (max-width:1100px){
       .grid2{ grid-template-columns:1fr; }
-      .formGrid{ grid-template-columns:1fr; }
+      .displayGridCompact{ grid-template-columns:1fr; }
+      .previewFooter{ grid-template-columns:1fr; }
+      .previewMainMock{ grid-template-columns:1fr; }
+      .swatches{ justify-content:flex-start; }
     }
 
     @media (max-width:980px){
@@ -479,16 +1474,45 @@
       }
       .side-item:last-child{ border-right:0; }
     }
+
+    @media (max-width:640px){
+      .wrap{
+        padding:104px 12px 80px;
+      }
+      .content{
+        padding:14px 14px 18px;
+      }
+      h1{
+        font-size:24px;
+      }
+      .formGrid{
+        grid-template-columns:1fr;
+      }
+      .previewHeroTitle{
+        font-size:22px;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <script src="branding.js"></script>
+  <script>
+  const API_ORIGIN =
+  window.location.protocol === "file:"
+    ? "http://127.0.0.1:8000"
+    : window.location.origin;
+</script>
   <div class="topbar" id="siteHeader">
     <div class="brand">
-      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" />
       <div class="brand__text">
-        <div class="brand__name"><span class="brand--highlight">GOLDEN KEY</span> Integrated School of Saint Joseph</div>
-        <div class="brand__sub">Librarian Portal</div>
+        <div class="brand__name">
+          <span class="brand__school" data-brand-school-name>Your School Name</span>
+        </div>
+        <div class="brand__sub">
+          <span class="brand__subtitle" data-brand-role="portal">Librarian Portal</span>
+        </div>
       </div>
     </div>
 
@@ -500,8 +1524,8 @@
   </div>
 
   <main class="page">
-    <div class="page__bg" aria-hidden="true"></div>
-    <div class="page__overlay" aria-hidden="true"></div>
+    <div class="page-bg" aria-hidden="true"></div>
+    <div class="page-overlay" aria-hidden="true"></div>
 
     <section class="wrap">
       <div class="shell">
@@ -520,6 +1544,7 @@
             <button class="tab" data-tab="circulation" type="button">Circulation Settings</button>
             <button class="tab" data-tab="student" type="button">Student Edit</button>
             <button class="tab" data-tab="profile" type="button">New Profile</button>
+            <button class="tab" data-tab="display" type="button">Display Settings</button>
           </div>
 
           <div class="search-progress" id="progressWrap" aria-hidden="true">
@@ -528,7 +1553,6 @@
 
           <div class="content">
             <h1>SETTINGS</h1>
-
             <section class="section is-active" id="tab-personal">
               <div class="stack">
                 <div class="grid2">
@@ -795,7 +1819,7 @@
                         </div>
                         <div class="field">
                           <label>To Section</label>
-                          <input id="promoteToSection" type="text" >
+                          <input id="promoteToSection" type="text">
                         </div>
                       </div>
 
@@ -910,6 +1934,156 @@
               </div>
             </section>
 
+            <section class="section" id="tab-display">
+              <div class="stack">
+                <article class="card displayCard" id="displaySettingsCard">
+                  <div class="cardHead">
+                    <div class="cardTitle">Display Settings</div>
+                    <div class="actions" style="margin-top:0;">
+                      <button class="btnGhost" id="reloadDisplayBtn" type="button">Reload</button>
+                      <button class="btnGreen" id="editDisplayBtn" type="button">Edit</button>
+                    </div>
+                  </div>
+
+                  <div class="cardBody">
+                    <div class="displayToolbar">
+                      <div class="displayState">
+                        <span class="stateDot"></span>
+                        <span id="displayStateText">View mode</span>
+                      </div>
+                      <div class="hint" style="margin:0;">
+                        Edit only when needed, then save to update the shared branding used across the system.
+                      </div>
+                    </div>
+
+                    <div class="displayGridCompact displayScroll">
+                      <div class="field">
+                        <label>School Name</label>
+                        <input id="displaySchoolName" type="text" disabled>
+                      </div>
+
+                      <div class="field">
+                        <label>Header Subtitle</label>
+                        <input id="displayHeaderSubtitle" type="text" disabled>
+                      </div>
+
+                      <div class="field">
+                        <label>Primary Brand Color</label>
+                        <div class="colorPickerWrap">
+                          <input id="displayBrandPrimaryPicker" type="color" value="#2563eb" disabled>
+                          <input id="displayBrandPrimary" type="text" placeholder="#2563eb" disabled>
+                        </div>
+                      </div>
+
+                      <div class="field">
+                        <label>Secondary Brand Color</label>
+                        <div class="colorPickerWrap">
+                          <input id="displayBrandSecondaryPicker" type="color" value="#94a3b8" disabled>
+                          <input id="displayBrandSecondary" type="text" placeholder="#94a3b8" disabled>
+                        </div>
+                      </div>
+
+                      <div class="field" style="grid-column:1 / -1;">
+                        <label>Logo Upload</label>
+                        <div class="logoPanel">
+                          <div class="uploadRow">
+                            <input id="displayLogoFile" class="hiddenInput" type="file" accept="image/*">
+                            <button class="uploadBtn" id="displayLogoUploadBtn" type="button" disabled>Choose Logo</button>
+                            <div class="uploadMeta" id="displayLogoMeta">No new logo selected</div>
+                          </div>
+                          <div class="logoThumbWrap" id="logoThumbWrap">
+                            <a class="logoThumbLink" id="logoThumbLink" href="#" target="_blank" rel="noopener">
+                              <img id="logoThumbImg" src="" alt="Current logo">
+                            </a>
+                            <div class="logoThumbInfo">
+                              <div class="logoThumbTitle">Current Logo</div>
+                              <div class="logoThumbText">Click the X to remove, or click the image to view in full size</div>
+                              <button class="logoDeleteBtn" id="logoDeleteBtn" type="button" title="Remove logo">✕</button>
+                            </div>
+                          </div>
+                          <div class="hint">Upload an image for the school logo. The current saved logo will stay unless you choose a new file.</div>
+                        </div>
+                      </div>
+
+                      <div class="field">
+                        <label>Footer Title</label>
+                        <input id="displayFooterTitle" type="text" disabled>
+                      </div>
+
+                      <div class="field">
+                        <label>Footer Email</label>
+                        <input id="displayFooterEmail" type="text" disabled>
+                      </div>
+
+                      <div class="field" style="grid-column:1 / -1;">
+                        <label>Footer Description</label>
+                        <textarea id="displayFooterDescription" disabled></textarea>
+                      </div>
+
+                      <div class="field">
+                        <label>Footer Address</label>
+                        <input id="displayFooterAddress" type="text" disabled>
+                      </div>
+
+                      <div class="field">
+                        <label>Footer Phone</label>
+                        <input id="displayFooterPhone" type="text" disabled>
+                      </div>
+
+                      <div class="field">
+                        <label>Footer Website</label>
+                        <input id="displayFooterWebsite" type="text" disabled>
+                      </div>
+
+                      <div class="field">
+                        <label>Footer Facebook</label>
+                        <input id="displayFooterFacebook" type="text" disabled>
+                      </div>
+
+                      <div class="field" style="grid-column:1 / -1;">
+                        <label>Footer Copyright</label>
+                        <input id="displayFooterCopyright" type="text" disabled>
+                      </div>
+                    </div>
+
+                    <div class="actions" id="displayEditActions" style="display:none;">
+                      <button class="btnGhost" id="cancelDisplayBtn" type="button">Cancel</button>
+                      <button class="btnGreen" id="previewDisplayBtn" type="button">Preview</button>
+                      <button class="btn" id="saveDisplayBtn" type="button">Save Display Settings</button>
+                    </div>
+
+                    <div class="statusLine" id="displayStatus"></div>
+                  </div>
+                </article>
+
+                <article class="card">
+                  <div class="cardHead">
+                    <div class="cardTitle">Live Preview</div>
+                    <div style="font-size:11px; font-weight:900; color:rgba(0,0,0,0.54);">Updates as you edit</div>
+                  </div>
+                  <div class="cardBody">
+                    <div class="previewFrameWrap">
+                      <div class="previewBrowserBar">
+                        <div class="browserDot" style="background:#ff5f56;"></div>
+                        <div class="browserDot" style="background:#ffbd2e;"></div>
+                        <div class="browserDot" style="background:#27c93f;"></div>
+                        <div class="browserAddress"></div>
+                      </div>
+                      <div class="previewViewport">
+                        <iframe id="indexPreview" src="index.html" style="width:100%; height:720px; border:0; display:block; background:#fff;"></iframe>
+                      </div>
+                    </div>
+
+                    <div class="hint">
+                      Live preview — footer and brand colors update instantly as you type. The iframe above refreshes when you save.
+                    </div>
+                  </div>
+                </article>
+
+
+              </div>
+            </section>
+
           </div>
         </section>
       </div>
@@ -919,22 +2093,103 @@
   <footer class="site-footer" id="footer">
     <div class="site-footer__inner">
       <section class="site-footer__col">
-        <h3 class="site-footer__title">Golden Key OPAC</h3>
-        <p class="site-footer__text">Librarian portal for circulation, cataloging, students, reports, and settings.</p>
-        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+        <h3 class="site-footer__title" id="footerBrandTitle">Library Management System</h3>
+        <p class="site-footer__text" id="footerBrandDescription">
+          Customize your school branding, contact details, and interface appearance in Display Settings.
+        </p>
+        <p class="site-footer__fineprint">
+          © <span id="footerYear"></span>
+          <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span>
+        </p>
       </section>
+
       <section class="site-footer__col site-footer__col--right">
         <h3 class="site-footer__title">Contact &amp; Support</h3>
-        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
-        <p class="site-footer__text">(043) 702 2153</p>
+
+        <div class="site-footer__item">
+          <span class="site-footer__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
+            </svg>
+          </span>
+          <div>
+            <div id="footerBrandAddress">School Address</div>
+          </div>
+        </div>
+
+        <div class="site-footer__item">
+          <span class="site-footer__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
+            </svg>
+          </span>
+          <div>
+            <div id="footerBrandPhone">School Contact Number</div>
+          </div>
+        </div>
+
+        <div class="site-footer__item">
+          <span class="site-footer__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
+            </svg>
+          </span>
+          <div>
+            <div id="footerBrandEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6804010a1a091a11281b0b00070704460d0c1d">[email&#160;protected]</a></div>
+          </div>
+        </div>
+
+        <div class="site-footer__row" style="margin-top:14px;">
+          <a
+            class="site-footer__social"
+            id="footerBrandFacebook"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            style="display:none;"
+          >
+            Facebook
+          </a>
+
+          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
+
+          <a
+            class="site-footer__social"
+            id="footerBrandWebsite"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            style="display:none;"
+          >
+            Official Website
+          </a>
+        </div>
       </section>
     </div>
   </footer>
 
   <div class="toast" id="toast"></div>
 
-  <script>
-    const BASE_URL = "https://golden-opac-backend.onrender.com";
+  <div class="loadingModal" id="loadingModal">
+    <div class="loadingBox">
+      <div class="loadingText">Applying Changes</div>
+      <div class="dots">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="logoImageModal" id="logoImageModal">
+    <div class="logoImageModalContent">
+      <img class="logoImageModalImg" id="logoImageModalImg" src="" alt="Logo preview">
+      <button class="logoImageModalClose" id="logoImageModalClose" type="button" aria-label="Close preview">✕</button>
+    </div>
+  </div>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    const BASE_URL = "http://127.0.0.1:8000";
 
     function getToken(){
       return (
@@ -1067,6 +2322,60 @@
     let currentDefaults = null;
     let latestGradeRules = {};
     let studentMeta = { grades: [], sections_by_grade: {} };
+    let currentDisplaySettings = null;
+    let displayEditing = false;
+    let pendingLogoData = "";
+    let pendingLogoFileUrl = null;
+
+    async function compressLogoFile(file) {
+  const bitmap = await createImageBitmap(file);
+
+  const maxWidth = 500;
+  const scale = Math.min(1, maxWidth / bitmap.width);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Failed to compress logo"));
+        return;
+      }
+      resolve(blob);
+    }, "image/webp", 0.82);
+  });
+}
+
+
+
+async function uploadCompressedLogo(blob) {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("Missing auth token");
+
+  const form = new FormData();
+  form.append("file", blob, "logo.webp");
+
+  const res = await fetch(`${API_ORIGIN}/api/settings/display/logo`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: form
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.detail || data.message || "Failed to upload logo");
+  }
+
+  return data.logo_url;
+}
 
     function getSystemDefaultSettings(){
       return {
@@ -1495,6 +2804,186 @@
       await loadLibrarians();
     }
 
+    function normalizeDisplaySettings(row){
+      return {
+        school_name: row?.school_name || "Your School Name",
+        system_name: row?.system_name || "Library Management System",
+        header_subtitle: row?.header_subtitle || "Online Public Access Catalogue",
+        librarian_portal_title: row?.librarian_portal_title || "Librarian Portal",
+        brand_primary: row?.brand_primary || "#2563eb",
+        brand_secondary: row?.brand_secondary || "#94a3b8",
+        logo_url: row?.logo_url || "",
+        footer_title: row?.footer_title || "Library Management System",
+        footer_description: row?.footer_description || "Customize your school branding, contact details, and interface appearance in Display Settings.",
+        footer_address: row?.footer_address || "",
+        footer_phone: row?.footer_phone || "",
+        footer_email: row?.footer_email || "",
+        footer_website: row?.footer_website || "",
+        footer_facebook: row?.footer_facebook || "",
+        footer_copyright: row?.footer_copyright || "Your School Name — All Rights Reserved."
+      };
+    }
+
+    function setDisplayInputsDisabled(disabled){
+      [
+        "displaySchoolName",
+        "displayHeaderSubtitle",
+        "displayBrandPrimaryPicker",
+        "displayBrandPrimary",
+        "displayBrandSecondaryPicker",
+        "displayBrandSecondary",
+        "displayFooterTitle",
+        "displayFooterDescription",
+        "displayFooterAddress",
+        "displayFooterPhone",
+        "displayFooterEmail",
+        "displayFooterWebsite",
+        "displayFooterFacebook",
+        "displayFooterCopyright"
+      ].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      });
+
+      document.getElementById("displayLogoUploadBtn").disabled = disabled;
+    }
+
+    function setDisplayEditMode(editing){
+      displayEditing = editing;
+      setDisplayInputsDisabled(!editing);
+      document.getElementById("displayEditActions").style.display = editing ? "flex" : "none";
+      document.getElementById("editDisplayBtn").textContent = editing ? "Editing..." : "Edit";
+      document.getElementById("editDisplayBtn").disabled = editing;
+      const card = document.getElementById("displaySettingsCard");
+      if (editing) {
+        card.classList.add("is-editing");
+        document.getElementById("displayStateText").textContent = "Edit mode";
+      } else {
+        card.classList.remove("is-editing");
+        document.getElementById("displayStateText").textContent = "View mode";
+      }
+    }
+
+    function setDisplayForm(data){
+      document.getElementById("displaySchoolName").value = data.school_name;
+      document.getElementById("displayHeaderSubtitle").value = data.header_subtitle;
+      document.getElementById("displayBrandPrimary").value = data.brand_primary;
+      document.getElementById("displayBrandSecondary").value = data.brand_secondary;
+      document.getElementById("displayBrandPrimaryPicker").value = data.brand_primary;
+      document.getElementById("displayBrandSecondaryPicker").value = data.brand_secondary;
+      document.getElementById("displayFooterTitle").value = data.footer_title;
+      document.getElementById("displayFooterDescription").value = data.footer_description;
+      document.getElementById("displayFooterAddress").value = data.footer_address;
+      document.getElementById("displayFooterPhone").value = data.footer_phone;
+      document.getElementById("displayFooterEmail").value = data.footer_email;
+      document.getElementById("displayFooterWebsite").value = data.footer_website;
+      document.getElementById("displayFooterFacebook").value = data.footer_facebook;
+      document.getElementById("displayFooterCopyright").value = data.footer_copyright;
+      
+      // Logo display
+      if (data.logo_url) {
+        document.getElementById("logoThumbWrap").classList.add("show");
+        document.getElementById("logoThumbImg").src = data.logo_url;
+        document.getElementById("logoThumbLink").href = data.logo_url;
+        document.getElementById("displayLogoMeta").textContent = "Logo selected";
+      } else {
+        document.getElementById("logoThumbWrap").classList.remove("show");
+        document.getElementById("displayLogoMeta").textContent = "No logo uploaded";
+      }
+    }
+
+    function getDisplayFormData(){
+      return {
+        school_name: document.getElementById("displaySchoolName").value.trim(),
+        header_subtitle: document.getElementById("displayHeaderSubtitle").value.trim(),
+        brand_primary: document.getElementById("displayBrandPrimary").value.trim(),
+        brand_secondary: document.getElementById("displayBrandSecondary").value.trim(),
+        logo_url: pendingLogoFileUrl || currentDisplaySettings?.logo_url || "",
+        footer_title: document.getElementById("displayFooterTitle").value.trim(),
+        footer_description: document.getElementById("displayFooterDescription").value.trim(),
+        footer_address: document.getElementById("displayFooterAddress").value.trim(),
+        footer_phone: document.getElementById("displayFooterPhone").value.trim(),
+        footer_email: document.getElementById("displayFooterEmail").value.trim(),
+        footer_website: document.getElementById("displayFooterWebsite").value.trim(),
+        footer_facebook: document.getElementById("displayFooterFacebook").value.trim(),
+        footer_copyright: document.getElementById("displayFooterCopyright").value.trim()
+      };
+    }
+
+    function applyDisplayPreview(data){
+      const iframe = document.getElementById("indexPreview");
+      if (!iframe) return;
+
+      // Send live update into the iframe via postMessage — no reload needed
+      iframe.contentWindow.postMessage({
+        type: "DISPLAY_PREVIEW_UPDATE",
+        data: data
+      }, "*");
+    }
+
+    async function loadDisplaySettings(){
+      const row = await apiFetch("/api/settings/display");
+      currentDisplaySettings = normalizeDisplaySettings(row || {});
+      pendingLogoData = "";
+      setDisplayForm(currentDisplaySettings);
+      setDisplayEditMode(false);
+
+      // Send initial data once iframe has loaded
+      const iframe = document.getElementById("indexPreview");
+      if (iframe) {
+        const sendInitial = () => {
+          iframe.contentWindow.postMessage({
+            type: "DISPLAY_PREVIEW_UPDATE",
+            data: currentDisplaySettings
+          }, "*");
+        };
+        if (iframe.contentDocument && iframe.contentDocument.readyState === "complete") {
+          sendInitial();
+        } else {
+          iframe.addEventListener("load", sendInitial, { once: true });
+        }
+      }
+    }
+
+    async function saveDisplaySettings(){
+      const payload = getDisplayFormData();
+
+      
+
+      document.getElementById("loadingModal").classList.add("show");
+
+      try {
+        const result = await apiFetch("/api/settings/display", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 1200));
+
+        if (result && result.settings) {
+          if (window.saveBrandingCache) {
+            window.saveBrandingCache(result.settings);
+          }
+
+          if (window.applyBranding) {
+            window.applyBranding(result.settings);
+          }
+        }
+
+        document.getElementById("displayStatus").textContent = "Display settings updated successfully.";
+        showToast("Display settings saved");
+        await loadDisplaySettings();
+      } finally {
+        document.getElementById("loadingModal").classList.remove("show");
+      }
+    }
+
+    function previewDisplaySettings(){
+      const payload = normalizeDisplaySettings(getDisplayFormData());
+      applyDisplayPreview(payload);
+    }
+
     document.getElementById("reloadMeBtn").addEventListener("click", async () => {
       try{
         setProgress(true, 20);
@@ -1619,6 +3108,172 @@
       }
     });
 
+    document.getElementById("reloadDisplayBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await loadDisplaySettings();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Reload display settings failed");
+      }
+    });
+
+    document.getElementById("editDisplayBtn").addEventListener("click", () => {
+      setDisplayEditMode(true);
+      document.getElementById("displayStatus").textContent = "Editing enabled. Input fields are now highlighted.";
+    });
+
+    document.getElementById("cancelDisplayBtn").addEventListener("click", () => {
+      
+      pendingLogoData = null;
+      pendingLogoFileUrl = null;
+      if (currentDisplaySettings){
+        setDisplayForm(currentDisplaySettings);
+        applyDisplayPreview(currentDisplaySettings);
+      }
+      setDisplayEditMode(false);
+      document.getElementById("displayStatus").textContent = "Changes discarded.";
+    });
+
+    document.getElementById("previewDisplayBtn").addEventListener("click", () => {
+      previewDisplaySettings();
+      showToast("Preview updated");
+    });
+
+    document.getElementById("saveDisplayBtn").addEventListener("click", async () => {
+      try{
+        setProgress(true, 20);
+        await saveDisplaySettings();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      }catch(err){
+        setProgress(false);
+        showToast(err.message || "Saving display settings failed");
+      }
+    });
+
+    document.getElementById("displayBrandPrimaryPicker").addEventListener("input", (e) => {
+      document.getElementById("displayBrandPrimary").value = e.target.value;
+      if (displayEditing) previewDisplaySettings();
+    });
+
+    document.getElementById("displayBrandSecondaryPicker").addEventListener("input", (e) => {
+      document.getElementById("displayBrandSecondary").value = e.target.value;
+      if (displayEditing) previewDisplaySettings();
+    });
+
+    document.getElementById("displayBrandPrimary").addEventListener("input", (e) => {
+      const v = e.target.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        document.getElementById("displayBrandPrimaryPicker").value = v;
+      }
+      if (displayEditing) previewDisplaySettings();
+    });
+
+    document.getElementById("displayBrandSecondary").addEventListener("input", (e) => {
+      const v = e.target.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+        document.getElementById("displayBrandSecondaryPicker").value = v;
+      }
+      if (displayEditing) previewDisplaySettings();
+    });
+
+    document.getElementById("displayLogoUploadBtn").addEventListener("click", () => {
+      if (!displayEditing) return;
+      document.getElementById("displayLogoFile").click();
+    });
+
+    document.getElementById("logoDeleteBtn").addEventListener("click", () => {
+  if (!displayEditing) return;
+
+  pendingLogoData = "";
+  pendingLogoFileUrl = "";
+  document.getElementById("displayLogoFile").value = "";
+  document.getElementById("logoThumbWrap").classList.remove("show");
+  document.getElementById("displayLogoMeta").textContent = "No new logo selected";
+
+  previewDisplaySettings();
+});
+
+    document.getElementById("logoThumbLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      const img = document.getElementById("logoThumbImg").src;
+      document.getElementById("logoImageModalImg").src = img;
+      document.getElementById("logoImageModal").classList.add("show");
+    });
+
+    document.getElementById("logoImageModalClose").addEventListener("click", () => {
+      document.getElementById("logoImageModal").classList.remove("show");
+    });
+
+    document.getElementById("logoImageModal").addEventListener("click", (e) => {
+      if (e.target === document.getElementById("logoImageModal")) {
+        document.getElementById("logoImageModal").classList.remove("show");
+      }
+    });
+
+    document.getElementById("displayLogoFile").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    document.getElementById("displayLogoMeta").textContent = `Compressing ${file.name}...`;
+
+    const compressedBlob = await compressLogoFile(file);
+    const previewUrl = URL.createObjectURL(compressedBlob);
+
+    const logoThumbImg = document.getElementById("logoThumbImg");
+    logoThumbImg.src = previewUrl;
+
+    document.getElementById("logoThumbWrap").classList.add("show");
+
+    document.getElementById("displayLogoMeta").textContent =
+      `Uploading compressed logo (${Math.round(compressedBlob.size / 1024)} KB)...`;
+
+    const uploadedLogoUrl = await uploadCompressedLogo(compressedBlob);
+    const absoluteLogoUrl = uploadedLogoUrl.startsWith("http")
+      ? uploadedLogoUrl
+      : `${API_ORIGIN}${uploadedLogoUrl}`;
+
+    pendingLogoData = previewUrl;
+    pendingLogoFileUrl = absoluteLogoUrl;
+
+    document.getElementById("logoThumbLink").href = absoluteLogoUrl;
+
+    document.getElementById("displayLogoMeta").textContent =
+      `${file.name} uploaded (${Math.round(compressedBlob.size / 1024)} KB)`;
+
+    previewDisplaySettings();
+  } catch (err) {
+    console.error(err);
+    pendingLogoData = null;
+    pendingLogoFileUrl = null;
+    document.getElementById("displayLogoMeta").textContent = "Failed to upload logo";
+    showToast(err.message || "Failed to upload logo");
+  }
+});
+
+    [
+      "displaySchoolName",
+      "displayHeaderSubtitle",
+      "displayFooterTitle",
+      "displayFooterDescription",
+      "displayFooterAddress",
+      "displayFooterPhone",
+      "displayFooterEmail",
+      "displayFooterWebsite",
+      "displayFooterFacebook",
+      "displayFooterCopyright"
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", () => {
+        if (displayEditing) previewDisplaySettings();
+      });
+    });
+
     async function init(){
       try{
         setProgress(true, 15);
@@ -1628,18 +3283,18 @@
           loadGlobalSettings(),
           loadGradeRules(),
           loadStudentOptions(),
-          loadLibrarians()
+          loadLibrarians(),
+          loadDisplaySettings()
         ]);
 
         setProgress(true, 100);
         setTimeout(() => setProgress(false), 200);
       }catch(err){
         setProgress(false);
-        showToast(err.message || "Failed to load settings");
+        showToast(err.message || "Initialization failed");
       }
     }
 
-    toggleDefaultEdit(false);
     init();
   </script>
 </body>

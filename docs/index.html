@@ -3,12 +3,40 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Golden Key OPAC</title>
+
+  <script>
+(function () {
+  try {
+    document.documentElement.classList.add("branding-loading");
+
+    const raw = localStorage.getItem("displaySettings");
+    if (!raw) return;
+
+    const data = JSON.parse(raw);
+    const root = document.documentElement;
+
+    if (data.brand_primary) {
+      root.style.setProperty("--brand-yellow", data.brand_primary);
+      root.style.setProperty("--brand-primary", data.brand_primary);
+    }
+
+    if (data.brand_secondary) {
+      root.style.setProperty("--brand-green", data.brand_secondary);
+      root.style.setProperty("--brand-secondary", data.brand_secondary);
+    }
+  } catch (e) {
+    console.warn("Brand preload failed:", e);
+  }
+})();
+</script>
+  <title>OPAC</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
-
+  <script>
+      document.documentElement.classList.add("branding-loading");
+  </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -25,32 +53,32 @@
   <!-- Top Bar -->
   <div class="topbar" id="siteHeader">
     <div class="brand">
-      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
+      <img class="brand__logo" alt="School Logo" data-brand-logo />
       <div class="brand__text">
         <div class="brand__name">
-          <span class="brand--highlight">GOLDEN KEY</span>
-          Integrated School of Saint Joseph
+          <span class="brand__school" data-brand-school-name>Your School Name</span>
         </div>
-        <div class="brand__sub">Online Public Access Catalogue</div>
+        <div class="brand__sub">
+          <span class="brand__subtitle" data-brand-header-subtitle>
+            Online Public Access Catalogue
+          </span>
+        </div>
       </div>
     </div>
 
     <nav class="nav" aria-label="Primary">
-  <a href="#top" class="nav__link is-active" data-target="top">Home</a>
-  <a href="#footer" class="nav__link" data-target="footer" id="contactLink">Contact</a>
-
-  <!-- Login button -->
-  <a href="login.html" class="btn login-btn">Login</a>
-</nav>
+      <a href="#top" class="nav__link is-active" data-target="top">Home</a>
+      <a href="#footer" class="nav__link" data-target="footer" id="contactLink">Contact</a>
+      <a href="login.html" class="btn login-btn">Login</a>
+    </nav>
   </div>
 
   <!-- Main -->
   <div class="hero__content">
     <div class="hero__center">
       <h1 class="hero__title">
-        <span class="accent">GOLDEN KEY</span>
-        <span>Online Public Access Catalogue (OPAC)</span>
-      </h1>
+  Online Public Access Catalogue (OPAC)
+</h1>
 
       <div class="search">
         <div class="search__bar">
@@ -76,66 +104,89 @@
 <footer class="site-footer" id="footer">
   <div class="site-footer__inner">
     <section class="site-footer__col">
-      <h3 class="site-footer__title">About Golden Key OPAC</h3>
-      <p class="site-footer__text">
-        Golden Key OPAC helps students and staff search books, check availability,
-        and locate shelf sections in one simple catalogue.
+      <h3 class="site-footer__title" id="footerBrandTitle">Library Management System</h3>
+      <p class="site-footer__text" id="footerBrandDescription">
+        Customize your school branding, contact details, and interface appearance in Display Settings.
       </p>
-      <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+      <p class="site-footer__fineprint">
+        © <span id="footerYear"></span>
+        <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span>
+      </p>
     </section>
-<section class="site-footer__col site-footer__col--right">
-  <h3 class="site-footer__title">Contact & Support</h3>
 
-  <div class="site-footer__item">
-    <span class="site-footer__icon" aria-hidden="true">
-      <!-- Location icon -->
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
-      </svg>
-    </span>
-    <div>
-      <div class="site-footer__label"></div>
-      <div>Lapolapo1st, San Jose, Philippines, 4227</div>
-    </div>
-  </div>
+    <section class="site-footer__col site-footer__col--right">
+      <h3 class="site-footer__title">Contact &amp; Support</h3>
 
-  <div class="site-footer__item">
-    <span class="site-footer__icon" aria-hidden="true">
-      <!-- Phone icon -->
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-        <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
-      </svg>
-    </span>
-    <div>
-      <div class="site-footer__label"></div>
-      <div>(043) 702 2153</div>
-    </div>
-  </div>
+      <div class="site-footer__item">
+        <span class="site-footer__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
+          </svg>
+        </span>
+        <div>
+          <div class="site-footer__label"></div>
+          <div id="footerBrandAddress">School Address</div>
+        </div>
+      </div>
 
-  <div class="site-footer__row" style="margin-top:14px;">
-    <a class="site-footer__social" href="https://www.facebook.com/people/Golden-Key-Integrated-School-of-St-Joseph/100054202103739/" target="_blank" rel="noopener">
-      <span class="site-footer__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-          <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.88 3.77-3.88 1.09 0 2.23.2 2.23.2v2.46h-1.26c-1.24 0-1.62.77-1.62 1.56V12h2.76l-.44 2.89h-2.32v6.99A10 10 0 0 0 22 12z"/>
-        </svg>
-      </span>
-      Facebook
-    </a>
+      <div class="site-footer__item">
+        <span class="site-footer__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
+          </svg>
+        </span>
+        <div>
+          <div class="site-footer__label"></div>
+          <div id="footerBrandPhone">School Contact Number</div>
+        </div>
+      </div>
 
-    <span class="site-footer__dot">•</span>
+      <div class="site-footer__item">
+        <span class="site-footer__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
+          </svg>
+        </span>
+        <div>
+          <div class="site-footer__label"></div>
+          <div id="footerBrandEmail">library@school.edu</div>
+        </div>
+      </div>
 
-    <a class="site-footer__social" href="https://goldenkey.school/" target="_blank" rel="noopener">
-      Official Website
-    </a>
-  </div>
+      <div class="site-footer__row" style="margin-top:14px;">
+        <a
+          class="site-footer__social"
+          id="footerBrandFacebook"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          style="display:none;"
+        >
+          Facebook
+        </a>
 
-</section>
-   
+        <span class="site-footer__dot">•</span>
+
+        <a
+          class="site-footer__social"
+          id="footerBrandWebsite"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          style="display:none;"
+        >
+          Official Website
+        </a>
+      </div>
+    </section>
   </div>
 </footer>
 
 <script src="app.js"></script>
-
-
+<script src="branding.js"></script>
+<script>
+  const footerYear = document.getElementById("footerYear");
+  if (footerYear) footerYear.textContent = new Date().getFullYear();
+</script>
 </body>
 </html>

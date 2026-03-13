@@ -1,51 +1,61 @@
-<!-- details.html (FULL UPDATED) -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Golden Key OPAC — Book Details</title>
+
+  <script>
+    (function () {
+      try {
+        document.documentElement.classList.add("branding-loading");
+
+        const raw = localStorage.getItem("displaySettings");
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+        const root = document.documentElement;
+
+        if (data.brand_primary) {
+          root.style.setProperty("--brand-yellow", data.brand_primary);
+          root.style.setProperty("--brand-primary", data.brand_primary);
+        }
+
+        if (data.brand_secondary) {
+          root.style.setProperty("--brand-green", data.brand_secondary);
+          root.style.setProperty("--brand-secondary", data.brand_secondary);
+        }
+      } catch (e) {
+        console.warn("Brand preload failed:", e);
+      }
+    })();
+  </script>
+
+  <title>Book Details</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="styles.css" />
 
   <style>
-    /* ===== Background (match results) ===== */
-    .details-hero{
+    .details-hero {
       position: relative;
       min-height: 100vh;
       overflow: hidden;
     }
-    .details-hero__bg{
-      position: absolute;
-      inset: 0;
-      background-image: url("assets/bg.png");
-      background-size: cover;
-      background-position: center;
-      filter: blur(2px) saturate(1.05) contrast(1.05);
-      transform: scale(1.04);
-    }
-    .details-hero__overlay{
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.35));
-    }
 
-    .details-wrap{
+    .details-wrap {
       position: relative;
-      z-index: 2;
+      z-index: 3;
       padding: 108px 16px 34px;
     }
-    .details-shell{
+
+    .details-shell {
       width: min(1200px, 92vw);
       margin: 0 auto;
     }
 
-    /* ===== Top row: Back + Search (NO right options) ===== */
-    .details-search{
+    .details-search {
       display: grid;
       grid-template-columns: auto 1fr;
       align-items: center;
@@ -53,7 +63,7 @@
       margin-bottom: 14px;
     }
 
-    .back-top{
+    .back-top {
       width: 42px;
       height: 42px;
       border-radius: 999px;
@@ -66,13 +76,13 @@
       box-shadow: 0 10px 22px rgba(0,0,0,0.22);
       transition: transform 160ms ease, opacity 160ms ease;
     }
-    .back-top:hover{ transform: translateY(-1px); opacity: 0.95; }
-    .back-top:active{ transform: translateY(1px); }
 
-    .details-search .search__bar{ margin: 0; }
+    .back-top:hover { transform: translateY(-1px); opacity: 0.95; }
+    .back-top:active { transform: translateY(1px); }
 
-    /* ===== Details panel ===== */
-    .details-panel{
+    .details-search .search__bar { margin: 0; }
+
+    .details-panel {
       position: relative;
       background: rgba(255,255,255,0.10);
       border: 1px solid rgba(255,255,255,0.12);
@@ -82,7 +92,7 @@
       -webkit-backdrop-filter: blur(10px);
     }
 
-    .details-body{
+    .details-body {
       position: relative;
       display: grid;
       grid-template-columns: 280px 1fr;
@@ -90,7 +100,7 @@
       align-items: stretch;
     }
 
-    .cover-wrap{
+    .cover-wrap {
       border-radius: 16px;
       overflow: hidden;
       background: rgba(0,0,0,0.25);
@@ -99,14 +109,26 @@
       box-shadow: 0 14px 30px rgba(0,0,0,0.28);
       animation: floatIn 260ms ease both;
     }
-    .cover-wrap img{
+
+    .cover-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
-    .info-card{
+    .cover-empty {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,0.78);
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    }
+
+    .info-card {
       background: rgba(255,255,255,0.96);
       color: #111;
       border-radius: 18px;
@@ -119,7 +141,7 @@
       animation: popIn 240ms ease both;
     }
 
-    .info-top{
+    .info-top {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -127,22 +149,21 @@
       margin-bottom: 12px;
     }
 
-    .book-title{
+    .book-title {
       font-size: clamp(24px, 3vw, 38px);
       line-height: 1.05;
       font-weight: 800;
       margin: 0;
     }
 
-    .book-author{
-        margin-top: 8px;
-        font-size: 15px;
-        opacity: 0.78;
-        font-weight: 800;
+    .book-author {
+      margin-top: 8px;
+      font-size: 15px;
+      opacity: 0.78;
+      font-weight: 800;
     }
 
-    /* Availability pill + hover */
-    .availability-pill{
+    .availability-pill {
       flex-shrink: 0;
       background: rgba(0,86,0,0.10);
       color: #005600;
@@ -153,20 +174,21 @@
       font-weight: 900;
       white-space: nowrap;
       margin-top: 2px;
-
-      transition: transform 170ms ease, box-shadow 170ms ease, background 170ms ease, color 170ms ease, border-color 170ms ease;
+      transition: transform 170ms ease, box-shadow 170ms ease;
     }
-    .availability-pill:hover{
+
+    .availability-pill:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 18px rgba(0,0,0,0.12);
     }
-    .availability-pill.is-zero{
+
+    .availability-pill.is-zero {
       background: rgba(200,0,0,0.10);
       color: #B00000;
       border-color: rgba(200,0,0,0.22);
     }
 
-    .meta-grid{
+    .meta-grid {
       display: grid;
       grid-template-columns: 140px 1fr;
       row-gap: 10px;
@@ -175,7 +197,7 @@
       font-size: 15px;
     }
 
-    .meta-label{
+    .meta-label {
       font-weight: 900;
       color: rgba(0,0,0,0.55);
       text-transform: uppercase;
@@ -183,56 +205,53 @@
       letter-spacing: 0.06em;
     }
 
-    .meta-value{
+    .meta-value {
       font-weight: 800;
       color: rgba(0,0,0,0.88);
       font-size: 15px;
     }
-    .meta-value.emph{
+
+    .meta-value.emph {
       font-weight: 900;
       font-style: italic;
       color: #111;
     }
 
-    /* Tags + hover (now clickable buttons) */
-    .tags{
+    .tags {
       margin-top: 16px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
     }
-    .tag{
+
+    .tag {
       padding: 7px 12px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 800;
-      border: 1.6px solid rgba(0,86,0,0.60);
-      color: #005600;
-      background: rgba(0,86,0,0.06);
+      border: 1.6px solid var(--brand-green);
+      color: var(--brand-green);
+      background: color-mix(in srgb, var(--brand-yellow) 10%, transparent);
       user-select: none;
-
       transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
       animation: chipIn 220ms ease both;
     }
-    /* button reset */
-    .tag-btn{
+
+    .tag-btn {
       appearance: none;
       -webkit-appearance: none;
       font-family: inherit;
       cursor: pointer;
       outline: none;
     }
-    .tag:hover{
+
+    .tag:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 18px rgba(0,0,0,0.10);
-      background: rgba(0,86,0,0.10);
-    }
-    .tag:focus-visible{
-      box-shadow: 0 0 0 3px rgba(0,86,0,0.20);
+      background: color-mix(in srgb, var(--brand-yellow) 18%, transparent);
     }
 
-    /* ===== Loading overlay (older clean version) ===== */
-    .loading-center{
+    .loading-center {
       position: absolute;
       inset: 0;
       display: grid;
@@ -242,9 +261,10 @@
       transition: opacity 180ms ease;
       z-index: 6;
     }
-    .loading-center.is-on{ opacity: 1; }
 
-    .dots{
+    .loading-center.is-on { opacity: 1; }
+
+    .dots {
       display: inline-flex;
       align-items: center;
       gap: 8px;
@@ -255,29 +275,30 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
     }
-    .dot{
+
+    .dot {
       width: 9px;
       height: 9px;
       border-radius: 999px;
-      background: #f4e32f;
+      background: var(--brand-yellow);
       animation: dotBounce 850ms infinite ease-in-out;
     }
-    .dot:nth-child(1){ animation-delay: 0ms; }
-    .dot:nth-child(2){ animation-delay: 160ms; }
-    .dot:nth-child(3){ animation-delay: 320ms; }
-    @keyframes dotBounce{
-      0%, 100%{ transform: translateY(0); opacity: 0.55; }
-      50%{ transform: translateY(-5px); opacity: 1; }
+
+    .dot:nth-child(1) { animation-delay: 0ms; }
+    .dot:nth-child(2) { animation-delay: 160ms; }
+    .dot:nth-child(3) { animation-delay: 320ms; }
+
+    @keyframes dotBounce {
+      0%, 100% { transform: translateY(0); opacity: 0.55; }
+      50% { transform: translateY(-5px); opacity: 1; }
     }
 
-    .details-body.is-loading{
-      min-height: 520px;
-    }
+    .details-body.is-loading { min-height: 520px; }
+
     .details-body.is-loading .cover-wrap,
-    .details-body.is-loading .info-card{
-      opacity: 0;
-    }
-    .loader-glass{
+    .details-body.is-loading .info-card { opacity: 0; }
+
+    .loader-glass {
       position: absolute;
       inset: 18px;
       border-radius: 18px;
@@ -292,65 +313,81 @@
       transition: opacity 180ms ease;
       z-index: 10;
     }
-    .loader-glass.is-on{ opacity: 1; }
 
-    .details-panel.is-loading .details-body{ opacity: 0; }
-    .details-panel.is-loading .details-body{ transition: opacity 160ms ease; }
+    .loader-glass.is-on { opacity: 1; }
 
-    /* ===== Animations ===== */
-    @keyframes popIn{
-      from{ opacity: 0; transform: translateY(10px); }
-      to{ opacity: 1; transform: translateY(0); }
-    }
-    @keyframes floatIn{
-      from{ opacity: 0; transform: translateY(14px) scale(0.98); }
-      to{ opacity: 1; transform: translateY(0) scale(1); }
-    }
-    @keyframes chipIn{
-      from{ opacity: 0; transform: translateY(8px); }
-      to{ opacity: 1; transform: translateY(0); }
+    .details-panel.is-loading .details-body {
+      opacity: 0;
+      transition: opacity 160ms ease;
     }
 
-    /* Responsive */
-    @media (max-width: 980px){
-      .details-body{ grid-template-columns: 220px 1fr; }
+    .detail-empty {
+      background: rgba(255,255,255,0.96);
+      color: #111;
+      padding: 18px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.05);
+      margin-top: 10px;
     }
-    @media (max-width: 780px){
-      .details-body{ grid-template-columns: 1fr; }
-      .cover-wrap{ max-width: 280px; }
-      .details-search{ grid-template-columns: auto 1fr; }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes floatIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 980px) {
+      .details-body { grid-template-columns: 220px 1fr; }
+    }
+
+    @media (max-width: 780px) {
+      .details-body { grid-template-columns: 1fr; }
+      .cover-wrap { max-width: 280px; }
     }
   </style>
 </head>
 
 <body>
-  <!-- Header -->
-  <div class="topbar" id="siteHeader">
-    <div class="brand">
-      <img src="assets/school_logo.png" class="brand__logo" alt="Golden Key Logo" />
-      <div class="brand__text">
-        <div class="brand__name">
-          <span class="brand--highlight">GOLDEN KEY</span>
-          Integrated School of Saint Joseph
-        </div>
-        <div class="brand__sub">Online Public Access Catalogue</div>
-      </div>
-    </div>
-
-    <nav class="nav" aria-label="Primary">
-      <a href="index.html#top" class="nav__link">Home</a>
-      <a href="#footer" class="nav__link" id="contactLink">Contact</a>
-    </nav>
-  </div>
-
   <main class="details-hero" id="top">
-    <div class="details-hero__bg" aria-hidden="true"></div>
-    <div class="details-hero__overlay" aria-hidden="true"></div>
+    <div class="page-bg" aria-hidden="true"></div>
+    <div class="page-overlay" aria-hidden="true"></div>
+
+    <div class="topbar" id="siteHeader">
+      <div class="brand">
+        <img
+          src="assets/default-school-logo.png"
+          class="brand__logo"
+          alt="School Logo"
+          data-brand-logo
+        />
+        <div class="brand__text">
+          <div class="brand__name">
+            <span class="brand__school" data-brand-school-name>Your School Name</span>
+          </div>
+          <div class="brand__sub">
+            <span class="brand__subtitle" data-brand-header-subtitle>Online Public Access Catalogue (OPAC)</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <a href="index.html#top" class="nav__link">Home</a>
+        <a href="#footer" class="nav__link" id="contactLink">Contact</a>
+        <a href="login.html" class="btn login-btn">Login</a>
+      </nav>
+    </div>
 
     <section class="details-wrap">
       <div class="details-shell">
-
-        <!-- Back + Search -->
         <div class="details-search">
           <button class="back-top" id="backBtn" title="Back" aria-label="Back">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
@@ -367,7 +404,6 @@
           </div>
         </div>
 
-        <!-- Details panel -->
         <div class="details-panel">
           <div class="loader-glass" id="loaderGlass" aria-hidden="true">
             <div class="dots" aria-label="Loading book details">
@@ -382,60 +418,109 @@
               </div>
             </div>
 
-            <!-- Cover -->
             <div class="cover-wrap" id="coverWrap" aria-label="Book cover"></div>
-
-            <!-- Info -->
             <div class="info-card" id="infoCard"></div>
           </div>
 
           <div id="statusSlot"></div>
         </div>
-
       </div>
     </section>
   </main>
 
-  <!-- Footer -->
   <footer class="site-footer" id="footer">
     <div class="site-footer__inner">
       <section class="site-footer__col">
-        <h3 class="site-footer__title">About Golden Key OPAC</h3>
-        <p class="site-footer__text">
-          Golden Key OPAC helps students and staff search books, check availability,
-          and locate shelf sections in one simple catalogue.
+        <h3 class="site-footer__title" id="footerBrandTitle">Library Management System</h3>
+        <p class="site-footer__text" id="footerBrandDescription">
+          Customize your school branding, contact details, and interface appearance in Display Settings.
         </p>
-        <p class="site-footer__fineprint">© <span id="footerYear"></span> Golden Key — All Rights Reserved.</p>
+        <p class="site-footer__fineprint">
+          © <span id="footerYear"></span>
+          <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span>
+        </p>
       </section>
 
       <section class="site-footer__col site-footer__col--right">
         <h3 class="site-footer__title">Contact &amp; Support</h3>
-        <p class="site-footer__text">Lapolapo1st, San Jose, Philippines, 4227</p>
-        <p class="site-footer__text">(043) 702 2153</p>
+
+        <div class="site-footer__item">
+          <span class="site-footer__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
+            </svg>
+          </span>
+          <div>
+            <div id="footerBrandAddress">School Address</div>
+          </div>
+        </div>
+
+        <div class="site-footer__item">
+          <span class="site-footer__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
+            </svg>
+          </span>
+          <div>
+            <div id="footerBrandPhone">School Contact Number</div>
+          </div>
+        </div>
+
+        <div class="site-footer__item">
+          <span class="site-footer__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
+            </svg>
+          </span>
+          <div>
+            <div id="footerBrandEmail">library@school.edu</div>
+          </div>
+        </div>
 
         <div class="site-footer__row" style="margin-top:14px;">
-          <a class="site-footer__social" href="https://www.facebook.com/people/Golden-Key-Integrated-School-of-St-Joseph/100054202103739/" target="_blank" rel="noopener">Facebook</a>
-          <span class="site-footer__dot">•</span>
-          <a class="site-footer__social" href="https://goldenkey.school/" target="_blank" rel="noopener">Official Website</a>
+          <a
+            class="site-footer__social"
+            id="footerBrandFacebook"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            style="display:none;"
+          >
+            Facebook
+          </a>
+
+          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
+
+          <a
+            class="site-footer__social"
+            id="footerBrandWebsite"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            style="display:none;"
+          >
+            Official Website
+          </a>
         </div>
       </section>
     </div>
   </footer>
 
   <script>
-    const BASE_URL = "https://golden-opac-backend.onrender.com";
+    const BASE_URL = "http://127.0.0.1:8000";
+    const DEFAULT_LOGO = "assets/default-school-logo.png";
 
     const header = document.getElementById("siteHeader");
     const contactLink = document.getElementById("contactLink");
-
     const qEl = document.getElementById("q");
     const searchBtn = document.getElementById("searchBtn");
     const backBtn = document.getElementById("backBtn");
-
     const body = document.getElementById("body");
     const coverWrap = document.getElementById("coverWrap");
     const infoCard = document.getElementById("infoCard");
     const statusSlot = document.getElementById("statusSlot");
+    const detailsPanel = document.querySelector(".details-panel");
+    const loaderGlass = document.getElementById("loaderGlass");
 
     const escapeHtml = (s) => String(s ?? "")
       .replaceAll("&", "&amp;")
@@ -444,19 +529,17 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
 
-    const detailsPanel = document.querySelector(".details-panel");
-    const loaderGlass = document.getElementById("loaderGlass");
-
-    function setLoading(on){
+    function setLoading(on) {
       detailsPanel.classList.toggle("is-loading", !!on);
       body.classList.toggle("is-loading", !!on);
       if (loaderGlass) loaderGlass.classList.toggle("is-on", !!on);
     }
 
-    function updateHeaderGlass(){
+    function updateHeaderGlass() {
       if (!header) return;
       header.classList.toggle("is-scrolled", window.scrollY > 8);
     }
+    
     window.addEventListener("scroll", updateHeaderGlass, { passive: true });
     updateHeaderGlass();
 
@@ -472,37 +555,42 @@
     const yEl = document.getElementById("footerYear");
     if (yEl) yEl.textContent = String(new Date().getFullYear());
 
-    function renderError(msg, sub){
+    function renderError(msg, sub) {
       statusSlot.innerHTML = `
-        <div class="detail-empty" style="background:rgba(255,255,255,0.96);color:#111;padding:18px 20px;border-radius:12px;border:1px solid rgba(0,0,0,0.05);margin-top:10px;">
+        <div class="detail-empty">
           <div style="font-weight:900;font-size:17px;margin-bottom:6px;">${escapeHtml(msg)}</div>
           <div style="font-size:14px;opacity:0.75;line-height:1.5;">${escapeHtml(sub || "")}</div>
         </div>
       `;
     }
-    function clearStatus(){ statusSlot.innerHTML = ""; }
 
-    function goToResultsWithQuery(q){
+    function clearStatus() {
+      statusSlot.innerHTML = "";
+    }
+
+    function goToResultsWithQuery(q) {
       const query = (q ?? "").trim();
       const params = new URLSearchParams();
       if (query) params.set("q", query);
       window.location.href = `results.html?${params.toString()}`;
     }
 
-    function smartBack(){
+    function smartBack() {
       if (document.referrer && document.referrer.includes("results.html")) {
         history.back();
         return;
       }
       goToResultsWithQuery(qEl.value);
     }
+
     backBtn.addEventListener("click", smartBack);
 
-    function searchRedirect(){
+    function searchRedirect() {
       const query = qEl.value.trim();
       if (!query) return;
       goToResultsWithQuery(query);
     }
+
     searchBtn.addEventListener("click", searchRedirect);
     qEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -511,26 +599,22 @@
       }
     });
 
-    function getBookIdFromUrl(){
+    function getBookIdFromUrl() {
       const params = new URLSearchParams(location.search);
       return Number(params.get("book_id") || params.get("id") || "");
     }
 
-    function splitTags(...vals){
+    function splitTags(...vals) {
       const raw = vals.filter(Boolean).join(", ");
-      return raw
-        .split(",")
-        .map(x => x.trim())
-        .filter(Boolean)
-        .slice(0, 10);
+      return raw.split(",").map(x => x.trim()).filter(Boolean).slice(0, 10);
     }
 
-    async function loadDetails(){
+    async function loadDetails() {
       const params = new URLSearchParams(location.search);
       qEl.value = params.get("q") ?? "";
 
       const bookId = getBookIdFromUrl();
-      if (!bookId){
+      if (!bookId) {
         renderError("Missing book ID", "Open this page with details.html?book_id=123");
         return;
       }
@@ -538,7 +622,7 @@
       clearStatus();
       setLoading(true);
 
-      try{
+      try {
         const res = await fetch(`${BASE_URL}/api/opac/books/${bookId}`);
         if (!res.ok) throw new Error(res.status === 404 ? "not_found" : "request_failed");
 
@@ -548,25 +632,24 @@
 
         if (!book) throw new Error("not_found");
 
-        const title = escapeHtml(book.title ?? book["title"] ?? "");
-        const author = escapeHtml(book.author ?? book["author"] ?? "");
-        const publisher = escapeHtml(book.publisher ?? book["publisher"] ?? "—");
-        const year = escapeHtml(book.pub_year ?? book["pub_year"] ?? "—");
-        const genre = escapeHtml(book.genre ?? book["genre"] ?? "—");
-        const subject = escapeHtml(book.subject ?? book["subject"] ?? "—");
-        const section = escapeHtml(book.section ?? book["section"] ?? "—");
-        const coverUrl = book.cover_url ?? book["cover_url"] ?? "";
-        const catalogKey = book.catalog_key ?? book["catalog_key"] ?? "";
+        const title = escapeHtml(book.title ?? "");
+        const author = escapeHtml(book.author ?? "");
+        const publisher = escapeHtml(book.publisher ?? "—");
+        const year = escapeHtml(book.pub_year ?? "—");
+        const genre = escapeHtml(book.genre ?? "—");
+        const subject = escapeHtml(book.subject ?? "—");
+        const section = escapeHtml(book.section ?? "—");
+        const coverUrl = book.cover_url ?? "";
+        const catalogKey = book.catalog_key ?? "";
 
-        const total = Number(avail?.total_copies ?? avail?.["total_copies"] ?? 0);
-        const available = Number(avail?.available_copies ?? avail?.["available_copies"] ?? 0);
+        const total = Number(avail?.total_copies ?? 0);
+        const available = Number(avail?.available_copies ?? 0);
 
-        // Cover
         coverWrap.innerHTML = coverUrl
-          ? `<img src="${escapeHtml(coverUrl)}" alt="${title} cover" loading="lazy" onerror="this.style.display='none';">`
-          : "";
+          ? `<img src="${escapeHtml(coverUrl)}" alt="${title} cover" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=&quot;cover-empty&quot;>No Cover</div>';">`
+          : `<div class="cover-empty">No Cover</div>`;
 
-        const tags = splitTags(book.genre ?? book["genre"], book.subject ?? book["subject"], book.section ?? book["section"]);
+        const tags = splitTags(book.genre, book.subject, book.section);
 
         infoCard.innerHTML = `
           <div>
@@ -579,49 +662,36 @@
                 ${available} of ${total} copies available
               </div>
             </div>
-
             <div class="meta-grid">
               <div class="meta-label">ISBN</div>
               <div class="meta-value">${escapeHtml(catalogKey || "—")}</div>
-
               <div class="meta-label">Publisher</div>
               <div class="meta-value">${publisher}</div>
-
               <div class="meta-label">Year</div>
               <div class="meta-value">${year}</div>
-
-              <div class="meta-label">Section</div>
+              <div class="meta-label">Location</div>
               <div class="meta-value emph">${section}</div>
-
-              <div class="meta-label">Subject</div>
+              <div class="meta-label">Keywords</div>
               <div class="meta-value">${subject}</div>
-
-              <div class="meta-label">Genre</div>
+              <div class="meta-label">Subject</div>
               <div class="meta-value">${genre}</div>
             </div>
           </div>
-
           <div class="tags" id="tagRow">
-            ${tags.map(t => `
-              <button type="button" class="tag tag-btn" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>
-            `).join("")}
+            ${tags.map(t => `<button type="button" class="tag tag-btn" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join("")}
           </div>
         `;
 
-        // ✅ Make tags clickable → redirect to results.html?q=<tag>
-        const tagButtons = infoCard.querySelectorAll(".tag-btn");
-        tagButtons.forEach(btn => {
+        infoCard.querySelectorAll(".tag-btn").forEach(btn => {
           btn.addEventListener("click", () => {
-            const tagQ = btn.getAttribute("data-q") || btn.textContent || "";
-            goToResultsWithQuery(tagQ);
+            goToResultsWithQuery(btn.getAttribute("data-q") || btn.textContent || "");
           });
         });
 
         setLoading(false);
-
-      } catch(err){
+      } catch (err) {
         setLoading(false);
-        if (String(err.message) === "not_found"){
+        if (String(err.message) === "not_found") {
           renderError("Book not found", "The book may have been removed or the link is invalid.");
         } else {
           renderError("Unable to load book details", "Please check your connection and try again.");
@@ -629,7 +699,153 @@
       }
     }
 
-    loadDetails();
+    
+
+  function setSafeLogo(logoEl, schoolName, rawLogoUrl) {
+    if (!logoEl) return;
+
+    const logoUrl = String(rawLogoUrl || "").trim();
+
+    logoEl.alt = `${schoolName} Logo`;
+    logoEl.classList.add("is-loaded");
+
+    logoEl.onerror = function () {
+      this.onerror = null;
+      this.classList.add("is-loaded");
+      this.src = DEFAULT_LOGO;
+    };
+
+  logoEl.src = logoUrl || DEFAULT_LOGO;
+}
+    function applyDetailsBranding(data) {
+      if (!data || typeof data !== "object") return;
+
+      const schoolName =
+        data.school_name ||
+        data.library_name ||
+        "Your School Name";
+
+      const systemName =
+        data.footer_title ||
+        data.system_name ||
+        "Library Management System";
+
+      const headerSubtitle =
+        data.header_subtitle ||
+        "Online Public Access Catalogue (OPAC)";
+
+      const footerDescription =
+        data.footer_description ||
+        "Customize your school branding, contact details, and interface appearance in Display Settings.";
+
+      const footerAddress =
+        data.footer_address ||
+        data.address ||
+        "School Address";
+
+      const footerPhone =
+        data.footer_phone ||
+        data.phone ||
+        "School Contact Number";
+
+      const footerEmail =
+        data.footer_email ||
+        data.email ||
+        "library@school.edu";
+
+      const footerWebsite =
+        data.footer_website ||
+        data.website_url ||
+        "";
+
+      const footerFacebook =
+        data.footer_facebook ||
+        data.facebook_url ||
+        "";
+
+      const footerCopyright =
+        data.footer_copyright ||
+        `${schoolName} — All Rights Reserved.`;
+
+      const schoolNameEl = document.querySelector("[data-brand-school-name]");
+      const subtitleEl = document.querySelector("[data-brand-header-subtitle]");
+      const logoEl = document.querySelector("[data-brand-logo]");
+      const footerTitleEl = document.getElementById("footerBrandTitle");
+      const footerDescriptionEl = document.getElementById("footerBrandDescription");
+      const footerAddressEl = document.getElementById("footerBrandAddress");
+      const footerPhoneEl = document.getElementById("footerBrandPhone");
+      const footerEmailEl = document.getElementById("footerBrandEmail");
+      const footerCopyrightEl = document.getElementById("footerBrandCopyright");
+      const footerWebsiteEl = document.getElementById("footerBrandWebsite");
+      const footerFacebookEl = document.getElementById("footerBrandFacebook");
+      const footerDividerEl = document.getElementById("footerBrandDivider");
+
+      if (schoolNameEl) schoolNameEl.textContent = schoolName;
+      if (subtitleEl) subtitleEl.textContent = headerSubtitle;
+      if (footerTitleEl) footerTitleEl.textContent = systemName;
+      if (footerDescriptionEl) footerDescriptionEl.textContent = footerDescription;
+      if (footerAddressEl) footerAddressEl.textContent = footerAddress;
+      if (footerPhoneEl) footerPhoneEl.textContent = footerPhone;
+      if (footerEmailEl) footerEmailEl.textContent = footerEmail;
+      if (footerCopyrightEl) footerCopyrightEl.textContent = footerCopyright;
+
+      setSafeLogo(
+        logoEl,
+        schoolName,
+        data.logo_url || data.logo || data.school_logo || ""
+      );
+
+      if (footerFacebookEl) {
+        if (footerFacebook) {
+          footerFacebookEl.href = /^https?:\/\//i.test(footerFacebook) ? footerFacebook : `https://${footerFacebook}`;
+          footerFacebookEl.style.display = "inline-flex";
+        } else {
+          footerFacebookEl.removeAttribute("href");
+          footerFacebookEl.style.display = "none";
+        }
+      }
+
+      if (footerWebsiteEl) {
+        if (footerWebsite) {
+          footerWebsiteEl.href = /^https?:\/\//i.test(footerWebsite) ? footerWebsite : `https://${footerWebsite}`;
+          footerWebsiteEl.style.display = "inline-flex";
+        } else {
+          footerWebsiteEl.removeAttribute("href");
+          footerWebsiteEl.style.display = "none";
+        }
+      }
+
+      if (footerDividerEl) {
+        footerDividerEl.style.display =
+          footerFacebook && footerWebsite ? "inline-block" : "none";
+      }
+
+      document.documentElement.classList.remove("branding-loading");
+    }
+
+    function initDetailsPage() {
+      try {
+        const raw = localStorage.getItem("displaySettings");
+        if (raw) {
+          applyDetailsBranding(JSON.parse(raw));
+        } else {
+          const logoEl = document.querySelector("[data-brand-logo]");
+          setSafeLogo(logoEl, "Your School Name", "");
+          document.documentElement.classList.remove("branding-loading");
+        }
+      } catch (e) {
+        console.warn("Local details branding failed:", e);
+        const logoEl = document.querySelector("[data-brand-logo]");
+        setSafeLogo(logoEl, "Your School Name", "");
+        document.documentElement.classList.remove("branding-loading");
+      }
+
+      loadDetails();
+    }
+
+    initDetailsPage();
   </script>
+
+
 </body>
 </html>

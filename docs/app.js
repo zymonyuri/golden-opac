@@ -1,4 +1,4 @@
-const BASE_URL = "https://golden-opac-backend.onrender.com";
+const BASE_URL = "http://127.0.0.1:8000";
 
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
