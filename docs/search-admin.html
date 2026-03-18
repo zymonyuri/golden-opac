@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
   <script>
     document.documentElement.classList.add("branding-loading");
   </script>
@@ -52,19 +53,9 @@
       box-shadow: 0 18px 45px rgba(0,0,0,0.22);
     }
 
-    .nav__link:hover{
-      color: rgba(255,255,255,0.78);
-    }
-
-    .brand__school{
-      color: var(--brand-yellow);
-      font-weight: 900;
-    }
-
-    .brand__subtitle{
-      color: var(--brand-green);
-      font-weight: 700;
-    }
+    .nav__link:hover{ color: rgba(255,255,255,0.78); }
+    .brand__school{ color: var(--brand-yellow); font-weight: 900; }
+    .brand__subtitle{ color: var(--brand-green); font-weight: 700; }
 
     .page{
       position:relative;
@@ -104,11 +95,7 @@
       place-items:center;
       border-bottom:1px solid rgba(255,255,255,0.10);
       text-decoration:none;
-      transition:
-        transform 220ms ease,
-        border-color 220ms ease,
-        box-shadow 220ms ease,
-        background 220ms ease;
+      transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease, background 220ms ease;
     }
 
     .side-item:last-child{ border-bottom:0; }
@@ -430,7 +417,7 @@
       display:none;
       align-items:center;
       justify-content:center;
-      z-index:3000;
+      z-index:9000;
       padding:18px;
     }
 
@@ -479,6 +466,7 @@
       overflow:auto;
       position:relative;
       min-height:180px;
+      flex:1;
     }
 
     .modalLoading{
@@ -840,7 +828,7 @@
       display:none;
       align-items:center;
       justify-content:center;
-      z-index:4000;
+      z-index:99999;
       padding:18px;
     }
 
@@ -869,9 +857,7 @@
       color:#111;
     }
 
-    .confirmBody{
-      padding:14px 16px 12px;
-    }
+    .confirmBody{ padding:14px 16px 12px; }
 
     .confirmText{
       font-weight:900;
@@ -897,7 +883,7 @@
       display:none;
       align-items:center;
       justify-content:center;
-      z-index:4500;
+      z-index:99999;
       padding:18px;
     }
 
@@ -966,6 +952,155 @@
       flex-wrap:wrap;
     }
 
+    .actionModal{
+      width:min(560px,94vw);
+      max-height:calc(100vh - 40px);
+    }
+
+    .actionModal .modalTop{ padding:16px 16px 12px; }
+
+    .actionModal .modalTop h2{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .actionIcon{
+      width:32px;
+      height:32px;
+      border-radius:12px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:15px;
+      font-weight:1000;
+      flex:0 0 auto;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+
+    .actionIcon.warn{
+      background: color-mix(in srgb, var(--brand-yellow) 24%, white);
+      color:#111;
+    }
+
+    .actionLead{
+      font-size:14px;
+      font-weight:900;
+      color: rgba(0,0,0,0.74);
+      line-height:1.5;
+      margin-bottom:12px;
+    }
+
+    .actionBadge{
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.92);
+      margin-bottom:12px;
+    }
+
+    .actionBadge .dotOk,
+    .actionBadge .dotWarn,
+    .actionBadge .dotDanger{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      margin-top:4px;
+      flex:0 0 auto;
+    }
+
+    .actionBadge .dotOk{
+      background: rgba(14,91,24,0.9);
+      box-shadow: 0 0 0 4px rgba(14,91,24,0.12);
+    }
+
+    .actionBadge .dotWarn{
+      background: color-mix(in srgb, var(--brand-yellow) 82%, #111);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 22%, transparent);
+    }
+
+    .actionBadge .dotDanger{
+      background: rgba(176,0,0,0.92);
+      box-shadow: 0 0 0 4px rgba(176,0,0,0.12);
+    }
+
+    .actionBadgeText{
+      display:grid;
+      gap:4px;
+      min-width:0;
+    }
+
+    .actionBadgeTitle{
+      font-size:13px;
+      font-weight:1000;
+      color:#111;
+      word-break:break-word;
+    }
+
+    .actionBadgeMeta{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.60);
+      line-height:1.45;
+      word-break:break-word;
+    }
+
+    .actionNote{
+      margin-top:2px;
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.62);
+      line-height:1.45;
+    }
+
+    .actionField{
+      display:grid;
+      gap:8px;
+      margin-top:10px;
+    }
+
+    .actionField label{
+      font-size:12px;
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.68);
+    }
+
+    .actionField input{
+      width:100%;
+      min-height:46px;
+      padding:11px 14px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:900;
+      font-family:inherit;
+      transition: box-shadow .16s ease, border-color .16s ease, background .16s ease;
+    }
+
+    .actionField input:focus{
+      border-color: color-mix(in srgb, var(--brand-yellow) 45%, rgba(0,0,0,0.16));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 20%, transparent);
+      background: rgba(255,255,255,0.92);
+    }
+
+    .actionError{
+      display:none;
+      margin-top:10px;
+      font-weight:1000;
+      color: rgba(176,0,0,0.85);
+      font-size:13px;
+    }
+
+    .actionModal .modalActions{ padding:12px 16px 16px; }
+
     .site-footer{
       position: relative;
       z-index: 2;
@@ -992,18 +1127,109 @@
       .detailsGrid{ grid-template-columns:1fr; }
       .damagedActions{ width:100%; justify-content:flex-end; }
     }
+
+    /* Save result modal */
+    .saveResultOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,0.52);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:2147483647;
+      padding:18px;
+    }
+    .saveResultModal{
+      width:min(420px,94vw);
+      border-radius:20px;
+      background: rgba(255,255,255,0.99);
+      border:1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.32);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:36px 28px 28px;
+      gap:16px;
+      text-align:center;
+    }
+    .saveResultIcon{
+      width:60px;
+      height:60px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:28px;
+      flex:0 0 auto;
+    }
+    .saveResultIcon.is-loading{
+      background: rgba(0,0,0,0.05);
+      border:3px solid rgba(0,0,0,0.08);
+      border-top-color: var(--brand-yellow, #d4af37);
+      animation: spinIcon 700ms linear infinite;
+    }
+    .saveResultIcon.is-ok{
+      background: rgba(14,91,24,0.10);
+      color: rgba(14,91,24,0.92);
+    }
+    .saveResultIcon.is-err{
+      background: rgba(176,0,0,0.09);
+      color: rgba(176,0,0,0.88);
+    }
+    @keyframes spinIcon{
+      to{ transform:rotate(360deg); }
+    }
+    .saveResultTitle{
+      font-size:17px;
+      font-weight:1000;
+      color:#111;
+      margin:0;
+      line-height:1.2;
+    }
+    .saveResultMsg{
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.60);
+      line-height:1.5;
+      margin:0;
+    }
+    .saveResultActions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+      width:100%;
+      margin-top:4px;
+    }
+
+    /* Delete in-progress spinner inside confirm modal */
+    .confirmSpinner{
+      display:none;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      padding:10px 0 4px;
+      font-weight:900;
+      font-size:13px;
+      color: rgba(0,0,0,0.58);
+    }
+    .confirmSpinner .spinDot{
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      border:2.5px solid rgba(0,0,0,0.10);
+      border-top-color: rgba(176,0,0,0.80);
+      animation: spinIcon 700ms linear infinite;
+      flex:0 0 auto;
+    }
   </style>
 </head>
 
 <body>
   <div class="topbar" id="siteHeader">
     <div class="brand">
-      <img
-        src="assets/default-school-logo.png"
-        class="brand__logo"
-        alt="School Logo"
-        data-brand-logo
-      />
+      <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" data-brand-logo />
       <div class="brand__text">
         <div class="brand__name">
           <span class="brand__school" data-brand-school-name>Your School Name</span>
@@ -1082,8 +1308,8 @@
           Customize your school branding, contact details, and interface appearance in Display Settings.
         </p>
         <p class="site-footer__fineprint">
-          © <span id="footerYear"></span>
-          <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span>
+          &copy; <span id="footerYear"></span>
+          <span id="footerBrandCopyright">Your School Name &mdash; All Rights Reserved.</span>
         </p>
       </section>
 
@@ -1096,9 +1322,7 @@
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
             </svg>
           </span>
-          <div>
-            <div id="footerBrandAddress">School Address</div>
-          </div>
+          <div><div id="footerBrandAddress">School Address</div></div>
         </div>
 
         <div class="site-footer__item">
@@ -1107,9 +1331,7 @@
               <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
             </svg>
           </span>
-          <div>
-            <div id="footerBrandPhone">School Contact Number</div>
-          </div>
+          <div><div id="footerBrandPhone">School Contact Number</div></div>
         </div>
 
         <div class="site-footer__item">
@@ -1118,123 +1340,96 @@
               <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
             </svg>
           </span>
-          <div>
-            <div id="footerBrandEmail">library@school.edu</div>
-          </div>
+          <div><div id="footerBrandEmail">library@school.edu</div></div>
         </div>
 
         <div class="site-footer__row" style="margin-top:14px;">
-          <a
-            class="site-footer__social"
-            id="footerBrandFacebook"
-            href="#"
-            target="_blank"
-            rel="noopener"
-            style="display:none;"
-          >
-            Facebook
-          </a>
-
-          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
-
-          <a
-            class="site-footer__social"
-            id="footerBrandWebsite"
-            href="#"
-            target="_blank"
-            rel="noopener"
-            style="display:none;"
-          >
-            Official Website
-          </a>
+          <a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a>
+          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">&bull;</span>
+          <a class="site-footer__social" id="footerBrandWebsite" href="#" target="_blank" rel="noopener" style="display:none;">Official Website</a>
         </div>
       </section>
     </div>
   </footer>
 
-  <div class="modalOverlay" id="detailsOverlay">
+  <!-- ===== FIX 1: Book Details Modal (was entirely missing from the HTML) ===== -->
+  <div class="modalOverlay" id="detailsOverlay" style="display:none;z-index:9000;">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
       <div class="modalTop">
         <h2 id="detailsTitle">Book Details</h2>
-        <button class="closeX" id="closeDetails" type="button" aria-label="Close">✕</button>
+        <button class="closeX" id="closeDetails" type="button" aria-label="Close">&#10005;</button>
       </div>
-
       <div class="modalBody">
-        <div class="modalLoading" id="detailsLoading" aria-label="Loading details">
+        <div class="modalLoading" id="detailsLoading">
           <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
         </div>
 
-        <div class="modalErr" id="detailsErr"></div>
-        <div class="modalOk" id="detailsOk"></div>
+        <div class="error" id="detailsErr" style="margin-bottom:10px;"></div>
+        <div class="modalOk" id="detailsOk" style="margin-bottom:10px;"></div>
 
         <div class="editorGrid" id="editor" style="display:none;">
           <div class="bigCoverWrap">
-            <div class="bigCover" id="bigCover" title="Click to upload a new cover">No Cover</div>
-            <div class="coverHint">Click the cover to choose a new image.</div>
-            <input id="coverUploadInput" type="file" accept="image/*" style="display:none;">
+            <div class="bigCover" id="bigCover" title="Click to upload a cover image">No Cover</div>
+            <input type="file" id="coverUploadInput" accept="image/*" style="display:none;">
+            <div class="coverHint">Click cover to upload, or paste a URL below.</div>
           </div>
 
           <div class="detailsGrid">
             <div class="field span2">
-              <label>TITLE</label>
-              <input id="e_title" autocomplete="off">
+              <label for="e_title">Title</label>
+              <input id="e_title" type="text" autocomplete="off" placeholder="Book title">
             </div>
-
+            <div class="field">
+              <label for="e_author">Author</label>
+              <input id="e_author" type="text" autocomplete="off" placeholder="Author name">
+            </div>
+            <div class="field">
+              <label for="e_publisher">Publisher</label>
+              <input id="e_publisher" type="text" autocomplete="off" placeholder="Publisher">
+            </div>
+            <div class="field">
+              <label for="e_pub_year">Publication Year</label>
+              <input id="e_pub_year" type="number" autocomplete="off" placeholder="e.g. 2020">
+            </div>
+            <div class="field">
+              <label for="e_section">Section</label>
+              <input id="e_section" type="text" autocomplete="off" placeholder="e.g. Fiction">
+            </div>
+            <div class="field">
+              <label for="e_genre">Genre</label>
+              <input id="e_genre" type="text" autocomplete="off" placeholder="e.g. Mystery, Thriller">
+            </div>
+            <div class="field">
+              <label for="e_subject">Subject</label>
+              <input id="e_subject" type="text" autocomplete="off" placeholder="e.g. History, Science">
+            </div>
             <div class="field span2">
-              <label>AUTHOR</label>
-              <input id="e_author" autocomplete="off">
-            </div>
-
-            <div class="field">
-              <label>PUBLISHER</label>
-              <input id="e_publisher" autocomplete="off">
-            </div>
-
-            <div class="field">
-              <label>PUBLICATION YEAR</label>
-              <input id="e_pub_year" autocomplete="off">
-            </div>
-
-            <div class="field">
-              <label>GENRE</label>
-              <input id="e_genre" autocomplete="off" placeholder="e.g., Fiction, Mystery, Romance">
-            </div>
-
-            <div class="field">
-              <label>SUBJECT</label>
-              <input id="e_subject" autocomplete="off" placeholder="e.g., Science, Biology, Chemistry">
-            </div>
-
-            <div class="field">
-              <label>SECTION</label>
-              <input id="e_section" autocomplete="off">
-            </div>
-
-            <div class="field">
-              <label>COVER URL / DATA URL</label>
-              <input id="e_cover_url" autocomplete="off">
+              <label for="e_cover_url">Cover URL</label>
+              <input id="e_cover_url" type="text" autocomplete="off" placeholder="https://...">
             </div>
           </div>
         </div>
 
         <div class="mutedRow" id="countsRow" style="display:none;">
-          <span class="pill availTrigger" id="pillAvailTrigger" title="Click to expand copy list">
-            <span id="pillAvailText">—</span>
-            <span class="caret" aria-hidden="true"></span>
+          <span id="pillTotal" class="pill">Total copies: &mdash;</span>
+          <span class="availTrigger pill" id="pillAvailTrigger" style="cursor:pointer;user-select:none;">
+            <span id="pillAvailText">Available: &mdash;</span>
+            <span id="pillAvail" style="display:none;"></span>
+            <span class="caret" style="margin-left:4px;"></span>
           </span>
-          <span class="pill" id="pillTotal">Total copies: —</span>
-          <span class="pill" id="pillAvail">Available: —</span>
         </div>
 
         <div class="availDrop" id="availDrop">
           <div class="damagedHead">
-            <div class="damagedTitle">Book Copies</div>
-            <div style="display:flex; gap:8px; align-items:center;">
+            <div>
+              <div class="damagedTitle">All Copies</div>
+              <div class="damagedHint">Manage copy status &mdash; restore damaged, mark lost, or delete available copies.</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
               <button class="btnGhost miniBtn" id="refreshDamaged" type="button">Refresh</button>
-              <button class="btnGhost miniBtn" id="closeAvailDrop" type="button">Hide</button>
+              <button class="btnGhost miniBtn" id="closeAvailDrop" type="button">Close</button>
             </div>
           </div>
-          <div class="damagedHint">All copies are shown below. Damaged copies can be restored; other copies show their current status.</div>
           <div class="damagedErr" id="damagedErr"></div>
           <div class="damagedList" id="damagedList"></div>
         </div>
@@ -1252,11 +1447,12 @@
     </div>
   </div>
 
+  <!-- Delete Book confirm -->
   <div class="confirmOverlay" id="confirmOverlay">
     <div class="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
       <div class="confirmTop">
         <h3 id="confirmTitle">Delete book record</h3>
-        <button class="closeX" id="closeConfirm" type="button" aria-label="Close">✕</button>
+        <button class="closeX" id="closeConfirm" type="button" aria-label="Close">&#10005;</button>
       </div>
       <div class="confirmBody">
         <div class="confirmText">
@@ -1270,6 +1466,10 @@
         </div>
         <div class="modalErr" id="confirmErr" style="display:none;"></div>
       </div>
+        <div class="confirmSpinner" id="confirmSpinner">
+          <span class="spinDot"></span>
+          <span>Deleting book record&hellip;</span>
+        </div>
       <div class="confirmActions">
         <button class="btnGhost" id="cancelConfirm" type="button">Cancel</button>
         <button class="btnDanger" id="confirmDelete" type="button" disabled>Delete</button>
@@ -1277,11 +1477,12 @@
     </div>
   </div>
 
+  <!-- Restore damaged copy -->
   <div class="restoreOverlay" id="restoreOverlay">
     <div class="restoreModal" role="dialog" aria-modal="true" aria-labelledby="restoreTitle">
       <div class="restoreTop">
         <h3 id="restoreTitle">Restore damaged copy</h3>
-        <button class="closeX" id="closeRestore" type="button" aria-label="Close">✕</button>
+        <button class="closeX" id="closeRestore" type="button" aria-label="Close">&#10005;</button>
       </div>
       <div class="restoreBody">
         <div class="restoreText">
@@ -1289,7 +1490,7 @@
         </div>
         <div class="restoreBadge" id="restoreBadge">
           <span class="dotOk" aria-hidden="true"></span>
-          <span id="restoreBadgeText">Copy —</span>
+          <span id="restoreBadgeText">Copy &mdash;</span>
         </div>
         <div class="modalErr" id="restoreErr" style="display:none; margin-top:10px;"></div>
       </div>
@@ -1299,6 +1500,83 @@
       </div>
     </div>
   </div>
+
+  <!-- Delete copy -->
+  <div class="modalOverlay" id="deleteCopyOverlay" style="z-index:99999;">
+    <div class="modal actionModal" role="dialog" aria-modal="true" aria-labelledby="deleteCopyTitle">
+      <div class="modalTop">
+        <h2 id="deleteCopyTitle">Delete Copy</h2>
+        <button class="closeX" id="closeDeleteCopy" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modalBody">
+        <div class="actionLead">This will permanently remove the selected available copy from the catalog.</div>
+        <div class="actionBadge">
+          <span class="dotDanger" aria-hidden="true"></span>
+          <div class="actionBadgeText">
+            <div class="actionBadgeTitle" id="deleteCopyBadgeTitle">Copy &mdash;</div>
+            <div class="actionBadgeMeta" id="deleteCopyBadgeMeta">Only available copies should be deleted. This action cannot be undone.</div>
+          </div>
+        </div>
+        <div class="actionNote">Make sure this is the exact copy you want to remove before continuing.</div>
+        <div class="actionError" id="deleteCopyErr"></div>
+      </div>
+      <div class="modalActions">
+        <div class="actionsLeft"></div>
+        <div class="actionsRight">
+          <button class="btnGhost" id="cancelDeleteCopy" type="button">Cancel</button>
+          <button class="btnDanger" id="confirmDeleteCopy" type="button">Delete Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIX 2: Single lostOverlay (duplicate removed) -->
+  <div class="modalOverlay" id="lostOverlay" style="z-index:99999;">
+    <div class="modal actionModal" role="dialog" aria-modal="true" aria-labelledby="lostTitle">
+      <div class="modalTop">
+        <h2 id="lostTitle">
+          <span class="actionIcon warn" aria-hidden="true">!</span>
+          Mark Copy as Lost
+        </h2>
+        <button class="closeX" id="closeLost" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modalBody">
+        <div class="actionLead">This will automatically flag the borrowed copy to its current borrower and create the lost-book fine.</div>
+        <div class="actionBadge">
+          <span class="dotWarn" aria-hidden="true"></span>
+          <div class="actionBadgeText">
+            <div class="actionBadgeTitle" id="lostBadgeTitle">Copy &mdash;</div>
+            <div class="actionBadgeMeta" id="lostBadgeMeta">The backend will detect the active borrower automatically.</div>
+          </div>
+        </div>
+        <div class="actionField">
+          <label for="lostNote">Note (Optional)</label>
+          <input id="lostNote" type="text" autocomplete="off" placeholder="Marked via librarian search">
+        </div>
+        <div class="actionError" id="lostErr"></div>
+      </div>
+      <div class="modalActions">
+        <div class="actionsLeft"></div>
+        <div class="actionsRight">
+          <button class="btnGhost" id="cancelLost" type="button">Cancel</button>
+          <button class="btn" id="confirmLost" type="button">Confirm Lost</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save result feedback modal -->
+  <div class="saveResultOverlay" id="saveResultOverlay">
+    <div class="saveResultModal" id="saveResultModal">
+      <div class="saveResultIcon is-loading" id="saveResultIcon"></div>
+      <p class="saveResultTitle" id="saveResultTitle">Saving changes&hellip;</p>
+      <p class="saveResultMsg" id="saveResultMsg">Please wait while your changes are being saved.</p>
+      <div class="saveResultActions" id="saveResultActions" style="display:none;">
+        <button class="btn" id="saveResultClose" type="button" style="min-width:120px;">Done</button>
+      </div>
+    </div>
+  </div>
+
 
   <script>
     const BASE_URL = "http://127.0.0.1:8000";
@@ -1391,8 +1669,36 @@
     const restoreBadgeText = document.getElementById("restoreBadgeText");
     const restoreErr = document.getElementById("restoreErr");
 
+    const deleteCopyOverlay = document.getElementById("deleteCopyOverlay");
+    const closeDeleteCopy = document.getElementById("closeDeleteCopy");
+    const cancelDeleteCopy = document.getElementById("cancelDeleteCopy");
+    const confirmDeleteCopy = document.getElementById("confirmDeleteCopy");
+    const deleteCopyBadgeTitle = document.getElementById("deleteCopyBadgeTitle");
+    const deleteCopyBadgeMeta = document.getElementById("deleteCopyBadgeMeta");
+    const deleteCopyErr = document.getElementById("deleteCopyErr");
+
+    const lostOverlay = document.getElementById("lostOverlay");
+    const closeLost = document.getElementById("closeLost");
+    const cancelLost = document.getElementById("cancelLost");
+    const confirmLost = document.getElementById("confirmLost");
+    const lostBadgeTitle = document.getElementById("lostBadgeTitle");
+    const lostBadgeMeta = document.getElementById("lostBadgeMeta");
+    const lostNote = document.getElementById("lostNote");
+    const lostErr = document.getElementById("lostErr");
+
+
+    const saveResultOverlay = document.getElementById("saveResultOverlay");
+    const saveResultIcon    = document.getElementById("saveResultIcon");
+    const saveResultTitle   = document.getElementById("saveResultTitle");
+    const saveResultMsg     = document.getElementById("saveResultMsg");
+    const saveResultActions = document.getElementById("saveResultActions");
+    const saveResultClose   = document.getElementById("saveResultClose");
+    const confirmSpinner    = document.getElementById("confirmSpinner");
+
     let activeBookId = null;
     let pendingRestoreCopyId = null;
+    let pendingDeleteCopy = null;
+    let pendingLostCopy = null;
 
     function escapeHtml(s){
       return String(s ?? "").replace(/[&<>"']/g, m => ({
@@ -1470,8 +1776,8 @@
         mid.innerHTML = `
           <div class="title">${escapeHtml(b.title || "")}</div>
           <div class="sub">
-            <span class="pill">${escapeHtml(b.author || "—")}</span>
-            <span class="pill">${escapeHtml(b.section || "—")}</span>
+            <span class="pill">${escapeHtml(b.author || "\u2014")}</span>
+            <span class="pill">${escapeHtml(b.section || "\u2014")}</span>
           </div>
         `;
 
@@ -1554,8 +1860,15 @@
     detailsOverlay.addEventListener("click", (e) => {
       if (e.target === detailsOverlay) closeModal();
     });
+
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && detailsOverlay.style.display === "flex") closeModal();
+      if (e.key !== "Escape") return;
+      if (saveResultOverlay.style.display === "flex") return closeSaveResult();
+      if (lostOverlay.style.display === "flex") return closeLostModal();
+      if (deleteCopyOverlay.style.display === "flex") return closeDeleteCopyModal();
+      if (restoreOverlay.style.display === "flex") return closeRestoreConfirm();
+      if (confirmOverlay.style.display === "flex") return closeConfirmModal();
+      if (detailsOverlay.style.display === "flex") return closeModal();
     });
 
     function setBigCover(url){
@@ -1612,11 +1925,10 @@
         const avail = Number.isFinite(Number(data.available_copies)) ? Number(data.available_copies) : null;
 
         pillAvailText.textContent = (total !== null && avail !== null)
-          ? `${avail} of ${total} copies available`
-          : "Availability: —";
+          ? `${avail} of ${total} available — click to manage`
+          : "Availability: \u2014";
 
-        pillTotal.textContent = `Total copies: ${total !== null ? total : "—"}`;
-        pillAvail.textContent = `Available: ${avail !== null ? avail : "—"}`;
+        pillTotal.textContent = `Total copies: ${total !== null ? total : "\u2014"}`;
 
       }catch(e){
         detailsErr.style.display = "block";
@@ -1712,7 +2024,6 @@
         if (!res.ok) throw new Error(data?.detail || `Restore failed (${res.status})`);
 
         closeRestoreConfirm();
-
         if (activeBookId) await openDetails(activeBookId);
         await loadBookCopies();
         scheduleSearch();
@@ -1731,178 +2042,378 @@
       doRestore(pendingRestoreCopyId);
     });
 
-    function statusClass(status){
-      const s = String(status || "unknown").toLowerCase().trim();
-      if (s === "damaged") return "statusBadge is-damaged";
-      if (s === "available") return "statusBadge is-available";
-      if (s === "borrowed") return "statusBadge is-borrowed";
-      if (s === "lost") return "statusBadge is-lost";
-      return "statusBadge is-unavailable";
+    function openDeleteCopyModal(copy){
+      pendingDeleteCopy = copy || null;
+      deleteCopyErr.style.display = "none";
+      deleteCopyErr.textContent = "";
+
+      const label = copy?.label || `Copy #${copy?.copy_id ?? "\u2014"}`;
+      const barcode = copy?.barcode ? `Barcode: ${copy.barcode}` : "No barcode recorded";
+      deleteCopyBadgeTitle.textContent = label;
+      deleteCopyBadgeMeta.textContent = `${barcode} \u2022 Only available copies should be deleted. This action cannot be undone.`;
+
+      deleteCopyOverlay.style.display = "flex";
     }
 
-    function renderBookCopies(items){
-      damagedList.innerHTML = "";
+    function closeDeleteCopyModal(){
+      deleteCopyOverlay.style.display = "none";
+      deleteCopyErr.style.display = "none";
+      deleteCopyErr.textContent = "";
+      pendingDeleteCopy = null;
+    }
 
-      if (!items || !items.length){
-        damagedList.innerHTML = `
-          <div class="damagedRow">
-            <div class="damagedLeft">
-              <div class="damagedBarcode">No copies found</div>
-              <div class="damagedMeta">This book currently has no registered copies.</div>
-            </div>
-          </div>
-        `;
+    closeDeleteCopy.addEventListener("click", closeDeleteCopyModal);
+    cancelDeleteCopy.addEventListener("click", closeDeleteCopyModal);
+    deleteCopyOverlay.addEventListener("click", (e) => {
+      if (e.target === deleteCopyOverlay) closeDeleteCopyModal();
+    });
+
+    async function doDeleteCopy(copy){
+      if (!copy?.copy_id) return;
+      clearDamagedError();
+      deleteCopyErr.style.display = "none";
+      deleteCopyErr.textContent = "";
+      confirmDeleteCopy.disabled = true;
+      setModalLoading(true);
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/book-copies/${encodeURIComponent(copy.copy_id)}`, {
+          method: "DELETE",
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Delete failed (${res.status})`);
+
+        closeDeleteCopyModal();
+        if (activeBookId) await openDetails(activeBookId);
+        await loadBookCopies();
+        scheduleSearch();
+      }catch(e){
+        deleteCopyErr.style.display = "block";
+        deleteCopyErr.textContent = e?.message || "Delete copy failed.";
+      }finally{
+        setModalLoading(false);
+        confirmDeleteCopy.disabled = false;
+      }
+    }
+
+    confirmDeleteCopy.addEventListener("click", () => {
+      if (!pendingDeleteCopy) return;
+      doDeleteCopy(pendingDeleteCopy);
+    });
+
+    function openLostModal(copy){
+      pendingLostCopy = copy || null;
+      lostErr.style.display = "none";
+      lostErr.textContent = "";
+
+      const label = copy?.label || `Copy #${copy?.copy_id ?? "\u2014"}`;
+      const borrowerName = String(copy?.borrower_name || "").trim();
+      const borrowerCode = String(copy?.borrower_code || "").trim();
+
+      lostBadgeTitle.textContent = label;
+
+      if (borrowerName && borrowerCode){
+        lostBadgeMeta.textContent = `Borrower: ${borrowerName} (${borrowerCode})`;
+      } else if (borrowerName){
+        lostBadgeMeta.textContent = `Borrower: ${borrowerName}`;
+      } else if (borrowerCode){
+        lostBadgeMeta.textContent = `Borrower: ${borrowerCode}`;
+      } else {
+        lostBadgeMeta.textContent = "Borrower: Not available";
+      }
+
+      lostNote.value = "Marked via librarian search";
+      lostOverlay.style.display = "flex";
+      setTimeout(() => lostNote.focus(), 30);
+    }
+
+    function closeLostModal(){
+      lostOverlay.style.display = "none";
+      lostErr.style.display = "none";
+      lostErr.textContent = "";
+      lostNote.value = "Marked via librarian search";
+      pendingLostCopy = null;
+    }
+
+    closeLost.addEventListener("click", closeLostModal);
+    cancelLost.addEventListener("click", closeLostModal);
+    lostOverlay.addEventListener("click", (e) => {
+      if (e.target === lostOverlay) closeLostModal();
+    });
+
+    // FIX 3: student_code (borrower_code) is now passed to the API
+    async function doMarkLost(copy){
+      if (!copy?.barcode) return;
+
+      const note = String(lostNote.value || "").trim();
+      const studentCode = String(copy?.borrower_code || "").trim();
+
+      if (!studentCode){
+        lostErr.style.display = "block";
+        lostErr.textContent = "Borrower student code is missing \u2014 cannot mark as lost.";
         return;
       }
 
-      for (const it of items){
-        const status = String(it.status || "unknown").toLowerCase().trim();
-        const printed = it.is_printed === true ? "Printed" : "Unprinted";
-        const printedAt = it.printed_at ? `Printed at: ${new Date(it.printed_at).toLocaleString()}` : null;
-        const reprint = Number(it.reprint_count || 0) > 0 ? `Reprints: ${Number(it.reprint_count || 0)}` : null;
+      clearDamagedError();
+      lostErr.style.display = "none";
+      lostErr.textContent = "";
+      confirmLost.disabled = true;
+      setModalLoading(true);
 
-        const metaParts = [];
-        if (it.barcode) metaParts.push(`Barcode: ${it.barcode}`);
-        metaParts.push(printed);
-        if (printedAt) metaParts.push(printedAt);
-        if (reprint) metaParts.push(reprint);
-
-        const row = document.createElement("div");
-        row.className = "damagedRow";
-
-        const label = `Copy #${it.copy_id} — ${it.barcode || "—"}`;
-
-        row.innerHTML = `
-          <div class="damagedLeft">
-            <div class="damagedBarcode">${escapeHtml(label)}</div>
-            <div class="damagedMeta">${escapeHtml(metaParts.join(" • ") || "No additional details available.")}</div>
-          </div>
-          <div class="damagedActions">
-            ${
-              status === "damaged"
-                ? `<button class="btn miniBtn" data-restore="${escapeHtml(it.copy_id)}" data-label="${escapeHtml(label)}">Restore</button>`
-                : `<span class="${statusClass(status)}">${escapeHtml(status || "unknown")}</span>`
-            }
-          </div>
-        `;
-        damagedList.appendChild(row);
-      }
-
-      damagedList.querySelectorAll("[data-restore]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const copyId = btn.getAttribute("data-restore");
-          const label = btn.getAttribute("data-label") || "";
-          if (!copyId) return;
-          openRestoreConfirm(copyId, label);
+      try{
+        const params = new URLSearchParams({
+          barcode: copy.barcode,
+          student_code: studentCode,
+          note: note || "Marked via librarian search"
         });
-      });
+
+        const res = await fetch(`${BASE_URL}/api/circulation/mark-lost?${params.toString()}`, {
+          method: "POST",
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Mark as lost failed (${res.status})`);
+
+        closeLostModal();
+        if (activeBookId) await openDetails(activeBookId);
+        await loadBookCopies();
+        scheduleSearch();
+      }catch(e){
+        lostErr.style.display = "block";
+        lostErr.textContent = e?.message || "Mark as lost failed.";
+      }finally{
+        setModalLoading(false);
+        confirmLost.disabled = false;
+      }
+    }
+
+    confirmLost.addEventListener("click", () => {
+      if (!pendingLostCopy) return;
+      doMarkLost(pendingLostCopy);
+    });
+
+    lostNote.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        e.preventDefault();
+        if (pendingLostCopy) doMarkLost(pendingLostCopy);
+      }
+    });
+
+    pillAvailTrigger.addEventListener("click", async () => {
+      const willOpen = !availDrop.classList.contains("is-on");
+      availDrop.classList.toggle("is-on");
+      pillAvailTrigger.classList.toggle("availOpen", willOpen);
+      if (willOpen) await loadBookCopies();
+    });
+
+    closeAvailDrop.addEventListener("click", () => {
+      availDrop.classList.remove("is-on");
+      pillAvailTrigger.classList.remove("availOpen");
+    });
+
+    refreshDamaged.addEventListener("click", loadBookCopies);
+
+    function statusClass(status){
+      const s = String(status || "").trim().toLowerCase();
+      if (!s) return "statusBadge";
+      return `statusBadge is-${s.replace(/\s+/g, "-")}`;
     }
 
     async function loadBookCopies(){
       if (!activeBookId) return;
 
+      clearDamagedError();
       damagedList.innerHTML = `
-        <div class="list-loader" style="display:flex;">
+        <div class="list-loader" style="display:flex; min-height:80px;">
           <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
         </div>
       `;
-      clearDamagedError();
 
       try{
-        const res = await fetch(`${BASE_URL}/api/librarian/books/${activeBookId}/copies`, { headers: authHeaders() });
+        const res = await fetch(`${BASE_URL}/api/librarian/books/${activeBookId}/copies`, {
+          headers: authHeaders()
+        });
         const data = await res.json().catch(()=>({}));
         if (!res.ok) throw new Error(data?.detail || `Failed to load copies (${res.status})`);
 
-        let items = [];
-        if (Array.isArray(data)) items = data;
-        else if (Array.isArray(data?.copies)) items = data.copies;
-        else if (Array.isArray(data?.results)) items = data.results;
-
-        renderBookCopies(items);
-      }catch(e){
-        showDamagedError(e?.message || "Failed to load copies.");
+        const copies = Array.isArray(data) ? data : (Array.isArray(data.copies) ? data.copies : []);
         damagedList.innerHTML = "";
+
+        if (!copies.length){
+          damagedList.innerHTML = `<div class="empty" style="display:block;">No copies found for this book.</div>`;
+          return;
+        }
+
+        for (const it of copies){
+          const status = String(it.status || "").trim().toLowerCase();
+          const label = it.barcode || `Copy #${it.copy_id || "\u2014"}`;
+          const metaParts = [
+            it.copy_id ? `Copy ID: ${it.copy_id}` : "",
+            it.acquired_at ? `Acquired: ${it.acquired_at}` : "",
+            it.printed_at ? `Printed: ${it.printed_at}` : "",
+            Number.isFinite(Number(it.reprint_count)) ? `Reprints: ${Number(it.reprint_count)}` : ""
+          ].filter(Boolean);
+
+          if (it.borrower_name && it.borrower_code) {
+            metaParts.push(`Borrower: ${it.borrower_name} (${it.borrower_code})`);
+          } else if (it.borrower_name) {
+            metaParts.push(`Borrower: ${it.borrower_name}`);
+          } else if (it.borrower_code) {
+            metaParts.push(`Borrower: ${it.borrower_code}`);
+          }
+
+          const row = document.createElement("div");
+          row.className = "damagedRow";
+          row.innerHTML = `
+            <div class="damagedLeft">
+              <div class="damagedBarcode">${escapeHtml(label)}</div>
+              <div class="damagedMeta">${escapeHtml(metaParts.join(" \u2022 ") || "No additional details available.")}</div>
+            </div>
+            <div class="damagedActions">
+              <span class="${statusClass(status)}">${escapeHtml(status || "unknown")}</span>
+              ${status === "damaged"
+                ? `<button class="btn miniBtn" data-restore="${escapeHtml(it.copy_id)}" data-label="${escapeHtml(label)}">Restore</button>`
+                : ""
+              }
+              ${status === "borrowed"
+                ? `<button
+                      class="btnGhost miniBtn"
+                      data-mark-lost="${escapeHtml(it.copy_id)}"
+                      data-barcode="${escapeHtml(it.barcode || "")}"
+                      data-label="${escapeHtml(label)}"
+                      data-borrower-name="${escapeHtml(it.borrower_name || "")}"
+                      data-borrower-code="${escapeHtml(it.borrower_code || "")}"
+                    >Mark as Lost</button>`
+                : ""
+              }
+              ${status === "available"
+                ? `<button class="btnDanger miniBtn" data-delete-copy="${escapeHtml(it.copy_id)}" data-barcode="${escapeHtml(it.barcode || "")}" data-label="${escapeHtml(label)}">Delete Copy</button>`
+                : ""
+              }
+            </div>
+          `;
+          damagedList.appendChild(row);
+        }
+
+        damagedList.querySelectorAll("[data-restore]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const copyId = btn.getAttribute("data-restore");
+            const label = btn.getAttribute("data-label") || `Copy #${copyId}`;
+            if (!copyId) return;
+            openRestoreConfirm(copyId, label);
+          });
+        });
+
+        damagedList.querySelectorAll("[data-delete-copy]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const copyId = btn.getAttribute("data-delete-copy");
+            const barcode = btn.getAttribute("data-barcode") || "";
+            const label = btn.getAttribute("data-label") || `Copy #${copyId}`;
+            if (!copyId) return;
+            openDeleteCopyModal({ copy_id: copyId, barcode, label });
+          });
+        });
+
+        damagedList.querySelectorAll("[data-mark-lost]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const copyId = btn.getAttribute("data-mark-lost");
+            const barcode = btn.getAttribute("data-barcode") || "";
+            const label = btn.getAttribute("data-label") || `Copy #${copyId}`;
+            const borrowerName = btn.getAttribute("data-borrower-name") || "";
+            const borrowerCode = btn.getAttribute("data-borrower-code") || "";
+            if (!copyId || !barcode) return;
+            openLostModal({
+              copy_id: copyId,
+              barcode,
+              label,
+              borrower_name: borrowerName,
+              borrower_code: borrowerCode
+            });
+          });
+        });
+
+      }catch(e){
+        damagedList.innerHTML = "";
+        showDamagedError(e?.message || "Failed to load copies.");
       }
     }
 
-    function setAvailDrop(open){
-      const willOpen = (typeof open === "boolean") ? open : !availDrop.classList.contains("is-on");
-      availDrop.classList.toggle("is-on", willOpen);
-      pillAvailTrigger.classList.toggle("availOpen", willOpen);
-      if (willOpen) loadBookCopies();
+    function showSaveResult(state, title, msg){
+      // state: "loading" | "ok" | "err"
+      saveResultIcon.className = `saveResultIcon is-${state}`;
+      saveResultIcon.textContent = state === "ok" ? "✓" : state === "err" ? "✕" : "";
+      saveResultTitle.textContent = title;
+      saveResultMsg.textContent = msg;
+      saveResultActions.style.display = state === "loading" ? "none" : "flex";
+      saveResultOverlay.style.display = "flex";
     }
 
-    pillAvailTrigger.addEventListener("click", () => setAvailDrop());
-    closeAvailDrop.addEventListener("click", () => setAvailDrop(false));
-    refreshDamaged.addEventListener("click", () => loadBookCopies());
+    function closeSaveResult(){
+      saveResultOverlay.style.display = "none";
+    }
 
-    saveDetails.addEventListener("click", async () => {
+    saveResultClose.addEventListener("click", closeSaveResult);
+    saveResultOverlay.addEventListener("click", (e) => {
+      if (e.target === saveResultOverlay) closeSaveResult();
+    });
+
+    async function saveBookDetails(){
       if (!activeBookId) return;
 
-      detailsOk.style.display = "none";
       detailsErr.style.display = "none";
-      detailsErr.textContent = "";
-      detailsOk.textContent = "";
-
-      const payload = {
-        title: e_title.value.trim(),
-        author: e_author.value.trim(),
-        publisher: e_publisher.value.trim() || null,
-        pub_year: e_pub_year.value.trim() ? Number(e_pub_year.value.trim()) : null,
-        genre: normalizeCommaList(e_genre.value.trim()) || null,
-        subject: normalizeCommaList(e_subject.value.trim()) || null,
-        section: e_section.value.trim() || null,
-        cover_url: e_cover_url.value.trim() || null
-      };
-
-      if (!payload.title || !payload.author){
-        detailsErr.style.display = "block";
-        detailsErr.textContent = "Title and Author are required.";
-        return;
-      }
-
+      detailsOk.style.display = "none";
       saveDetails.disabled = true;
-      setModalLoading(true);
+
+      // Show loading state
+      showSaveResult("loading", "Saving changes…", "Please wait while your changes are being saved.");
 
       try{
+        const payload = {
+          title: e_title.value.trim(),
+          author: e_author.value.trim(),
+          publisher: e_publisher.value.trim(),
+          pub_year: e_pub_year.value.trim() ? Number(e_pub_year.value.trim()) : null,
+          genre: e_genre.value.trim(),
+          subject: e_subject.value.trim(),
+          section: e_section.value.trim(),
+          cover_url: e_cover_url.value.trim()
+        };
+
         const res = await fetch(`${BASE_URL}/api/books/${activeBookId}`, {
           method: "PUT",
           headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify(payload)
         });
         const data = await res.json().catch(()=>({}));
-        if (!res.ok) throw new Error(data?.detail || `Save failed (${res.status}).`);
+        if (!res.ok) throw new Error(data?.detail || `Save failed (${res.status})`);
 
-        detailsOk.style.display = "block";
-        detailsOk.textContent = "Saved successfully.";
-        setBigCover(payload.cover_url || "");
+        showSaveResult("ok", "Changes saved!", "Book details have been updated successfully.");
         scheduleSearch();
+        await openDetails(activeBookId);
       }catch(e){
-        detailsErr.style.display = "block";
-        detailsErr.textContent = e?.message || "Save failed.";
+        showSaveResult("err", "Save failed", e?.message || "Something went wrong. Please try again.");
       }finally{
-        setModalLoading(false);
         saveDetails.disabled = false;
       }
-    });
+    }
 
-    function openConfirm(){
-      confirmOverlay.style.display = "flex";
+    saveDetails.addEventListener("click", saveBookDetails);
+
+    function openConfirmModal(){
       confirmInput.value = "";
       confirmDelete.disabled = true;
       confirmErr.style.display = "none";
       confirmErr.textContent = "";
-      confirmInput.focus();
+      confirmOverlay.style.display = "flex";
+      setTimeout(() => confirmInput.focus(), 30);
     }
 
     function closeConfirmModal(){
       confirmOverlay.style.display = "none";
     }
 
-    deleteBookBtn.addEventListener("click", () => {
-      if (activeBookId) openConfirm();
-    });
-
+    deleteBookBtn.addEventListener("click", openConfirmModal);
     closeConfirm.addEventListener("click", closeConfirmModal);
     cancelConfirm.addEventListener("click", closeConfirmModal);
     confirmOverlay.addEventListener("click", (e) => {
@@ -1910,18 +2421,26 @@
     });
 
     confirmInput.addEventListener("input", () => {
-      confirmDelete.disabled = (confirmInput.value.trim().toUpperCase() !== "DELETE");
+      confirmDelete.disabled = confirmInput.value.trim() !== "DELETE";
+    });
+
+    confirmInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !confirmDelete.disabled){
+        e.preventDefault();
+        confirmDelete.click();
+      }
     });
 
     confirmDelete.addEventListener("click", async () => {
       if (!activeBookId) return;
-      if (confirmInput.value.trim().toUpperCase() !== "DELETE") return;
 
-      confirmDelete.disabled = true;
       confirmErr.style.display = "none";
       confirmErr.textContent = "";
+      confirmDelete.disabled = true;
+      cancelConfirm.disabled = true;
+      closeConfirm.disabled = true;
+      confirmSpinner.style.display = "flex";
 
-      setModalLoading(true);
       try{
         const res = await fetch(`${BASE_URL}/api/books/${activeBookId}`, {
           method: "DELETE",
@@ -1930,25 +2449,24 @@
         const data = await res.json().catch(()=>({}));
         if (!res.ok) throw new Error(data?.detail || `Delete failed (${res.status})`);
 
-        closeConfirmModal();
+        // Show success flash before closing
+        confirmSpinner.style.display = "none";
+        confirmOverlay.style.display = "none";
+        showSaveResult("ok", "Book deleted", "The book record and all associated data have been removed.");
         closeModal();
         scheduleSearch();
       }catch(e){
+        confirmSpinner.style.display = "none";
         confirmErr.style.display = "block";
-        confirmErr.textContent = e?.message || "Delete failed.";
+        confirmErr.textContent = e?.message || "Failed to delete book.";
         confirmDelete.disabled = false;
-      }finally{
-        setModalLoading(false);
+        cancelConfirm.disabled = false;
+        closeConfirm.disabled = false;
       }
     });
-
-    function showInitial(){
-      clearListCards();
-    }
-
-    showInitial();
-
   </script>
+
   <script src="branding.js"></script>
+
 </body>
 </html>

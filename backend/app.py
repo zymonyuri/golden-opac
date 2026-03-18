@@ -1189,12 +1189,6 @@ def librarian_get_copies(
     only_unprinted: bool = False,
     current=Depends(get_current_librarian),
 ):
-    """
-    Librarian-only copy list.
-    Query:
-      - only_unprinted=true => returns only copies where is_printed = false
-    """
-
     conn = get_connection()
     cur = conn.cursor()
 
@@ -1202,20 +1196,47 @@ def librarian_get_copies(
         if only_unprinted:
             cur.execute(
                 """
-                SELECT copy_id, barcode, status, is_printed, printed_at, reprint_count
-                FROM book_copy
-                WHERE book_id = %s AND is_printed = FALSE
-                ORDER BY copy_id ASC
+                SELECT
+                    bc.copy_id,
+                    bc.barcode,
+                    bc.status,
+                    bc.is_printed,
+                    bc.printed_at,
+                    bc.reprint_count,
+                    s.student_code AS borrower_code,
+                    TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) AS borrower_name
+                FROM book_copy bc
+                LEFT JOIN loan l
+                    ON l.copy_id = bc.copy_id
+                   AND l.returned_at IS NULL
+                LEFT JOIN student s
+                    ON s.student_id = l.student_id
+                WHERE bc.book_id = %s
+                  AND bc.is_printed = FALSE
+                ORDER BY bc.copy_id ASC
                 """,
                 (book_id,),
             )
         else:
             cur.execute(
                 """
-                SELECT copy_id, barcode, status, is_printed, printed_at, reprint_count
-                FROM book_copy
-                WHERE book_id = %s
-                ORDER BY copy_id ASC
+                SELECT
+                    bc.copy_id,
+                    bc.barcode,
+                    bc.status,
+                    bc.is_printed,
+                    bc.printed_at,
+                    bc.reprint_count,
+                    s.student_code AS borrower_code,
+                    TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) AS borrower_name
+                FROM book_copy bc
+                LEFT JOIN loan l
+                    ON l.copy_id = bc.copy_id
+                   AND l.returned_at IS NULL
+                LEFT JOIN student s
+                    ON s.student_id = l.student_id
+                WHERE bc.book_id = %s
+                ORDER BY bc.copy_id ASC
                 """,
                 (book_id,),
             )
@@ -1225,7 +1246,6 @@ def librarian_get_copies(
     finally:
         cur.close()
         conn.close()
-
 # -----------------------------
 # PRINTING: MARK SELECTED COPIES AS PRINTED (Librarian Only)
 # -----------------------------
@@ -1750,6 +1770,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
             )
 
         # --- 4B) Block if student has overdue loans ---
+        # Exclude lost loans — they are closed debts tracked via fines, not active borrows.
         cur.execute(
             """
             SELECT COUNT(*) AS overdue_count
@@ -1757,6 +1778,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
             WHERE student_id = %s
               AND returned_at IS NULL
               AND due_at < NOW()
+              AND COALESCE(status, '') NOT IN ('lost', 'returned')
             """,
             (student_id,),
         )
@@ -4200,8 +4222,9 @@ def mark_loan_lost(
         if existing:
             raise HTTPException(status_code=400, detail="Lost fine already exists for this loan")
 
-        # Update loan + copy status
-        cur.execute("UPDATE loan SET status = 'lost' WHERE loan_id = %s", (loan_id,))
+        # Update loan: close it (set returned_at) AND mark status lost
+        # Without returned_at the loan stays "open" and gets counted as overdue in checkout checks.
+        cur.execute("UPDATE loan SET status = 'lost', returned_at = NOW() WHERE loan_id = %s", (loan_id,))
         cur.execute("UPDATE book_copy SET status = 'lost' WHERE copy_id = %s", (loan["copy_id"],))
 
         # Create fine
@@ -5616,162 +5639,6 @@ def checkin_book(
         cur.close()
         conn.close()
 
-@app.get("/api/circulation/checkin/lookup")
-def checkin_lookup(
-    barcode: str,
-    current=Depends(get_current_librarian),
-):
-    """
-    Lookup for Check-in screen.
-    Scan ONE book barcode -> returns:
-      - copy + book info
-      - active loan (if any)
-      - borrower student info
-      - overdue status + projected fine (based on grade_rule)
-      - current unpaid fines list (for quick payment)
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-    try:
-        # 1) Copy + Book
-        cur.execute("""
-            SELECT
-                b.title,
-                b.author,
-                bi.id_value AS isbn,
-                s.first_name,
-                s.last_name,
-                l.loan_id
-            FROM book_copy bc
-            JOIN book b ON b.book_id = bc.book_id
-            LEFT JOIN book_identifier bi ON bi.book_id = b.book_id AND bi.is_primary = TRUE
-            LEFT JOIN loan l ON l.copy_id = bc.copy_id AND l.status = 'borrowed'
-            LEFT JOIN student s ON s.student_id = l.student_id
-            WHERE bc.barcode = %s
-        """, (barcode,))
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Copy barcode not found")
-
-        # 2) Active loan (if borrowed)
-        cur.execute(
-            """
-            SELECT
-              l.loan_id, l.borrowed_at, l.due_at,
-              s.student_id, s.student_code, s.last_name, s.first_name, s.grade, s.section
-            FROM loan l
-            JOIN student s ON s.student_id = l.student_id
-            WHERE l.copy_id = %s AND l.returned_at IS NULL
-            ORDER BY l.borrowed_at DESC
-            LIMIT 1
-            """,
-            (row["copy_id"],),
-        )
-        loan = cur.fetchone()
-
-        if not loan:
-            return {
-                "barcode": row["barcode"],
-                "copy_status": row["copy_status"],
-                "book": {
-                    "book_id": row["book_id"],
-                    "title": row["title"],
-                    "author": row["author"],
-                    "isbn": row["isbn"],
-                },
-                "has_active_loan": False,
-                "message": "No active loan for this barcode (already returned or never borrowed).",
-            }
-
-        # 3) Overdue calc + projected fine
-        cur.execute("SELECT (NOW() > %s) AS is_overdue", (loan["due_at"],))
-        is_overdue = bool(cur.fetchone()["is_overdue"])
-
-        cur.execute(
-            "SELECT GREATEST(0, (DATE(NOW()) - DATE(%s))) AS overdue_days",
-            (loan["due_at"],),
-        )
-        overdue_days = int(cur.fetchone()["overdue_days"])
-
-        cur.execute(
-            """
-            SELECT fine_per_day
-            FROM grade_rule
-            WHERE grade = %s
-            ORDER BY updated_at DESC NULLS LAST
-            LIMIT 1
-            """,
-            (loan["grade"],),
-        )
-        
-        rule = cur.fetchone()
-
-# If grade_rule exists and fine_per_day is set, use it
-        if rule and rule.get("fine_per_day") is not None and float(rule["fine_per_day"]) > 0:
-            fine_per_day = float(rule["fine_per_day"])
-        else:
-            # Fallback to global system_settings
-            cur.execute(
-                """
-                SELECT fine_per_day
-                FROM system_settings
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """
-            )
-            settings = cur.fetchone()
-            fine_per_day = float(settings["fine_per_day"]) if settings and settings.get("fine_per_day") is not None else 0.0
-
-        projected_fine = round(overdue_days * fine_per_day, 2) if overdue_days > 0 else 0.0
-
-        # 4) Unpaid fines list (for quick pay)
-        cur.execute(
-            """
-            SELECT
-              fine_id, amount, amount_paid,
-              (amount - amount_paid) AS outstanding,
-              status, reason, assessed_at
-            FROM fine
-            WHERE student_id = %s AND status = 'unpaid'
-            ORDER BY assessed_at DESC
-            """,
-            (loan["student_id"],),
-        )
-        unpaid = cur.fetchall()
-
-        return {
-            "barcode": row["barcode"],
-            "copy_status": row["copy_status"],
-            "book": {
-                "book_id": row["book_id"],
-                "title": row["title"],
-                "author": row["author"],
-                "isbn": row["isbn"],
-            },
-            "has_active_loan": True,
-            "loan": {
-                "loan_id": loan["loan_id"],
-                "borrowed_at": str(loan["borrowed_at"]),
-                "due_at": str(loan["due_at"]),
-                "is_overdue": is_overdue,
-                "overdue_days": overdue_days,
-                "fine_per_day": fine_per_day,
-                "projected_fine": projected_fine,
-            },
-            "student": {
-                "student_id": loan["student_id"],
-                "student_code": loan["student_code"],
-                "last_name": loan["last_name"],
-                "first_name": loan["first_name"],
-                "grade": loan["grade"],
-                "section": loan["section"],
-            },
-            "unpaid_fines": unpaid,
-        }
-
-    finally:
-        cur.close()
-        conn.close()
 # -----------------------------
 # BARCODE LABELS: TITLE + BARCODE PDF (Librarian Only)
 # -----------------------------
@@ -6292,3 +6159,691 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
+
+@app.get("/api/cataloging/preview/{isbn}")
+def cataloging_preview(isbn: str, current=Depends(get_current_librarian)):
+    """
+    Unified preview lookup:
+    1. Always check local DB first
+    2. Then try external ISBN APIs
+    3. Never let API failure block local DB results
+    """
+    isbn_n = normalize_isbn(isbn)
+    if not isbn_n:
+        raise HTTPException(status_code=400, detail="Invalid ISBN")
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    try:
+        # --- Local DB lookup first ---
+        cur.execute(
+            """
+            SELECT
+                b.book_id,
+                b.title,
+                b.author,
+                b.publisher,
+                b.pub_year,
+                b.genre,
+                b.subject,
+                b.section,
+                b.cover_url
+            FROM book b
+            JOIN book_identifier bi ON bi.book_id = b.book_id
+            WHERE LOWER(COALESCE(bi.id_type, '')) = 'isbn'
+              AND bi.id_value = %s
+            ORDER BY bi.is_primary DESC
+            LIMIT 1
+            """,
+            (isbn_n,),
+        )
+        row = cur.fetchone()
+
+        db_book = dict(row) if row else None
+        total_copies = 0
+
+        if db_book:
+            cur.execute(
+                "SELECT COUNT(*) AS total FROM book_copy WHERE book_id = %s",
+                (db_book["book_id"],),
+            )
+            total_row = cur.fetchone()
+            total_copies = int((total_row["total"] if total_row else 0) or 0)
+
+        # --- External API lookup, but never let it kill the response ---
+        api_data = {}
+        try:
+            api_data = lookup_isbn(isbn_n) or {}
+        except Exception:
+            api_data = {"isbn": isbn_n, "found": False, "sources": []}
+
+        found_any = bool(db_book) or bool(api_data.get("found"))
+
+        result = {
+            "isbn": isbn_n,
+            "exists": bool(db_book),
+            "book_id": db_book["book_id"] if db_book else None,
+            "total_copies": total_copies,
+            "found": found_any,
+            "title": (db_book or {}).get("title") or api_data.get("title"),
+            "author": (db_book or {}).get("author") or api_data.get("author"),
+            "publisher": (db_book or {}).get("publisher") or api_data.get("publisher"),
+            "pub_year": (db_book or {}).get("pub_year") or api_data.get("pub_year"),
+            "genre": (db_book or {}).get("genre") or api_data.get("genre"),
+            "subject": (db_book or {}).get("subject") or api_data.get("subject"),
+            "section": (db_book or {}).get("section") or api_data.get("section") or "",
+            "cover_url": (db_book or {}).get("cover_url") or api_data.get("cover_url"),
+            "sources": [],
+        }
+
+        if db_book:
+            result["sources"].append("local_db")
+
+        for src in api_data.get("sources", []):
+            if src not in result["sources"]:
+                result["sources"].append(src)
+
+        if not found_any:
+            result["message"] = "No data found in local catalog, Google Books, or Open Library."
+
+        required_fields = ["title", "author", "section"]
+        optional_fields = ["publisher", "pub_year", "genre", "subject", "cover_url"]
+
+        result["missing_fields"] = [f for f in required_fields if not result.get(f)]
+        result["optional_missing_fields"] = [f for f in optional_fields if not result.get(f)]
+
+        return result
+
+    finally:
+        cur.close()
+        conn.close()
+
+from fastapi import HTTPException, Depends
+
+@app.delete("/api/book-copies/{copy_id}")
+def delete_book_copy(
+    copy_id: int,
+    current=Depends(get_current_librarian),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT copy_id, book_id, barcode, status
+            FROM book_copy
+            WHERE copy_id = %s
+            """,
+            (copy_id,),
+        )
+        copy_row = cur.fetchone()
+
+        if not copy_row:
+            raise HTTPException(status_code=404, detail="Copy not found")
+
+        status = (copy_row["status"] or "").strip().lower()
+        if status != "available":
+            raise HTTPException(
+                status_code=400,
+                detail="Only available copies can be deleted"
+            )
+
+        cur.execute(
+            """
+            SELECT loan_id
+            FROM loan
+            WHERE copy_id = %s
+              AND returned_at IS NULL
+            LIMIT 1
+            """,
+            (copy_id,),
+        )
+        active_loan = cur.fetchone()
+        if active_loan:
+            raise HTTPException(
+                status_code=400,
+                detail="This copy cannot be deleted because it has an active loan"
+            )
+
+        cur.execute("DELETE FROM print_log WHERE copy_id = %s", (copy_id,))
+        cur.execute("DELETE FROM damage_report WHERE copy_id = %s", (copy_id,))
+
+        cur.execute(
+            """
+            DELETE FROM book_copy
+            WHERE copy_id = %s
+            RETURNING copy_id, book_id, barcode
+            """,
+            (copy_id,),
+        )
+        deleted = cur.fetchone()
+
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Copy not found")
+
+        conn.commit()
+
+        return {
+            "message": "Copy deleted successfully",
+            "copy_id": deleted["copy_id"],
+            "book_id": deleted["book_id"],
+            "barcode": deleted["barcode"],
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: MOST BORROWED BOOKS (ranked, filterable)
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/most-borrowed")
+def report_most_borrowed(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    grade: str | None = None,
+    section: str | None = None,
+    limit: int = 20,
+    current=Depends(get_current_librarian),
+):
+    if date_to is None:
+        dt_to = date.today()
+    else:
+        dt_to = parse_date_yyyy_mm_dd(date_to, "date_to")
+    if date_from is None:
+        dt_from = dt_to - timedelta(days=30)
+    else:
+        dt_from = parse_date_yyyy_mm_dd(date_from, "date_from")
+
+    where = ["DATE(l.borrowed_at) >= %s", "DATE(l.borrowed_at) <= %s"]
+    params: list = [dt_from.isoformat(), dt_to.isoformat()]
+
+    if grade and grade.strip():
+        where.append("s.grade = %s")
+        params.append(grade.strip())
+    if section and section.strip():
+        where.append("s.section = %s")
+        params.append(section.strip())
+
+    limit_val = max(1, min(int(limit), 100))
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            f"""
+            SELECT
+                b.book_id, b.title, b.author, b.section AS book_section,
+                b.genre, b.cover_url,
+                COUNT(l.loan_id) AS borrow_count,
+                COUNT(DISTINCT l.student_id) AS unique_borrowers
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            JOIN student s ON s.student_id = l.student_id
+            WHERE {" AND ".join(where)}
+            GROUP BY b.book_id, b.title, b.author, b.section, b.genre, b.cover_url
+            ORDER BY borrow_count DESC, b.title ASC
+            LIMIT %s
+            """,
+            tuple(params + [limit_val]),
+        )
+        rows = cur.fetchall()
+        return {
+            "report_type": "most_borrowed",
+            "date_from": dt_from.isoformat(),
+            "date_to": dt_to.isoformat(),
+            "grade": grade,
+            "section": section,
+            "rows": rows,
+            "total_records": len(rows),
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: GRADE SUMMARY
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/grade-summary")
+def report_grade_summary(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    if date_to is None:
+        dt_to = date.today()
+    else:
+        dt_to = parse_date_yyyy_mm_dd(date_to, "date_to")
+    if date_from is None:
+        dt_from = dt_to - timedelta(days=30)
+    else:
+        dt_from = parse_date_yyyy_mm_dd(date_from, "date_from")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Active student count per grade (regardless of borrowing)
+        cur.execute("""
+            SELECT
+                COALESCE(NULLIF(TRIM(grade),''), 'Unknown') AS grade,
+                COUNT(*) AS active_student_count
+            FROM student
+            WHERE status = 'active'
+            GROUP BY COALESCE(NULLIF(TRIM(grade),''), 'Unknown')
+        """)
+        active_counts = {r["grade"]: int(r["active_student_count"]) for r in cur.fetchall()}
+
+        cur.execute(
+            """
+            SELECT
+                COALESCE(NULLIF(TRIM(s.grade),''), 'Unknown') AS grade,
+                COUNT(l.loan_id) AS total_borrows,
+                COUNT(DISTINCT l.student_id) AS students_who_borrowed,
+                COUNT(CASE WHEN l.returned_at IS NULL AND l.due_at < NOW() THEN 1 END) AS overdue_count,
+                COALESCE(SUM(f.amount - f.amount_paid), 0) AS outstanding_fines
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            LEFT JOIN fine f ON f.loan_id = l.loan_id AND f.status = 'unpaid'
+            WHERE DATE(l.borrowed_at) >= %s
+              AND DATE(l.borrowed_at) <= %s
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade),''), 'Unknown')
+            ORDER BY grade ASC
+            """,
+            (dt_from.isoformat(), dt_to.isoformat()),
+        )
+        rows = cur.fetchall()
+
+        # Merge active student counts into rows
+        merged = []
+        for r in rows:
+            grade = r["grade"]
+            active = active_counts.get(grade, 0)
+            merged.append({
+                "grade": grade,
+                "total_borrows": int(r["total_borrows"]),
+                "students_who_borrowed": int(r["students_who_borrowed"]),
+                "active_students": active,
+                "overdue_count": int(r["overdue_count"]),
+                "outstanding_fines": float(r["outstanding_fines"]),
+            })
+
+        return {
+            "report_type": "grade_summary",
+            "date_from": dt_from.isoformat(),
+            "date_to": dt_to.isoformat(),
+            "rows": merged,
+            "total_records": len(merged),
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: OVERDUE REPORT
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/overdue")
+def report_overdue(
+    grade: str | None = None,
+    section: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    where = ["l.returned_at IS NULL", "l.due_at < NOW()", "COALESCE(l.status,'') NOT IN ('lost','returned')"]
+    params: list = []
+
+    if grade and grade.strip():
+        where.append("s.grade = %s")
+        params.append(grade.strip())
+    if section and section.strip():
+        where.append("s.section = %s")
+        params.append(section.strip())
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            f"""
+            SELECT
+                l.loan_id,
+                l.borrowed_at,
+                l.due_at,
+                GREATEST(0, (CURRENT_DATE - l.due_at::date)) AS days_overdue,
+                s.student_id, s.student_code, s.last_name, s.first_name, s.grade, s.section AS student_section,
+                b.book_id, b.title, b.author,
+                bc.barcode,
+                gr.fine_per_day,
+                GREATEST(0, (CURRENT_DATE - l.due_at::date)) * COALESCE(gr.fine_per_day, ss.fine_per_day, 0) AS projected_fine
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            LEFT JOIN LATERAL (
+                SELECT fine_per_day FROM grade_rule
+                WHERE grade = s.grade
+                ORDER BY updated_at DESC NULLS LAST LIMIT 1
+            ) gr ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT fine_per_day FROM system_settings
+                ORDER BY settings_id ASC LIMIT 1
+            ) ss ON TRUE
+            WHERE {" AND ".join(where)}
+            ORDER BY days_overdue DESC, s.last_name ASC
+            """,
+            tuple(params),
+        )
+        rows = cur.fetchall()
+        return {
+            "report_type": "overdue",
+            "grade": grade,
+            "section": section,
+            "rows": rows,
+            "total_records": len(rows),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: FINES REPORT
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/fines")
+def report_fines(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    status: str | None = None,   # unpaid | paid | all
+    grade: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    if date_to is None:
+        dt_to = date.today()
+    else:
+        dt_to = parse_date_yyyy_mm_dd(date_to, "date_to")
+    if date_from is None:
+        dt_from = dt_to - timedelta(days=30)
+    else:
+        dt_from = parse_date_yyyy_mm_dd(date_from, "date_from")
+
+    st = (status or "all").strip().lower()
+    where = ["DATE(f.assessed_at) >= %s", "DATE(f.assessed_at) <= %s"]
+    params: list = [dt_from.isoformat(), dt_to.isoformat()]
+
+    if st in ("unpaid", "paid"):
+        where.append("f.status = %s")
+        params.append(st)
+    if grade and grade.strip():
+        where.append("s.grade = %s")
+        params.append(grade.strip())
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            f"""
+            SELECT
+                f.fine_id, f.loan_id, f.amount, f.amount_paid,
+                (f.amount - f.amount_paid) AS outstanding,
+                f.status, f.reason, f.assessed_at,
+                s.student_id, s.student_code, s.last_name, s.first_name,
+                s.grade, s.section AS student_section,
+                b.title, b.author, bc.barcode
+            FROM fine f
+            JOIN student s ON s.student_id = f.student_id
+            LEFT JOIN loan l ON l.loan_id = f.loan_id
+            LEFT JOIN book_copy bc ON bc.copy_id = l.copy_id
+            LEFT JOIN book b ON b.book_id = bc.book_id
+            WHERE {" AND ".join(where)}
+            ORDER BY f.assessed_at DESC
+            LIMIT 2000
+            """,
+            tuple(params),
+        )
+        rows = cur.fetchall()
+
+        total_amount = float(sum(r["amount"] for r in rows))
+        total_paid = float(sum(r["amount_paid"] for r in rows))
+        total_outstanding = float(sum(r["outstanding"] for r in rows))
+
+        return {
+            "report_type": "fines",
+            "date_from": dt_from.isoformat(),
+            "date_to": dt_to.isoformat(),
+            "status_filter": st,
+            "grade": grade,
+            "summary": {
+                "total_amount": round(total_amount, 2),
+                "total_paid": round(total_paid, 2),
+                "total_outstanding": round(total_outstanding, 2),
+                "record_count": len(rows),
+            },
+            "rows": rows,
+            "total_records": len(rows),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: ACTIVITY LOG REPORT (full, date-filtered)
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/activity-log")
+def report_activity_log(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    event_type: str | None = None,  # checkout|return|fine_payment|damage|all
+    limit: int = 500,
+    current=Depends(get_current_librarian),
+):
+    if date_to is None:
+        dt_to = date.today()
+    else:
+        dt_to = parse_date_yyyy_mm_dd(date_to, "date_to")
+    if date_from is None:
+        dt_from = dt_to - timedelta(days=7)
+    else:
+        dt_from = parse_date_yyyy_mm_dd(date_from, "date_from")
+
+    limit = max(1, min(int(limit), 2000))
+    et = (event_type or "all").strip().lower()
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Build union based on requested type
+        unions = []
+
+        if et in ("all", "checkout"):
+            unions.append("""
+                SELECT l.borrowed_at AS ts, 'checkout' AS type,
+                    b.title, s.last_name, s.first_name, s.student_code,
+                    s.grade, s.section, b.book_id, s.student_id, bc.barcode,
+                    NULL::numeric AS amount
+                FROM loan l
+                JOIN student s ON s.student_id = l.student_id
+                JOIN book_copy bc ON bc.copy_id = l.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+                WHERE DATE(l.borrowed_at) >= %(df)s AND DATE(l.borrowed_at) <= %(dt)s
+            """)
+
+        if et in ("all", "return"):
+            unions.append("""
+                SELECT l.returned_at AS ts, 'return' AS type,
+                    b.title, s.last_name, s.first_name, s.student_code,
+                    s.grade, s.section, b.book_id, s.student_id, bc.barcode,
+                    NULL::numeric AS amount
+                FROM loan l
+                JOIN student s ON s.student_id = l.student_id
+                JOIN book_copy bc ON bc.copy_id = l.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+                WHERE l.returned_at IS NOT NULL
+                  AND DATE(l.returned_at) >= %(df)s AND DATE(l.returned_at) <= %(dt)s
+            """)
+
+        if et in ("all", "fine_payment"):
+            unions.append("""
+                SELECT fp.paid_at AS ts, 'fine_payment' AS type,
+                    NULL AS title, s.last_name, s.first_name, s.student_code,
+                    s.grade, s.section, NULL::int AS book_id, s.student_id, NULL AS barcode,
+                    fp.amount
+                FROM fine_payment fp
+                JOIN student s ON s.student_id = fp.student_id
+                WHERE DATE(fp.paid_at) >= %(df)s AND DATE(fp.paid_at) <= %(dt)s
+            """)
+
+        if et in ("all", "damage"):
+            unions.append("""
+                SELECT d.reported_at AS ts, 'damage' AS type,
+                    b.title, s.last_name, s.first_name, s.student_code,
+                    s.grade, s.section, b.book_id, s.student_id, bc.barcode,
+                    NULL::numeric AS amount
+                FROM damage_report d
+                JOIN book_copy bc ON bc.copy_id = d.copy_id
+                JOIN book b ON b.book_id = bc.book_id
+                JOIN student s ON s.student_id = d.student_id
+                WHERE DATE(d.reported_at) >= %(df)s AND DATE(d.reported_at) <= %(dt)s
+            """)
+
+        if not unions:
+            return {"report_type": "activity_log", "rows": [], "total_records": 0}
+
+        sql = " UNION ALL ".join(unions) + " ORDER BY ts DESC LIMIT %(lim)s"
+        cur.execute(sql, {"df": dt_from.isoformat(), "dt": dt_to.isoformat(), "lim": limit})
+        rows = cur.fetchall()
+
+        return {
+            "report_type": "activity_log",
+            "date_from": dt_from.isoformat(),
+            "date_to": dt_to.isoformat(),
+            "event_type": et,
+            "rows": rows,
+            "total_records": len(rows),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: INVENTORY SNAPSHOT
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/inventory")
+def report_inventory(
+    book_section: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    where = []
+    params: list = []
+    if book_section and book_section.strip():
+        where.append("b.section ILIKE %s")
+        params.append(f"%{book_section.strip()}%")
+
+    where_sql = "WHERE " + " AND ".join(where) if where else ""
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            f"""
+            SELECT
+                b.book_id, b.title, b.author, b.section AS book_section,
+                b.genre, b.pub_year,
+                COUNT(bc.copy_id) AS total_copies,
+                COUNT(CASE WHEN bc.status = 'available' THEN 1 END) AS available,
+                COUNT(CASE WHEN bc.status = 'borrowed' THEN 1 END) AS borrowed,
+                COUNT(CASE WHEN bc.status = 'damaged' THEN 1 END) AS damaged,
+                COUNT(CASE WHEN bc.status = 'lost' THEN 1 END) AS lost,
+                COUNT(CASE WHEN bc.is_printed IS TRUE THEN 1 END) AS printed
+            FROM book b
+            LEFT JOIN book_copy bc ON bc.book_id = b.book_id
+            {where_sql}
+            GROUP BY b.book_id, b.title, b.author, b.section, b.genre, b.pub_year
+            ORDER BY b.title ASC
+            LIMIT 2000
+            """,
+            tuple(params),
+        )
+        rows = cur.fetchall()
+        return {
+            "report_type": "inventory",
+            "book_section": book_section,
+            "rows": rows,
+            "total_records": len(rows),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ─────────────────────────────────────────────────────────────
+# REPORTS: EXPORT ANY REPORT AS CSV
+# ─────────────────────────────────────────────────────────────
+@app.get("/api/reports/export-typed/csv")
+def export_typed_csv(
+    report_type: str,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    grade: str | None = None,
+    section: str | None = None,
+    status: str | None = None,
+    event_type: str | None = None,
+    book_section: str | None = None,
+    limit: int = 2000,
+    current=Depends(get_current_librarian),
+):
+    rt = (report_type or "").strip().lower()
+
+    if rt == "most_borrowed":
+        data = report_most_borrowed(date_from=date_from, date_to=date_to, grade=grade, section=section, limit=limit, current=current)
+        columns = ["book_id","title","author","book_section","genre","borrow_count","unique_borrowers"]
+    elif rt == "grade_summary":
+        data = report_grade_summary(date_from=date_from, date_to=date_to, current=current)
+        columns = ["grade","total_borrows","active_students","overdue_count","outstanding_fines"]
+    elif rt == "overdue":
+        data = report_overdue(grade=grade, section=section, current=current)
+        columns = ["loan_id","student_code","last_name","first_name","grade","student_section","title","author","barcode","borrowed_at","due_at","days_overdue","projected_fine"]
+    elif rt == "fines":
+        data = report_fines(date_from=date_from, date_to=date_to, status=status, grade=grade, current=current)
+        columns = ["fine_id","assessed_at","student_code","last_name","first_name","grade","student_section","title","barcode","reason","amount","amount_paid","outstanding","status"]
+    elif rt == "activity_log":
+        data = report_activity_log(date_from=date_from, date_to=date_to, event_type=event_type, limit=limit, current=current)
+        columns = ["ts","type","student_code","last_name","first_name","grade","section","title","barcode","amount"]
+    elif rt == "inventory":
+        data = report_inventory(book_section=book_section, current=current)
+        columns = ["book_id","title","author","book_section","genre","pub_year","total_copies","available","borrowed","damaged","lost","printed"]
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown report_type: {rt}")
+
+    rows = data.get("rows", [])
+
+    def stream():
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=columns, extrasaction="ignore")
+        writer.writeheader()
+        yield buf.getvalue()
+        buf.seek(0); buf.truncate(0)
+        for r in rows:
+            writer.writerow({c: r.get(c) for c in columns})
+            yield buf.getvalue()
+            buf.seek(0); buf.truncate(0)
+
+    from datetime import date as _date
+    today = _date.today().isoformat().replace("-","")
+    filename = f"report_{rt}_{today}.csv"
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

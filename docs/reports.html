@@ -1,808 +1,173 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Reports</title>
-  <script>
-    document.documentElement.classList.add("branding-loading");
-  </script>
-  <link rel="stylesheet" href="styles.css" />
+  <script>document.documentElement.classList.add("branding-loading");</script>
+  <link rel="stylesheet" href="styles.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
   <style>
-    :root{
-      --panelWhite: rgba(255,255,255,0.96);
-      --panelBorder: rgba(0,0,0,0.06);
-      --panelShadow: 0 20px 50px rgba(0,0,0,0.25);
-      --ink:#111;
-      --shadow: 0 26px 60px rgba(0,0,0,0.32);
-    }
-
-    body{ font-family:'Poppins',sans-serif; }
-
-    .page{ position:relative; min-height:100vh; overflow:hidden; }
-    .wrap{ position:relative; z-index:2; padding:110px 16px 80px; }
-
-    .shell{
-      width:min(1280px,94vw);
-      margin:0 auto;
-      display:grid;
-      grid-template-columns:84px 1fr;
-      gap:16px;
-      align-items:start;
-    }
-
-    .sidebar{
-      border-radius:18px;
-      background: linear-gradient(135deg, rgba(0,0,0,0.24), rgba(0,0,0,0.14));
-      border:1px solid rgba(255,255,255,0.12);
-      backdrop-filter: blur(14px) saturate(140%);
-      -webkit-backdrop-filter: blur(14px) saturate(140%);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-
-    .side-item{
-      height:78px;
-      display:grid;
-      place-items:center;
-      border-bottom:1px solid rgba(255,255,255,0.10);
-      text-decoration:none;
-      transition: background 160ms ease;
-    }
-
-    .side-item:last-child{ border-bottom:0; }
-
-    .side-item:hover img{
-      transform: scale(1.05);
-      filter: brightness(0.88);
-    }
-
-    .side-item img{
-      width:34px;
-      height:34px;
-      object-fit:contain;
-      opacity:.92;
-      transition: transform 220ms ease, filter 220ms ease;
-    }
-
-    .side-item.is-active{
-      background: color-mix(in srgb, var(--brand-yellow) 22%, transparent);
-      box-shadow: inset 3px 0 0 var(--brand-yellow);
-    }
-
-    .side-item.is-active img{
-      filter:none;
-      opacity:1;
-      transform: translateY(-1px);
-    }
-
-    .panel{
-      border-radius:18px;
-      background: var(--panelWhite);
-      border:1px solid var(--panelBorder);
-      box-shadow: var(--panelShadow);
-      overflow:hidden;
-      color: var(--ink);
-    }
-
-    .tabs{
-      position:relative;
-      display:flex;
-      gap:10px;
-      padding:14px 16px 0;
-      border-bottom:1px solid rgba(0,0,0,0.12);
-    }
-
-    .tabs::after{
-      content:"";
-      position:absolute;
-      left:16px;
-      right:16px;
-      bottom:-1px;
-      height:14px;
-      background: rgba(255,255,255,0.60);
-      border:1px solid rgba(0,0,0,0.10);
-      border-top:0;
-      border-radius:0 0 14px 14px;
-      z-index:0;
-      pointer-events:none;
-    }
-
-    .tab{
-      position:relative;
-      z-index:1;
-      padding:10px 18px;
-      border-radius:14px 14px 0 0;
-      border:1px solid rgba(0,0,0,0.12);
-      border-bottom:0;
-      background: rgba(0,0,0,0.06);
-      color: rgba(0,0,0,0.70);
-      font-weight:1000;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      font-size:13px;
-      cursor:pointer;
-      user-select:none;
-      transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
-    }
-
-    .tab::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      border-radius:14px 14px 0 0;
-      background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(255,255,255,0));
-      opacity:.65;
-      pointer-events:none;
-    }
-
-    .tab:hover{
-      background: rgba(0,0,0,0.08);
-      transform: translateY(-1px);
-    }
-
-    .tab.is-active{
-      background: var(--brand-yellow);
-      color:#111;
-      transform: translateY(1px);
-      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-    }
-
-    .tab.is-active::before{ opacity:.22; }
-    .tab.is-active:hover{ transform: translateY(1px); }
-
-    .search-progress{
-      height:4px;
-      width:100%;
-      background: color-mix(in srgb, var(--brand-green) 25%, white);
-      border-radius:999px;
-      overflow:hidden;
-      margin:0;
-      display:none;
-      border-bottom:1px solid rgba(0,0,0,0.06);
-    }
-
-    .search-progress__bar{
-      height:100%;
-      width:0%;
-      background: linear-gradient(90deg, var(--brand-green), var(--brand-yellow));
-      border-radius:999px;
-      transition: width 200ms ease;
-    }
-
-    .content{
-      padding:18px 18px 20px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .titleRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      background: rgba(255,255,255,0.62);
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.10);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    .titleRow h1{
-      margin:0;
-      font-size:26px;
-      font-weight:1000;
-      letter-spacing:.01em;
-      color:#111;
-      line-height:1.1;
-    }
-
-    .dashboardControls{
-      display:flex;
-      align-items:end;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-
-    .filters{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:10px 12px;
-      flex-wrap:wrap;
-      background: rgba(255,255,255,0.55);
-      padding:12px;
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.08);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    .filtersLeft{
-      display:flex;
-      align-items:flex-end;
-      gap:10px 12px;
-      flex-wrap:wrap;
-    }
-
-    .filtersRight{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .field{
-      display:grid;
-      gap:8px;
-      min-width:180px;
-    }
-
-    .field.small{ min-width:170px; }
-
-    .field label{
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.62);
-      line-height:1.1;
-      margin:0;
-    }
-
-    .dateRange{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-
-    .dash{
-      font-weight:1000;
-      opacity:.65;
-      transform: translateY(2px);
-    }
-
-    input, select{
-      width:100%;
-      padding:11px 12px;
-      border-radius:12px;
-      border:1px solid rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.70);
-      color:#111;
-      outline:none;
-      font-size:14px;
-      font-weight:800;
-      transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
-    }
-
-    input:focus, select:focus{
-      border-color: color-mix(in srgb, var(--brand-green) 45%, rgba(0,0,0,0.16));
-      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-green) 22%, transparent);
-      background: rgba(255,255,255,0.85);
-    }
-
-    .btn{
-      height:44px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border:0;
-      border-radius:999px;
-      padding:0 16px;
-      cursor:pointer;
-      font-weight:1000;
-      font-size:14px;
-      background: var(--brand-yellow);
-      color:#111;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.14);
-      transition: transform 160ms ease, opacity 160ms ease;
-      white-space: nowrap;
-    }
-
-    .btn:hover{ transform: translateY(-1px); opacity:.96; }
-    .btn:active{ transform: translateY(1px); }
-
-    .btn.ghost{
-      background: rgba(255,255,255,0.65);
-      border:1px solid rgba(0,0,0,0.10);
-      box-shadow:none;
-      color: rgba(0,0,0,0.78);
-    }
-
-    .btn.green{
-      background: var(--brand-green);
-      color:#111;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.14);
-    }
-
-    .statsGrid{
-      display:grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap:12px;
-      align-items:stretch;
-    }
-
-    .statCard{
-      border-radius:16px;
-      border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.78);
-      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
-      padding:14px;
-      min-height:92px;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      text-align:center;
-      position:relative;
-      overflow:hidden;
-    }
-
-    .statCard::before{
-      content:"";
-      position:absolute;
-      left:-20%;
-      right:-20%;
-      top:-55px;
-      height:120px;
-      background:
-        radial-gradient(circle at 20% 65%, color-mix(in srgb, var(--brand-green) 45%, transparent), transparent 60%),
-        radial-gradient(circle at 70% 55%, color-mix(in srgb, var(--brand-yellow) 45%, transparent), transparent 60%);
-      pointer-events:none;
-    }
-
-    .statNum{
-      font-size:30px;
-      font-weight:1000;
-      line-height:1.05;
-      margin-bottom:6px;
-      color:#111;
-      position:relative;
-    }
-
-    .statLbl{
-      font-weight:1000;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      font-size:11px;
-      color: rgba(0,0,0,0.72);
-      line-height:1.15;
-      position:relative;
-    }
-
-    .statSub{
-      margin-top:6px;
-      font-weight:900;
-      font-size:12px;
-      color: rgba(0,0,0,0.60);
-      position:relative;
-      min-height:14px;
-    }
-
-    .dashGrid{
-      display:grid;
-      grid-template-columns:1.25fr 0.75fr;
-      gap:12px;
-      align-items:stretch;
-    }
-
-    .leftCol, .rightCol{
-      display:grid;
-      gap:12px;
-      min-height:0;
-    }
-
-    .card{
-      border-radius:16px;
-      border:1px solid rgba(0,0,0,0.08);
-      background: rgba(255,255,255,0.62);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    .cardHead{
-      padding:12px 14px;
-      border-bottom:1px solid rgba(0,0,0,0.08);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      flex:0 0 auto;
-      background: rgba(255,255,255,0.55);
-      position:relative;
-    }
-
-    .cardTitle{
-      font-weight:1000;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-      font-size:13px;
-      color: rgba(0,0,0,0.78);
-      line-height:1.2;
-      text-align:center;
-      width:100%;
-    }
-
-    .cardBody{
-      padding:14px;
-      flex:1 1 auto;
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .dots{
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      padding:8px 10px;
-      border-radius:999px;
-      background: rgba(255,255,255,0.65);
-      border:1px solid rgba(0,0,0,0.08);
-      line-height:1;
-      position:absolute;
-      right:12px;
-      top:50%;
-      transform: translateY(-50%);
-    }
-
-    .dot{
-      width:8px;
-      height:8px;
-      border-radius:999px;
-      background: var(--brand-green);
-      animation: b 1.1s infinite ease-in-out;
-      box-shadow: 0 6px 16px rgba(0,0,0,0.10);
-    }
-
-    .dot:nth-child(2){ animation-delay: .12s; }
-    .dot:nth-child(3){ animation-delay: .24s; }
-
-    @keyframes b{
-      0%,80%,100%{ transform: translateY(0); opacity:.55; }
-      40%{ transform: translateY(-4px); opacity:1; }
-    }
-
-    .twoCharts{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:12px;
-      align-items:stretch;
-    }
-
-    .chartBox{
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.08);
-      background: rgba(255,255,255,0.55);
-      padding:10px;
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-    }
-
-    .chartBoxTitle{
-      font-weight:1000;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-      font-size:12px;
-      color: rgba(0,0,0,0.75);
-      text-align:center;
-      margin:2px 0 8px;
-    }
-
-    .chartViewport{
-      height:250px;
-      min-height:250px;
-      max-height:250px;
-      position:relative;
-    }
-
-    .chartViewport.scrollY{
-      overflow-y:auto;
-      overflow-x:hidden;
-      padding-right:6px;
-    }
-
-    .chartCanvas{
-      width:100% !important;
-      display:block;
-    }
-
-    .list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      overflow:auto;
-      padding-right:4px;
-      max-height:300px;
-    }
-
-    .rowLink{
-      text-decoration:none;
-      color: inherit;
-      display:block;
-    }
-
-    .rowItem{
-      display:grid;
-      grid-template-columns:56px 1fr;
-      gap:12px;
-      align-items:center;
-      padding:10px;
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.08);
-      background: rgba(255,255,255,0.86);
-      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-      cursor:pointer;
-    }
-
-    .rowItem:hover{
-      transform: translateY(-1px);
-      box-shadow: 0 16px 34px rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.94);
-    }
-
-    .cover{
-      width:56px;
-      height:74px;
-      border-radius:12px;
-      border:1px solid rgba(0,0,0,0.12);
-      overflow:hidden;
-      background: rgba(0,0,0,0.06);
-      display:grid;
-      place-items:center;
-    }
-
-    .cover img{
-      width:100%;
-      height:100%;
-      object-fit: cover;
-      display:block;
-    }
-
-    .metaTitle{
-      font-weight:1000;
-      font-size:14px;
-      color:#111;
-      line-height:1.2;
-    }
-
-    .metaSub{
-      margin-top:2px;
-      font-weight:800;
-      font-size:12px;
-      color: rgba(0,0,0,0.62);
-    }
-
-    .metaBadges{
-      margin-top:8px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid rgba(0,0,0,0.12);
-      background: color-mix(in srgb, var(--brand-green) 18%, white);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-    }
-
-    .badge.yellow{
-      background: color-mix(in srgb, var(--brand-yellow) 18%, white);
-    }
-
-    .empty{
-      padding:14px;
-      border-radius:14px;
-      border:1px dashed rgba(0,0,0,0.18);
-      background: rgba(255,255,255,0.40);
-      color: rgba(0,0,0,0.70);
-      font-weight:800;
-      text-align:center;
-    }
-
-    .previewCard{
-      border-radius:16px;
-      border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.78);
-      box-shadow: 0 14px 30px rgba(0,0,0,0.10);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      min-height:760px;
-    }
-
-    .previewHead{
-      padding:12px 14px;
-      border-bottom:1px solid rgba(0,0,0,0.10);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      background: rgba(255,255,255,0.65);
-      flex:0 0 auto;
-    }
-
-    .previewBody{
-      position:relative;
-      flex:1 1 auto;
-      min-height:680px;
-      height:680px;
-      background: rgba(0,0,0,0.06);
-      overflow:hidden;
-    }
-
-    .pdfFrame{
-      width:100%;
-      height:100%;
-      min-height:680px;
-      border:0;
-      display:block;
-      background:#fff;
-    }
-
-    .overlayLoader{
-      position:absolute;
-      inset:0;
-      display:none;
-      place-items:center;
-      background: rgba(255,255,255,0.70);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      z-index:3;
-    }
-
-    .logList{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      overflow:auto;
-      max-height:300px;
-      padding-right:4px;
-    }
-
-    .logItem{
-      border:1px solid rgba(0,0,0,0.08);
-      background: rgba(255,255,255,0.86);
-      border-radius:14px;
-      padding:10px 12px;
-      display:grid;
-      gap:6px;
-      cursor:pointer;
-      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-    }
-
-    .logItem:hover{
-      transform: translateY(-1px);
-      box-shadow: 0 16px 34px rgba(0,0,0,0.12);
-      background: rgba(255,255,255,0.94);
-    }
-
-    .logTop{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .logType{
-      font-weight:1000;
-      font-size:12px;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.70);
-    }
-
-    .logTime{
-      font-weight:900;
-      font-size:12px;
-      color: rgba(0,0,0,0.55);
-      white-space: nowrap;
-    }
-
-    .logMsg{
-      font-weight:900;
-      font-size:13px;
-      color: rgba(0,0,0,0.78);
-      line-height:1.25;
-    }
-
-    .topbar{
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 999;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
-      box-shadow: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
-    }
-
-    .topbar.is-scrolled{
-      background: rgba(0,0,0,0.22);
-      border-bottom: 1px solid rgba(255,255,255,0.14);
-      backdrop-filter: blur(16px) saturate(160%);
-      -webkit-backdrop-filter: blur(16px) saturate(160%);
-      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
-    }
-
-    .nav__link:hover{ color: rgba(255,255,255,0.78); }
-    .brand__school{ color: var(--brand-yellow); font-weight:900; }
-    .brand__subtitle{ color: var(--brand-green); font-weight:700; }
-    .site-footer{ margin-top:0; }
-
-    @media (max-width: 1180px){
-      .statsGrid{ grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 1100px){
-      .dashGrid{ grid-template-columns:1fr; }
-    }
-
-    @media (max-width: 760px){
-      .twoCharts{ grid-template-columns:1fr; }
-    }
-
-    @media (max-width: 640px){
-      .wrap{ padding:104px 12px 80px; }
-      .content{ padding:14px 14px 18px; }
-      .titleRow h1{ font-size:24px; }
-      .statsGrid{ grid-template-columns:1fr; }
-      .previewCard{ min-height:620px; }
-      .previewBody{ min-height:540px; height:540px; }
-      .pdfFrame{ min-height:540px; }
-    }
-
-    @media (max-width: 560px){
-      .dateRange{
-        flex-direction:column;
-        align-items:stretch;
-      }
-      .dash{ display:none; }
-      .rowItem{ grid-template-columns:1fr; }
-    }
-
-    @media (max-width: 980px){
-      .shell{ grid-template-columns:74px 1fr; }
-    }
+    :root{--panelWhite:rgba(255,255,255,0.96);--panelBorder:rgba(0,0,0,0.06);--panelShadow:0 20px 50px rgba(0,0,0,0.25);--ink:#111;--shadow:0 26px 60px rgba(0,0,0,0.32);}
+    body{font-family:'Poppins',sans-serif;}
+    .page{position:relative;min-height:100vh;overflow:hidden;}
+    .wrap{position:relative;z-index:2;padding:110px 16px 80px;}
+    .shell{width:min(1280px,94vw);margin:0 auto;display:grid;grid-template-columns:84px 1fr;gap:16px;align-items:start;}
+    .sidebar{border-radius:18px;background:linear-gradient(135deg,rgba(0,0,0,0.24),rgba(0,0,0,0.14));border:1px solid rgba(255,255,255,0.12);backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);box-shadow:var(--shadow);overflow:hidden;}
+    .side-item{height:78px;display:grid;place-items:center;border-bottom:1px solid rgba(255,255,255,0.10);text-decoration:none;transition:background 160ms ease;}
+    .side-item:last-child{border-bottom:0;}
+    .side-item:hover img{transform:scale(1.05);filter:brightness(0.88);}
+    .side-item img{width:34px;height:34px;object-fit:contain;opacity:.92;transition:transform 220ms ease,filter 220ms ease;}
+    .side-item.is-active{background:color-mix(in srgb,var(--brand-yellow) 22%,transparent);box-shadow:inset 3px 0 0 var(--brand-yellow);}
+    .side-item.is-active img{filter:none;opacity:1;transform:translateY(-1px);}
+    .panel{border-radius:18px;background:var(--panelWhite);border:1px solid var(--panelBorder);box-shadow:var(--panelShadow);overflow:hidden;color:var(--ink);}
+    .tabs{position:relative;display:flex;gap:10px;padding:14px 16px 0;border-bottom:1px solid rgba(0,0,0,0.12);flex-wrap:wrap;}
+    .tabs::after{content:"";position:absolute;left:16px;right:16px;bottom:-1px;height:14px;background:rgba(255,255,255,0.60);border:1px solid rgba(0,0,0,0.10);border-top:0;border-radius:0 0 14px 14px;z-index:0;pointer-events:none;}
+    .tab{position:relative;z-index:1;padding:10px 18px;border-radius:14px 14px 0 0;border:1px solid rgba(0,0,0,0.12);border-bottom:0;background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.70);font-weight:1000;letter-spacing:.06em;text-transform:uppercase;font-size:12px;cursor:pointer;user-select:none;transition:transform 160ms ease,background 160ms ease,box-shadow 160ms ease;white-space:nowrap;}
+    .tab::before{content:"";position:absolute;inset:0;border-radius:14px 14px 0 0;background:linear-gradient(to bottom,rgba(255,255,255,.55),rgba(255,255,255,0));opacity:.65;pointer-events:none;}
+    .tab:hover{background:rgba(0,0,0,0.08);transform:translateY(-1px);}
+    .tab.is-active{background:var(--brand-yellow);color:#111;transform:translateY(1px);box-shadow:0 10px 22px rgba(0,0,0,0.12);}
+    .tab.is-active::before{opacity:.22;}
+    .tab.is-active:hover{transform:translateY(1px);}
+    .search-progress{height:4px;width:100%;background:color-mix(in srgb,var(--brand-green) 25%,white);border-radius:999px;overflow:hidden;margin:0;display:none;border-bottom:1px solid rgba(0,0,0,0.06);}
+    .search-progress__bar{height:100%;width:0%;background:linear-gradient(90deg,var(--brand-green),var(--brand-yellow));border-radius:999px;transition:width 200ms ease;}
+    .content{padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;}
+    .titleRow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,0.62);padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);backdrop-filter:blur(10px);}
+    .titleRow h1{margin:0;font-size:26px;font-weight:1000;letter-spacing:.01em;color:#111;line-height:1.1;}
+    .dashboardControls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;}
+    .field{display:grid;gap:8px;min-width:180px;}
+    .field.small{min-width:160px;}
+    .field label{font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:rgba(0,0,0,0.62);line-height:1.1;margin:0;}
+    .dateRange{display:flex;align-items:center;gap:10px;}
+    .dash{font-weight:1000;opacity:.65;transform:translateY(2px);}
+    input,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.70);color:#111;outline:none;font-size:14px;font-weight:800;transition:box-shadow 160ms ease,border-color 160ms ease,background 160ms ease;}
+    input:focus,select:focus{border-color:color-mix(in srgb,var(--brand-green) 45%,rgba(0,0,0,0.16));box-shadow:0 0 0 4px color-mix(in srgb,var(--brand-green) 22%,transparent);background:rgba(255,255,255,0.85);}
+    .btn{height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;padding:0 16px;cursor:pointer;font-weight:1000;font-size:14px;background:var(--brand-yellow);color:#111;box-shadow:0 16px 34px rgba(0,0,0,0.14);transition:transform 160ms ease,opacity 160ms ease;white-space:nowrap;}
+    .btn:hover{transform:translateY(-1px);opacity:.96;}
+    .btn:active{transform:translateY(1px);}
+    .btn.ghost{background:rgba(255,255,255,0.65);border:1px solid rgba(0,0,0,0.10);box-shadow:none;color:rgba(0,0,0,0.78);}
+    .btn.green{background:var(--brand-green);color:#111;}
+    .statsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:stretch;}
+    .statCard{border-radius:16px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.78);box-shadow:0 14px 30px rgba(0,0,0,0.10);padding:14px;min-height:92px;display:flex;flex-direction:column;justify-content:center;text-align:center;position:relative;overflow:hidden;}
+    .statCard::before{content:"";position:absolute;left:-20%;right:-20%;top:-55px;height:120px;background:radial-gradient(circle at 20% 65%,color-mix(in srgb,var(--brand-green) 45%,transparent),transparent 60%),radial-gradient(circle at 70% 55%,color-mix(in srgb,var(--brand-yellow) 45%,transparent),transparent 60%);pointer-events:none;}
+    .statNum{font-size:30px;font-weight:1000;line-height:1.05;margin-bottom:6px;color:#111;position:relative;}
+    .statLbl{font-weight:1000;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:rgba(0,0,0,0.72);line-height:1.15;position:relative;}
+    .statSub{margin-top:6px;font-weight:900;font-size:12px;color:rgba(0,0,0,0.60);position:relative;min-height:14px;}
+    .dashGrid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:12px;align-items:stretch;}
+    .leftCol,.rightCol{display:grid;gap:12px;min-height:0;}
+    .card{border-radius:16px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.62);overflow:hidden;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(10px);}
+    .cardHead{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;background:rgba(255,255,255,0.55);}
+    .cardTitle{font-weight:1000;letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:rgba(0,0,0,0.78);line-height:1.2;}
+    .cardBody{padding:14px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;}
+    .dots{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.65);border:1px solid rgba(0,0,0,0.08);line-height:1;}
+    .dot{width:8px;height:8px;border-radius:999px;background:var(--brand-green);animation:b 1.1s infinite ease-in-out;}
+    .dot:nth-child(2){animation-delay:.12s;}.dot:nth-child(3){animation-delay:.24s;}
+    @keyframes b{0%,80%,100%{transform:translateY(0);opacity:.55;}40%{transform:translateY(-4px);opacity:1;}}
+    .twoCharts{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .chartBox{border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.55);padding:10px;display:flex;flex-direction:column;}
+    .chartBoxHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+    .chartBoxTitle{font-weight:1000;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:rgba(0,0,0,0.75);}
+    .chartViewport{height:250px;min-height:250px;max-height:250px;position:relative;}
+    .chartViewport.scrollY{overflow-y:auto;overflow-x:hidden;padding-right:6px;}
+    .chartCanvas{width:100% !important;display:block;}
+    .list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding-right:4px;max-height:300px;}
+    .rowLink{text-decoration:none;color:inherit;display:block;}
+    .rowItem{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;padding:10px;border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.86);transition:transform 160ms ease,box-shadow 160ms ease;cursor:pointer;}
+    .rowItem:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(0,0,0,0.12);}
+    .cover{width:56px;height:74px;border-radius:12px;border:1px solid rgba(0,0,0,0.12);overflow:hidden;background:rgba(0,0,0,0.06);display:grid;place-items:center;}
+    .cover img{width:100%;height:100%;object-fit:cover;display:block;}
+    .metaTitle{font-weight:1000;font-size:14px;color:#111;line-height:1.2;}
+    .metaSub{margin-top:2px;font-weight:800;font-size:12px;color:rgba(0,0,0,0.62);}
+    .metaBadges{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;}
+    .badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:color-mix(in srgb,var(--brand-green) 18%,white);font-weight:1000;font-size:12px;white-space:nowrap;}
+    .badge.yellow{background:color-mix(in srgb,var(--brand-yellow) 18%,white);}
+    .empty{padding:14px;border-radius:14px;border:1px dashed rgba(0,0,0,0.18);background:rgba(255,255,255,0.40);color:rgba(0,0,0,0.70);font-weight:800;text-align:center;}
+    .logList{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:300px;padding-right:4px;}
+    .logItem{border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.86);border-radius:14px;padding:10px 12px;display:grid;gap:6px;cursor:pointer;transition:transform 160ms ease,box-shadow 160ms ease;}
+    .logItem:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(0,0,0,0.12);}
+    .logTop{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .logType{font-weight:1000;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgba(0,0,0,0.70);}
+    .logTime{font-weight:900;font-size:12px;color:rgba(0,0,0,0.55);white-space:nowrap;}
+    .logMsg{font-weight:900;font-size:13px;color:rgba(0,0,0,0.78);line-height:1.25;}
+    .insightRow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .insightCard{border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.72);padding:14px;display:flex;flex-direction:column;gap:6px;}
+    .insightLabel{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:rgba(0,0,0,0.55);}
+    .insightValue{font-size:22px;font-weight:1000;color:#111;line-height:1;}
+    .insightSub{font-size:12px;font-weight:800;color:rgba(0,0,0,0.55);}
+    .miniSelect{padding:6px 10px;border-radius:10px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.80);font-size:12px;font-weight:800;color:#111;width:auto;min-width:0;}
+    /* ── Generate Reports ── */
+    .reportTypeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .reportTypeCard{border-radius:14px;border:2px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.70);padding:14px;cursor:pointer;transition:all 160ms ease;display:flex;flex-direction:column;gap:5px;}
+    .reportTypeCard:hover{border-color:rgba(0,0,0,0.22);background:rgba(255,255,255,0.90);transform:translateY(-1px);}
+    .reportTypeCard.is-active{border-color:var(--brand-green);background:color-mix(in srgb,var(--brand-green) 10%,white);box-shadow:0 8px 22px rgba(0,0,0,0.10);}
+    .rtIcon{font-size:20px;line-height:1;}.rtTitle{font-weight:1000;font-size:13px;color:#111;line-height:1.2;}
+    .rtDesc{font-weight:700;font-size:11px;color:rgba(0,0,0,0.55);line-height:1.35;}
+    .filterBox{background:rgba(255,255,255,0.55);padding:14px;border-radius:14px;border:1px solid rgba(0,0,0,0.08);}
+    .filterLabel{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:rgba(0,0,0,0.55);margin-bottom:10px;}
+    .filterRow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+    .previewCard{border-radius:16px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.78);box-shadow:0 14px 30px rgba(0,0,0,0.10);overflow:hidden;display:flex;flex-direction:column;}
+    .previewHead{padding:12px 16px;border-bottom:1px solid rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,0.65);}
+    .previewBody{flex:1 1 auto;height:640px;position:relative;overflow:auto;background:#e8e8e8;}
+    .previewLoading{position:absolute;inset:0;display:none;place-items:center;background:rgba(255,255,255,0.80);backdrop-filter:blur(4px);z-index:5;}
+    /* ── Report Document ── */
+    .rptDoc{background:#fff;max-width:900px;margin:16px auto;border-radius:8px;box-shadow:0 2px 20px rgba(0,0,0,0.15);overflow:hidden;font-family:'Poppins',Arial,sans-serif;color:#111;}
+    .rptHeader{background:#1a2e0d;padding:18px 26px 16px;display:flex;align-items:center;gap:16px;}
+    .rptLogo{width:52px;height:52px;object-fit:contain;border-radius:6px;flex-shrink:0;}
+    .rptLogoFb{width:52px;height:52px;border-radius:6px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+    .rptHdrText{flex:1;}
+    .rptSchoolName{color:#f4e32f;font-size:18px;font-weight:900;letter-spacing:.02em;line-height:1.1;}
+    .rptSchoolSub{color:rgba(255,255,255,0.70);font-size:12px;font-weight:600;margin-top:2px;}
+    .rptHdrMeta{text-align:right;flex-shrink:0;}
+    .rptTypeLbl{color:#8dd959;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}
+    .rptTimestamp{color:rgba(255,255,255,0.55);font-size:11px;margin-top:4px;}
+    .rptBody{padding:22px 26px;}
+    .rptSumGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:18px;}
+    .rsc{background:#f4faf0;border:1px solid #d4edca;border-radius:8px;padding:11px;text-align:center;}
+    .rsc .rv{font-size:20px;font-weight:900;color:#1a4d0f;line-height:1;}
+    .rsc .rl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4a7c3f;margin-top:4px;line-height:1.3;}
+    .rsc.warn{background:#fffbf0;border-color:#fde68a;}.rsc.warn .rv{color:#92400e;}.rsc.warn .rl{color:#b45309;}
+    .rsc.danger{background:#fff5f5;border-color:#fecaca;}.rsc.danger .rv{color:#991b1b;}.rsc.danger .rl{color:#dc2626;}
+    .rptFilters{background:#f7f7f7;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;font-weight:700;color:#666;}
+    .rptFilters span b{color:#111;}
+    .rptTable{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+    .rptTable thead tr{background:#1a2e0d;color:#fff;}
+    .rptTable thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+    .rptTable tbody tr{border-bottom:1px solid #f0f0f0;}
+    .rptTable tbody tr:nth-child(even){background:#fafafa;}
+    .rptTable tbody tr:hover{background:#edfae4;}
+    .rptTable td{padding:9px 12px;vertical-align:middle;line-height:1.35;}
+    .ct{font-weight:800;font-size:12px;color:#111;}.cs{font-size:11px;color:#777;margin-top:1px;}
+    .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;}
+    .pill.green{background:#dcfce7;color:#166534;}.pill.red{background:#fee2e2;color:#991b1b;}
+    .pill.yellow{background:#fef9c3;color:#854d0e;}.pill.blue{background:#dbeafe;color:#1e40af;}
+    .pill.gray{background:#f3f4f6;color:#374151;}.pill.orange{background:#ffedd5;color:#9a3412;}
+    .rptEmpty{text-align:center;padding:52px;color:#bbb;font-size:13px;font-weight:700;}
+    .rptFoot{padding:11px 26px;background:#f7f7f7;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;}
+    .rptFoot span{font-size:11px;color:#bbb;font-weight:700;}
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:999;border-bottom:1px solid rgba(0,0,0,0.08);backdrop-filter:none;transition:background 200ms ease,border-color 200ms ease,box-shadow 200ms ease,backdrop-filter 200ms ease;}
+    .topbar.is-scrolled{background:rgba(0,0,0,0.22);border-bottom:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);box-shadow:0 18px 45px rgba(0,0,0,0.22);}
+    .nav__link:hover{color:rgba(255,255,255,0.78);}
+    .brand__school{color:var(--brand-yellow);font-weight:900;}
+    .brand__subtitle{color:var(--brand-green);font-weight:700;}
+    .site-footer{margin-top:0;}
+    @media(max-width:1180px){.statsGrid{grid-template-columns:repeat(2,1fr);}}
+    @media(max-width:1100px){.dashGrid{grid-template-columns:1fr;}}
+    @media(max-width:900px){.reportTypeGrid{grid-template-columns:repeat(2,1fr);}.insightRow{grid-template-columns:1fr 1fr;}}
+    @media(max-width:760px){.twoCharts{grid-template-columns:1fr;}}
+    @media(max-width:640px){.wrap{padding:104px 12px 80px;}.content{padding:14px 14px 18px;}.titleRow h1{font-size:24px;}.statsGrid{grid-template-columns:1fr;}.reportTypeGrid{grid-template-columns:1fr;}.insightRow{grid-template-columns:1fr;}}
+    @media(max-width:980px){.shell{grid-template-columns:74px 1fr;}}
   </style>
 </head>
-
 <body>
+
   <div class="topbar" id="siteHeader">
     <div class="brand">
-      <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" data-brand-logo />
+      <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" data-brand-logo/>
       <div class="brand__text">
-        <div class="brand__name">
-          <span class="brand__school" data-brand-school-name>Your School Name</span>
-        </div>
-        <div class="brand__sub">
-          <span class="brand__subtitle" data-brand-role="portal">Librarian Portal</span>
-        </div>
+        <div class="brand__name"><span class="brand__school" data-brand-school-name>Your School Name</span></div>
+        <div class="brand__sub"><span class="brand__subtitle" data-brand-role="portal">Librarian Portal</span></div>
       </div>
     </div>
-
     <nav class="nav" aria-label="Primary">
       <a href="home.html" class="nav__link">Home</a>
       <a href="#footer" class="nav__link" id="contactLink">Contact</a>
@@ -813,7 +178,6 @@
   <main class="page">
     <div class="page-bg" aria-hidden="true"></div>
     <div class="page-overlay" aria-hidden="true"></div>
-
     <section class="wrap">
       <div class="shell">
         <aside class="sidebar" aria-label="Modules">
@@ -826,22 +190,20 @@
         </aside>
 
         <section class="panel">
-          <div class="tabs" role="tablist" aria-label="Reports Tabs">
+          <div class="tabs" role="tablist">
             <button class="tab is-active" id="tabDashboard" role="tab" aria-selected="true" type="button">Dashboard</button>
             <button class="tab" id="tabGenerate" role="tab" aria-selected="false" type="button">Generate Reports</button>
           </div>
-
-          <div class="search-progress" id="progressWrap" aria-hidden="true">
-            <div class="search-progress__bar" id="progressBar"></div>
-          </div>
+          <div class="search-progress" id="progressWrap"><div class="search-progress__bar" id="progressBar"></div></div>
 
           <div class="content">
-            <section id="viewDashboard" style="display:block;">
+
+            <!-- DASHBOARD TAB -->
+            <section id="viewDashboard">
               <div class="titleRow">
                 <h1>REPORTS</h1>
-
                 <div class="dashboardControls">
-                  <div class="field small" style="min-width:180px;">
+                  <div class="field small">
                     <label for="dashboardPeriod">View Range</label>
                     <select id="dashboardPeriod">
                       <option value="daily">Daily</option>
@@ -853,117 +215,59 @@
                 </div>
               </div>
 
-              <div style="display:flex; flex-direction:column; gap:12px; padding-top:10px;">
+              <div style="display:flex;flex-direction:column;gap:12px;padding-top:10px;">
                 <div class="statsGrid">
-                  <div class="statCard">
-                    <div class="statNum" id="kpiBooks">—</div>
-                    <div class="statLbl">Total Books</div>
-                    <div class="statSub"></div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiCopies">—</div>
-                    <div class="statLbl">Total Copies</div>
-                    <div class="statSub"></div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiStudents">—</div>
-                    <div class="statLbl">Total Users (Students)</div>
-                    <div class="statSub"></div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiActiveLoans">—</div>
-                    <div class="statLbl">Active Loans</div>
-                    <div class="statSub">Borrowed now</div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiOverdue">—</div>
-                    <div class="statLbl">Overdue Loans</div>
-                    <div class="statSub"></div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiAvailPct">—</div>
-                    <div class="statLbl">Copies Available</div>
-                    <div class="statSub" id="kpiAvailSub">—</div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiTotalFines">—</div>
-                    <div class="statLbl">Total Fines</div>
-                    <div class="statSub" id="kpiFinesSub">Outstanding amount</div>
-                  </div>
-
-                  <div class="statCard">
-                    <div class="statNum" id="kpiUnpaidFines">—</div>
-                    <div class="statLbl">Unpaid Fines</div>
-                    <div class="statSub" id="kpiUnpaidSub">Unpaid records</div>
-                  </div>
+                  <div class="statCard"><div class="statNum" id="kpiBooks">&#8212;</div><div class="statLbl">Total Books</div><div class="statSub"></div></div>
+                  <div class="statCard"><div class="statNum" id="kpiCopies">&#8212;</div><div class="statLbl">Total Copies</div><div class="statSub"></div></div>
+                  <div class="statCard"><div class="statNum" id="kpiStudents">&#8212;</div><div class="statLbl">Total Students</div><div class="statSub" id="kpiStudentsSub">Enrolled</div></div>
+                  <div class="statCard"><div class="statNum" id="kpiActiveLoans">&#8212;</div><div class="statLbl">Active Loans</div><div class="statSub">Borrowed now</div></div>
+                  <div class="statCard"><div class="statNum" id="kpiOverdue">&#8212;</div><div class="statLbl">Overdue Loans</div><div class="statSub" id="kpiOverdueSub"></div></div>
+                  <div class="statCard"><div class="statNum" id="kpiAvailPct">&#8212;</div><div class="statLbl">Copies Available</div><div class="statSub" id="kpiAvailSub">&#8212;</div></div>
+                  <div class="statCard"><div class="statNum" id="kpiTotalFines">&#8212;</div><div class="statLbl">Total Fines</div><div class="statSub">Outstanding</div></div>
+                  <div class="statCard"><div class="statNum" id="kpiUnpaidFines">&#8212;</div><div class="statLbl">Unpaid Fines</div><div class="statSub">Records</div></div>
                 </div>
 
                 <div class="dashGrid">
                   <div class="leftCol">
                     <div class="card">
                       <div class="cardHead">
-                        <div class="cardTitle" id="trendTitle">Borrowing Trend (Monthly)</div>
+                        <div class="cardTitle" id="trendTitle">Borrowing Trend</div>
                         <div id="dotsTrend" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
                       </div>
-                      <div class="cardBody">
-                        <canvas id="chartMonthly" height="120"></canvas>
-                        <div class="empty" id="monthlyEmpty" style="display:none;">No trend data yet.</div>
-                      </div>
+                      <div class="cardBody"><canvas id="chartMonthly" height="120"></canvas><div class="empty" id="monthlyEmpty" style="display:none;">No trend data yet.</div></div>
                     </div>
 
                     <div class="card">
-                      <div class="cardHead">
-                        <div class="cardTitle">Borrowing Breakdown</div>
-                        <div id="dotsBreakdown" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                      </div>
+                      <div class="cardHead"><div class="cardTitle">Borrowing Breakdown</div><div id="dotsBreakdown" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
                       <div class="cardBody">
                         <div class="twoCharts">
                           <div class="chartBox">
-                            <div class="chartBoxTitle">Most Subject Borrowed</div>
-                            <div class="chartViewport" id="genresViewport">
-                              <canvas id="chartGenres" class="chartCanvas"></canvas>
-                            </div>
-                            <div class="empty" id="genresEmpty" style="display:none; margin-top:10px;">No subject data yet.</div>
+                            <div class="chartBoxTitle" style="margin-bottom:8px;">Borrows by Subject</div>
+                            <div class="chartViewport"><canvas id="chartGenres" class="chartCanvas"></canvas></div>
+                            <div class="empty" id="genresEmpty" style="display:none;margin-top:10px;">No data.</div>
                           </div>
-
                           <div class="chartBox">
-                            <div class="chartBoxTitle">Most Borrowed by Grade</div>
-                            <div class="chartViewport scrollY" id="borrowViewport">
-                              <canvas id="chartBorrowByGrade" class="chartCanvas"></canvas>
-                            </div>
-                            <div class="empty" id="borrowGradeEmpty" style="display:none; margin-top:10px;">No grade borrow data yet.</div>
+                            <div class="chartBoxTitle" style="margin-bottom:8px;">Borrows by Grade</div>
+                            <div class="chartViewport scrollY" id="borrowViewport"><canvas id="chartBorrowByGrade" class="chartCanvas"></canvas></div>
+                            <div class="empty" id="borrowGradeEmpty" style="display:none;margin-top:10px;">No data.</div>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     <div class="card">
-                      <div class="cardHead">
-                        <div class="cardTitle">Operations Snapshot</div>
-                        <div id="dotsOps" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                      </div>
+                      <div class="cardHead"><div class="cardTitle">Operations Snapshot</div><div id="dotsOps" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
                       <div class="cardBody">
                         <div class="twoCharts">
                           <div class="chartBox">
-                            <div class="chartBoxTitle">Overdue by Grade</div>
-                            <div class="chartViewport" id="overdueViewport">
-                              <canvas id="chartOverdueGrade" class="chartCanvas"></canvas>
-                            </div>
-                            <div class="empty" id="overdueGradeEmpty" style="display:none; margin-top:10px;">No overdue breakdown yet.</div>
+                            <div class="chartBoxTitle" style="margin-bottom:8px;">Overdue by Grade</div>
+                            <div class="chartViewport"><canvas id="chartOverdueGrade" class="chartCanvas"></canvas></div>
+                            <div class="empty" id="overdueGradeEmpty" style="display:none;margin-top:10px;">No data.</div>
                           </div>
-
                           <div class="chartBox">
-                            <div class="chartBoxTitle">Inventory Status</div>
-                            <div class="chartViewport" id="inventoryViewport">
-                              <canvas id="chartInventory" class="chartCanvas"></canvas>
-                            </div>
-                            <div class="empty" id="inventoryEmpty" style="display:none; margin-top:10px;">No inventory status data yet.</div>
+                            <div class="chartBoxTitle" style="margin-bottom:8px;">Inventory Status</div>
+                            <div class="chartViewport"><canvas id="chartInventory" class="chartCanvas"></canvas></div>
+                            <div class="empty" id="inventoryEmpty" style="display:none;margin-top:10px;">No data.</div>
                           </div>
                         </div>
                       </div>
@@ -972,102 +276,72 @@
 
                   <div class="rightCol">
                     <div class="card">
-                      <div class="cardHead">
-                        <div class="cardTitle" id="topBooksTitle">Most Borrowed Books</div>
-                        <div id="dotsBooks" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                      </div>
-                      <div class="cardBody">
-                        <div class="list" id="topBooks"></div>
-                        <div class="empty" id="topBooksEmpty" style="display:none;">No borrowing activity yet.</div>
-                      </div>
+                      <div class="cardHead"><div class="cardTitle" id="topBooksTitle">Most Borrowed Books</div><div id="dotsBooks" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+                      <div class="cardBody"><div class="list" id="topBooks"></div><div class="empty" id="topBooksEmpty" style="display:none;">No activity yet.</div></div>
                     </div>
-
                     <div class="card">
-                      <div class="cardHead">
-                        <div class="cardTitle" id="topStudentsTitle">Most Active Students</div>
-                        <div id="dotsStudents" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-                      </div>
-                      <div class="cardBody">
-                        <div class="list" id="topStudents"></div>
-                        <div class="empty" id="topStudentsEmpty" style="display:none;">No student borrowing activity yet.</div>
-                      </div>
+                      <div class="cardHead"><div class="cardTitle" id="topStudentsTitle">Top Borrowers</div><div id="dotsStudents" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
+                      <div class="cardBody"><div class="list" id="topStudents"></div><div class="empty" id="topStudentsEmpty" style="display:none;">No activity yet.</div></div>
                     </div>
-
                     <div class="card">
-                      <div class="cardHead">
-                        <div class="cardTitle">Recent Activity Logs</div>
-                      </div>
-                      <div class="cardBody">
-                        <div class="logList" id="activityLogs"></div>
-                        <div class="empty" id="activityEmpty" style="display:none;">No recent activity yet.</div>
-                      </div>
+                      <div class="cardHead"><div class="cardTitle">Recent Activity</div></div>
+                      <div class="cardBody"><div class="logList" id="activityLogs"></div><div class="empty" id="activityEmpty" style="display:none;">No recent activity.</div></div>
                     </div>
                   </div>
                 </div>
               </div>
             </section>
 
+            <!-- GENERATE REPORTS TAB -->
             <section id="viewGenerate" style="display:none;">
-              <div class="titleRow">
-                <h1>REPORTS</h1>
+              <div class="titleRow"><h1>GENERATE REPORTS</h1></div>
+
+              <div class="filterBox">
+                <div class="filterLabel">Select Report Type</div>
+                <div class="reportTypeGrid" id="reportTypeGrid">
+                  <div class="reportTypeCard is-active" data-rtype="circulation"><div class="rtTitle">Circulation Report</div><div class="rtDesc">Full borrowing log with students, books, due dates &amp; fines</div></div>
+                  <div class="reportTypeCard" data-rtype="students"><div class="rtTitle">Students Report</div><div class="rtDesc">Student borrowing insights such as most borrowers, active loans, overdue counts, and outstanding fines</div></div>
+                  <div class="reportTypeCard" data-rtype="fines"><div class="rtTitle">Fines Report</div><div class="rtDesc">Fine assessments, collections, and outstanding balances</div></div>
+                  <div class="reportTypeCard" data-rtype="most_borrowed"><div class="rtTitle">Most Borrowed Books</div><div class="rtDesc">Books ranked by borrow count over a selected date range</div></div>
+                  <div class="reportTypeCard" data-rtype="grade_summary"><div class="rtTitle">Grade Summary</div><div class="rtDesc">Per-grade totals: borrows, active readers, overdue, fines</div></div>
+                  <div class="reportTypeCard" data-rtype="inventory"><div class="rtTitle">Inventory Snapshot</div><div class="rtDesc">Book copy status: available, borrowed, damaged, lost &mdash; with filters</div></div>
+                </div>
               </div>
 
-              <div class="filters">
-                <div class="filtersLeft">
-                  <div class="field" style="min-width:340px;">
-                    <label>Date Range:</label>
-                    <div class="dateRange">
-                      <input id="dateFrom" type="date" />
-                      <div class="dash">–</div>
-                      <input id="dateTo" type="date" />
-                    </div>
-                  </div>
+              <div class="filterBox" id="dynamicFilters">
+                <div class="filterLabel">Filters</div>
+                <div class="filterRow" id="filterRow"><!-- filled by JS --></div>
+              </div>
 
-                  <div class="field small">
-                    <label>Grade:</label>
-                    <select id="gradeSel">
-                      <option value="">All</option>
-                    </select>
-                  </div>
-
-                  <div class="field small">
-                    <label>Section:</label>
-                    <select id="sectionSel" disabled>
-                      <option value="">All</option>
-                    </select>
-                  </div>
-
-                  <button class="btn" id="btnApply" type="button">Apply</button>
-                  <button class="btn ghost" id="btnClear" type="button">Clear All</button>
+              <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+                <div style="font-size:13px;font-weight:800;color:rgba(0,0,0,0.55);">
+                  Preview: <span id="reportTypeLabel" style="color:#111;">Circulation Report</span>
+                  <span id="reportRowCount" style="margin-left:8px;padding:3px 10px;background:rgba(0,0,0,0.07);border-radius:999px;font-size:12px;display:none;"></span>
                 </div>
-
-                <div class="filtersRight">
-                  <button class="btn green" id="btnPdf" type="button">Export PDF</button>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="btn ghost" id="btnApply" type="button">Apply Filters</button>
+                  <button class="btn ghost" id="btnClear" type="button">Clear</button>
+                  <button class="btn green" id="btnPrint" type="button">Print / Save PDF</button>
                   <button class="btn green" id="btnCsv" type="button">Export CSV</button>
                 </div>
               </div>
 
               <div class="previewCard">
                 <div class="previewHead">
-                  <div class="small">PDF Preview</div>
-                  <div class="small">This preview matches Export PDF.</div>
+                  <div style="font-size:13px;font-weight:800;">Report Preview</div>
+                  <div style="font-size:12px;color:rgba(0,0,0,0.50);">Print / Save PDF for a formatted printout with school header</div>
                 </div>
-
-                <div class="previewBody">
-                  <div class="overlayLoader" id="pdfLoader">
-                    <div class="dots" style="position:static; transform:none;">
-                      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                    </div>
+                <div class="previewBody" id="previewBody">
+                  <div class="previewLoading" id="previewLoading">
+                    <div class="dots" style="position:static;transform:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
                   </div>
-                  <iframe class="pdfFrame" id="pdfFrame" title="Report PDF Preview"></iframe>
+                  <div id="reportOutput"></div>
                 </div>
               </div>
-
-              <div class="empty" id="pdfError" style="display:none;">
-                Unable to load PDF preview. Try again or use Export PDF.
-              </div>
+              <div class="empty" id="reportError" style="display:none;">Failed to load report. Check your connection and try again.</div>
             </section>
-          </div>
+
+          </div><!-- /content -->
         </section>
       </div>
     </section>
@@ -1077,953 +351,474 @@
     <div class="site-footer__inner">
       <section class="site-footer__col">
         <h3 class="site-footer__title" id="footerBrandTitle">Library Management System</h3>
-        <p class="site-footer__text" id="footerBrandDescription">
-          Customize your school branding, contact details, and interface appearance in Display Settings.
-        </p>
-        <p class="site-footer__fineprint">
-          © <span id="footerYear"></span>
-          <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span>
-        </p>
+        <p class="site-footer__text" id="footerBrandDescription">Customize your school branding in Display Settings.</p>
+        <p class="site-footer__fineprint">&copy; <span id="footerYear"></span> <span id="footerBrandCopyright">Your School Name &mdash; All Rights Reserved.</span></p>
       </section>
-
       <section class="site-footer__col site-footer__col--right">
         <h3 class="site-footer__title">Contact &amp; Support</h3>
-
-        <div class="site-footer__item">
-          <span class="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
-            </svg>
-          </span>
-          <div><div id="footerBrandAddress">School Address</div></div>
-        </div>
-
-        <div class="site-footer__item">
-          <span class="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
-            </svg>
-          </span>
-          <div><div id="footerBrandPhone">School Contact Number</div></div>
-        </div>
-
-        <div class="site-footer__item">
-          <span class="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
-            </svg>
-          </span>
-          <div><div id="footerBrandEmail">library@school.edu</div></div>
-        </div>
-
-        <div class="site-footer__row" style="margin-top:14px;">
-          <a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a>
-          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
-          <a class="site-footer__social" id="footerBrandWebsite" href="#" target="_blank" rel="noopener" style="display:none;">Official Website</a>
-        </div>
+        <div class="site-footer__item"><span class="site-footer__icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg></span><div><div id="footerBrandAddress">School Address</div></div></div>
+        <div class="site-footer__item"><span class="site-footer__icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/></svg></span><div><div id="footerBrandPhone">School Contact Number</div></div></div>
+        <div class="site-footer__item"><span class="site-footer__icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/></svg></span><div><div id="footerBrandEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="dab6b3b8a8bba8a39aa9b9b2b5b5b6f4bfbeaf">[email&#160;protected]</a></div></div></div>
+        <div class="site-footer__row" style="margin-top:14px;"><a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a><span class="site-footer__dot" id="footerBrandDivider" style="display:none;">&bull;</span><a class="site-footer__social" id="footerBrandWebsite" href="#" target="_blank" rel="noopener" style="display:none;">Official Website</a></div>
       </section>
     </div>
   </footer>
 
-  <script>
-    const BASE_URL = "http://127.0.0.1:8000";
-    const APP_TIMEZONE = "Asia/Manila";
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // ─────────────────────────────────────────────
+  // BOOTSTRAP
+  // ─────────────────────────────────────────────
+  const BASE_URL="http://127.0.0.1:8000";
+  const APP_TIMEZONE="Asia/Manila";
 
-    function getToken(){
-      return (
-        sessionStorage.getItem("gk_token") ||
-        localStorage.getItem("gk_token") ||
-        localStorage.getItem("token") ||
-        localStorage.getItem("access_token") ||
-        sessionStorage.getItem("token") ||
-        sessionStorage.getItem("access_token") ||
-        ""
-      ).replace(/^Bearer\s+/i,"").trim();
+  function getToken(){return(sessionStorage.getItem("gk_token")||localStorage.getItem("gk_token")||localStorage.getItem("token")||localStorage.getItem("access_token")||sessionStorage.getItem("token")||sessionStorage.getItem("access_token")||"").replace(/^Bearer\s+/i,"").trim();}
+  if(!getToken())window.location.href="login.html";
+  function authHdr(){return{"Authorization":"Bearer "+getToken()};}
+
+  document.getElementById("footerYear").textContent=new Date().getFullYear();
+  document.getElementById("logoutLink")?.addEventListener("click",e=>{e.preventDefault();["gk_token","token","access_token"].forEach(k=>{try{sessionStorage.removeItem(k);}catch{}try{localStorage.removeItem(k);}catch{}});window.location.href="login.html";});
+
+  const _hdr=document.getElementById("siteHeader");
+  function syncHdr(){_hdr?.classList.toggle("is-scrolled",window.scrollY>8);}
+  syncHdr();window.addEventListener("scroll",syncHdr,{passive:true});
+  document.getElementById("contactLink")?.addEventListener("click",e=>{e.preventDefault();const f=document.getElementById("footer");window.scrollTo({top:f.getBoundingClientRect().top+window.scrollY-(_hdr?.getBoundingClientRect().height??0)-12,behavior:"smooth"});});
+
+  // ─────────────────────────────────────────────
+  // UTILS
+  // ─────────────────────────────────────────────
+  function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+  function fmtNum(n){const x=Number(n??0);return Number.isFinite(x)?x.toLocaleString():"0";}
+  function peso(n){const x=Number(n??0);return Number.isFinite(x)?"\u20b1"+x.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):"\u20b10.00";}
+  function safePct(p,w){p=Number(p??0);w=Number(w??0);return(Number.isFinite(p)&&Number.isFinite(w)&&w>0)?Math.round(p/w*100):0;}
+  function fmtDate(v){if(!v)return"\u2014";try{return new Date(v).toLocaleDateString("en-PH",{year:"numeric",month:"short",day:"numeric"});}catch{return String(v);}}
+  function fmtDT(v){if(!v)return"\u2014";try{return new Date(v).toLocaleString("en-PH",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch{return String(v);}}
+  function getMDS(d=new Date()){const p=new Intl.DateTimeFormat("en-CA",{timeZone:APP_TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const m={};for(const x of p)if(x.type!=="literal")m[x.type]=x.value;return`${m.year}-${m.month}-${m.day}`;}
+  function addDays(ymd,days){const[y,mo,d]=String(ymd).split("-").map(Number);const u=new Date(Date.UTC(y,mo-1,d));u.setUTCDate(u.getUTCDate()+days);return`${u.getUTCFullYear()}-${String(u.getUTCMonth()+1).padStart(2,"0")}-${String(u.getUTCDate()).padStart(2,"0")}`;}
+  function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+  function wa(c,a){c=String(c||"").trim();if(c.startsWith("#")){let h=c.slice(1);if(h.length===3)h=h.split("").map(x=>x+x).join("");const i=parseInt(h,16);return`rgba(${(i>>16)&255},${(i>>8)&255},${i&255},${a})`;}if(c.startsWith("rgb(")){const v=c.replace(/[^\d,\s]/g,"").split(",").map(Number);return`rgba(${v[0]},${v[1]},${v[2]},${a})`;}return c;}
+  function getBP(){const y=cssVar("--brand-yellow")||"#f4e32f",g=cssVar("--brand-green")||"#8dd959";return{y,g,ys:wa(y,0.8),ym:wa(y,0.68),yl:wa(y,0.48),gs:wa(g,0.8),gm:wa(g,0.68),gl:wa(g,0.48),grid:wa(g,0.12),fill:wa(g,0.18),wl:"rgba(255,255,255,0.78)"};}
+  function hasAny(a){return Array.isArray(a)&&a.some(v=>Number(v??0)>0);}
+
+  // ─────────────────────────────────────────────
+  // PROGRESS BAR
+  // ─────────────────────────────────────────────
+  const pWrap=document.getElementById("progressWrap"),pBar=document.getElementById("progressBar");
+  let pTimer=null;
+  function showProg(){pWrap.style.display="block";pBar.style.width="0%";clearInterval(pTimer);let w=0;pTimer=setInterval(()=>{w=Math.min(90,w+8);pBar.style.width=w+"%";},90);}
+  function hideProg(done=true){clearInterval(pTimer);if(done){pBar.style.width="100%";setTimeout(()=>{pWrap.style.display="none";pBar.style.width="0%";},220);}else{pWrap.style.display="none";pBar.style.width="0%";}}
+
+  // ─────────────────────────────────────────────
+  // TABS
+  // ─────────────────────────────────────────────
+  function setTab(which){
+    const isDash=which==="dashboard";
+    document.getElementById("tabDashboard").classList.toggle("is-active",isDash);
+    document.getElementById("tabGenerate").classList.toggle("is-active",!isDash);
+    document.getElementById("viewDashboard").style.display=isDash?"block":"none";
+    document.getElementById("viewGenerate").style.display=!isDash?"block":"none";
+  }
+  document.getElementById("tabDashboard").addEventListener("click",()=>setTab("dashboard"));
+  document.getElementById("tabGenerate").addEventListener("click",()=>{setTab("generate");if(!_rptLoaded)generateReport();});
+
+  // ─────────────────────────────────────────────
+  // DASHBOARD
+  // ─────────────────────────────────────────────
+  let cMonthly=null,cGenres=null,cBG=null,cOG=null,cInv=null;
+  let _rg=[],_rbg=[],_rog=[],_ri=[];
+  function destroyCharts(){for(const c of[cMonthly,cGenres,cBG,cOG,cInv])if(c)c.destroy();cMonthly=cGenres=cBG=cOG=cInv=null;}
+  function setDots(on){["dotsTrend","dotsBreakdown","dotsOps","dotsBooks","dotsStudents"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=on?"inline-flex":"none";});}
+  function coverFb(t){const p=getBP(),s=(t||"?").slice(0,14);return"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${p.g}"/><stop offset="1" stop-color="${p.y}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><rect x="18" y="18" width="164" height="244" rx="18" fill="rgba(255,255,255,0.25)"/><text x="100" y="145" font-size="20" text-anchor="middle" font-family="Arial" fill="rgba(0,0,0,0.65)" font-weight="700">${esc(s)}</text></svg>`);}
+
+  function renderGenres(){
+    const el=document.getElementById("chartGenres");if(cGenres){cGenres.destroy();cGenres=null;}
+    const lb=_rg.map(x=>x.genre??"?"),vl=_rg.map(x=>Number(x.book_count??0));
+    // Distinct readable colors for subject categories
+    const cl=["#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f","#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac"];
+    cGenres=new Chart(el,{type:"doughnut",data:{labels:lb,datasets:[{data:vl,backgroundColor:cl.slice(0,lb.length),borderColor:"rgba(255,255,255,0.8)",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom",labels:{boxWidth:10,font:{size:10}}}}}});
+  }
+  function renderBG(){
+    const p=getBP();const d=[..._rbg].sort((a,b)=>Number(b.borrow_count??0)-Number(a.borrow_count??0));
+    const el=document.getElementById("chartBorrowByGrade");if(cBG){cBG.destroy();cBG=null;}
+    el.height=Math.min(900,Math.max(250,d.length*28+70));
+    cBG=new Chart(el,{type:"bar",data:{labels:d.map(x=>x.grade??"?"),datasets:[{data:d.map(x=>Number(x.borrow_count??0)),backgroundColor:"rgba(78,121,167,0.75)",borderColor:"rgba(78,121,167,1)",borderWidth:1.5,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},y:{grid:{display:false},ticks:{autoSkip:false,font:{size:10}}}}}});
+  }
+  function renderOG(){
+    const p=getBP();const d=[..._rog].sort((a,b)=>Number(b.overdue_count??0)-Number(a.overdue_count??0));
+    const el=document.getElementById("chartOverdueGrade");if(cOG){cOG.destroy();cOG=null;}
+    cOG=new Chart(el,{type:"bar",data:{labels:d.map(x=>x.grade??"?"),datasets:[{data:d.map(x=>Number(x.overdue_count??0)),backgroundColor:"rgba(225,87,89,0.75)",borderColor:"rgba(225,87,89,1)",borderWidth:1.5,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},x:{grid:{display:false}}}}});
+  }
+  function renderInv(){
+    const el=document.getElementById("chartInventory");if(cInv){cInv.destroy();cInv=null;}
+    // Map status labels to semantic colors
+    const statusColors={"available":"rgba(89,161,79,0.85)","borrowed":"rgba(78,121,167,0.85)","damaged":"rgba(242,142,43,0.85)","lost":"rgba(225,87,89,0.85)"};
+    const borderColors={"available":"rgba(89,161,79,1)","borrowed":"rgba(78,121,167,1)","damaged":"rgba(242,142,43,1)","lost":"rgba(225,87,89,1)"};
+    const lb=_ri.map(x=>x.status??"?"),vl=_ri.map(x=>Number(x.count??0));
+    const bg=lb.map(l=>statusColors[l.toLowerCase()]||"rgba(186,176,172,0.85)");
+    const bc=lb.map(l=>borderColors[l.toLowerCase()]||"rgba(186,176,172,1)");
+    cInv=new Chart(el,{type:"doughnut",data:{labels:lb,datasets:[{data:vl,backgroundColor:bg,borderColor:bc,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:10}}}}}});
+  }
+
+  async function loadActivity(){
+    try{
+      const res=await fetch(`${BASE_URL}/api/reports/activity?limit=40`,{headers:authHdr()});
+      const rows=await res.json().catch(()=>[]);
+      if(!res.ok||!Array.isArray(rows)||!rows.length){document.getElementById("activityLogs").innerHTML="";document.getElementById("activityEmpty").style.display="block";return;}
+      document.getElementById("activityEmpty").style.display="none";
+      document.getElementById("activityLogs").innerHTML=rows.map(r=>{
+        const href=r?.book_id?`details.html?book_id=${encodeURIComponent(r.book_id)}`:r?.student_id?`student_details.html?student_id=${encodeURIComponent(r.student_id)}`:"#";
+        return`<div class="logItem"${href!=="#"?` onclick="window.location.href='${href}'"`:""}>
+          <div class="logTop"><div class="logType">${esc((r.type||"").replace(/_/g," "))}</div><div class="logTime">${esc(fmtDT(r.ts||""))}</div></div>
+          <div class="logMsg">${esc(r.message||"")}</div></div>`;
+      }).join("");
+    }catch{document.getElementById("activityLogs").innerHTML="";document.getElementById("activityEmpty").style.display="block";}
+  }
+
+  async function loadDashboard(){
+    const period=(document.getElementById("dashboardPeriod").value||"monthly").toLowerCase();
+    const pLbl=period==="daily"?"Daily":period==="weekly"?"Weekly":"Monthly";
+    const aLbl=period==="daily"?"Today":period==="weekly"?"This Week":"This Month";
+    document.getElementById("trendTitle").textContent=`Borrowing Trend (${pLbl})`;
+    document.getElementById("topBooksTitle").textContent=`Most Borrowed Books (${aLbl})`;
+    document.getElementById("topStudentsTitle").textContent=`Top Borrowers (${aLbl})`;
+    setDots(true);showProg();
+    try{
+      const res=await fetch(`${BASE_URL}/api/reports/dashboard?period=${encodeURIComponent(period)}`,{headers:authHdr()});
+      const data=await res.json().catch(()=>({}));
+      hideProg(true);setDots(false);
+      if(!res.ok){destroyCharts();return;}
+      const tot=data?.totals||{},inv=data?.inventory||{},fin=data?.fines||{};
+      const tB=Number(tot.total_books??0),tC=Number(tot.total_copies??0),tS=Number(tot.total_students??0),aL=Number(tot.active_loans??0),oL=Number(tot.overdue_loans??0);
+      document.getElementById("kpiBooks").textContent=fmtNum(tB);
+      document.getElementById("kpiCopies").textContent=fmtNum(tC);
+      document.getElementById("kpiStudents").textContent=fmtNum(tS);
+      document.getElementById("kpiActiveLoans").textContent=fmtNum(aL);
+      document.getElementById("kpiOverdue").textContent=fmtNum(oL);
+      document.getElementById("kpiOverdueSub").textContent=oL>0?"\u26a0 Action needed":"";
+      const cs=Array.isArray(inv.copy_status_distribution)?inv.copy_status_distribution:[];
+      const avail=Number(cs.find(x=>String(x.status||"").toLowerCase()==="available")?.count??0);
+      document.getElementById("kpiAvailPct").textContent=safePct(avail,tC)+"%";
+      document.getElementById("kpiAvailSub").textContent=`${fmtNum(avail)} / ${fmtNum(tC)}`;
+      const outstanding=Number(fin.outstanding_total??0),unpaidCnt=Number(fin.unpaid_fine_count??0);
+      document.getElementById("kpiTotalFines").textContent=peso(outstanding);
+      document.getElementById("kpiUnpaidFines").textContent=fmtNum(unpaidCnt);
+      destroyCharts();
+      const p=getBP();
+      const tr=Array.isArray(data?.borrow_trend)?data.borrow_trend:[];
+      const mV=tr.map(x=>Number(x.borrow_count??0));
+      if(hasAny(mV)){document.getElementById("monthlyEmpty").style.display="none";cMonthly=new Chart(document.getElementById("chartMonthly"),{type:"line",data:{labels:tr.map(x=>x.label??""),datasets:[{label:"Borrowed",data:mV,borderColor:p.g,backgroundColor:p.fill,pointBackgroundColor:p.y,borderWidth:3,fill:true,tension:0.28}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},x:{grid:{display:false}}}}});}else document.getElementById("monthlyEmpty").style.display="block";
+      _rg=Array.isArray(data?.genre_distribution)?data.genre_distribution:[];
+      if(hasAny(_rg.map(x=>x.book_count))){document.getElementById("genresEmpty").style.display="none";renderGenres();}else document.getElementById("genresEmpty").style.display="block";
+      _rbg=Array.isArray(data?.borrowed_by_grade)?data.borrowed_by_grade:[];
+      if(hasAny(_rbg.map(x=>x.borrow_count))){document.getElementById("borrowGradeEmpty").style.display="none";renderBG();}else document.getElementById("borrowGradeEmpty").style.display="block";
+      _rog=Array.isArray(data?.overdue_breakdown?.by_grade)?data.overdue_breakdown.by_grade:[];
+      if(hasAny(_rog.map(x=>x.overdue_count))){document.getElementById("overdueGradeEmpty").style.display="none";renderOG();}else document.getElementById("overdueGradeEmpty").style.display="block";
+      _ri=cs;
+      if(hasAny(_ri.map(x=>x.count))){document.getElementById("inventoryEmpty").style.display="none";renderInv();}else document.getElementById("inventoryEmpty").style.display="block";
+      const books=Array.isArray(data?.most_borrowed_books)?data.most_borrowed_books:[];
+      if(books.length){document.getElementById("topBooksEmpty").style.display="none";document.getElementById("topBooks").innerHTML=books.map(b=>{const cv=b.cover_url||coverFb(b.title||"");return`<a class="rowLink" href="${b.book_id?`details.html?book_id=${encodeURIComponent(b.book_id)}`:""}"${!b.book_id?' onclick="return false;"':""}>
+        <div class="rowItem"><div class="cover"><img src="${esc(cv)}" alt="" onerror="this.src='${coverFb(b.title||"")}'" ></div>
+        <div><div class="metaTitle">${esc(b.title||"Untitled")}</div><div class="metaSub">${esc(b.author||"")}</div>
+        <div class="metaBadges"><span class="badge yellow">\u00d7${fmtNum(b.borrow_count??0)} ${aLbl}</span></div></div></div></a>`;}).join("");}
+      else{document.getElementById("topBooksEmpty").style.display="block";document.getElementById("topBooks").innerHTML="";}
+      const students=Array.isArray(data?.most_active_students)?data.most_active_students:[];
+      if(students.length){document.getElementById("topStudentsEmpty").style.display="none";document.getElementById("topStudents").innerHTML=students.map(s=>{const nm=`${s.last_name||""}, ${s.first_name||""}`.replace(/^,\s*/,"").trim()||s.student_code||"Student";return`<a class="rowLink" href="${s.student_id?`student_details.html?student_id=${encodeURIComponent(s.student_id)}`:""}"${!s.student_id?' onclick="return false;"':""}>
+        <div class="rowItem" style="grid-template-columns:1fr;"><div>
+        <div class="metaTitle">${esc(nm)}</div><div class="metaSub">${esc(s.student_code||"")} \u2022 Grade ${esc(s.grade||"\u2014")} \u2022 ${esc(s.section||"\u2014")}</div>
+        <div class="metaBadges"><span class="badge">\u00d7${fmtNum(s.borrow_count??0)} ${aLbl}</span></div></div></div></a>`;}).join("");}
+      else{document.getElementById("topStudentsEmpty").style.display="block";document.getElementById("topStudents").innerHTML="";}
+      await loadActivity();
+    }catch(err){hideProg(false);setDots(false);destroyCharts();console.error(err);}
+  }
+  document.getElementById("dashboardPeriod").addEventListener("change",loadDashboard);
+  document.getElementById("btnRefreshDashboard").addEventListener("click",loadDashboard);
+
+  // ─────────────────────────────────────────────
+  // GENERATE REPORTS ENGINE
+  // ─────────────────────────────────────────────
+  let _rptLoaded=false,_grades=[],_secByGrade={},_brandCache=null;
+  let curRType="circulation";
+
+  async function getBrand(){
+    if(_brandCache)return _brandCache;
+    try{const r=await fetch(`${BASE_URL}/api/public/display`);_brandCache=await r.json().catch(()=>({}));}catch{_brandCache={};}
+    return _brandCache||{};
+  }
+
+  function gfv(id){return(document.getElementById(id)||{}).value||"";}
+  function today(){return getMDS();}
+  function ago30(){return addDays(today(),-30);}
+
+  // ── Filter HTML builders (each report type shows its own filters) ──
+  const FILTERS={
+    circulation(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        gradeFieldHtml()+sectionFieldHtml();
+      attachGradeChange();
+    },
+    students(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">–</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        gradeFieldHtml()+sectionFieldHtml()+
+        `<div class="field small"><label>Sort By</label><select id="f_ssort"><option value="borrow_count_desc">Most Borrowed</option><option value="overdue_desc">Most Overdue</option><option value="fines_desc">Highest Fines</option><option value="active_desc">Most Active Loans</option><option value="recent_desc">Most Recent Borrower</option><option value="name_asc">Name A–Z</option></select></div>`;
+      attachGradeChange();
+    },
+    fines(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        gradeFieldHtml()+
+        `<div class="field small"><label>Status</label><select id="f_fst"><option value="all">All</option><option value="unpaid">Unpaid Only</option><option value="paid">Paid Only</option></select></div>`;
+    },
+    most_borrowed(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        gradeFieldHtml()+sectionFieldHtml();
+      attachGradeChange();
+    },
+    grade_summary(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        `<div class="field small"><label>Sort By</label><select id="f_gsort"><option value="grade">Grade Level</option><option value="borrows_desc">Most Borrows</option><option value="overdue_desc">Most Overdue</option><option value="fines_desc">Highest Fines</option></select></div>`;
+    },
+    inventory(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field small"><label>Copy Status</label><select id="f_ist"><option value="">All Statuses</option><option value="available">Available Only</option><option value="borrowed">Borrowed Only</option><option value="damaged">Damaged Only</option><option value="lost">Lost Only</option></select></div>`+
+        `<div class="field small"><label>Location</label><input id="f_bsec" type="text" placeholder="e.g. Fiction, Science\u2026" style="padding:11px 12px;"></div>`+
+        `<div class="field small"><label>Sort By</label><select id="f_isort"><option value="title">Title A\u2013Z</option><option value="total_desc">Most Copies</option><option value="avail_asc">Least Available</option><option value="damaged_desc">Most Damaged</option></select></div>`;
     }
+  };
 
-    const token = getToken();
-    if (!token) window.location.href = "login.html";
-
-    function authHeaders(){
-      return { "Authorization": "Bearer " + getToken() };
-    }
-
-    const footerYear = document.getElementById("footerYear");
-    if (footerYear) footerYear.textContent = String(new Date().getFullYear());
-
-    document.getElementById("logoutLink")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      ["gk_token","token","access_token"].forEach(k => {
-        try { sessionStorage.removeItem(k); } catch(_){}
-        try { localStorage.removeItem(k); } catch(_){}
-      });
-      window.location.href = "login.html";
+  function gradeFieldHtml(){return`<div class="field small"><label>Grade</label><select id="f_grade"><option value="">All Grades</option>${_grades.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join("")}</select></div>`;}
+  function sectionFieldHtml(){return`<div class="field small"><label>Section</label><select id="f_section" disabled><option value="">All Sections</option></select></div>`;}
+  function attachGradeChange(){
+    const ge=document.getElementById("f_grade");if(!ge)return;
+    ge.addEventListener("change",async()=>{
+      const g=ge.value,se=document.getElementById("f_section");if(!se)return;
+      if(!g){se.innerHTML=`<option value="">All Sections</option>`;se.disabled=true;return;}
+      if(!_secByGrade[g]){try{const r=await fetch(`${BASE_URL}/api/reports/filters?grade=${encodeURIComponent(g)}`,{headers:authHdr()});const d=await r.json().catch(()=>({}));_secByGrade[g]=Array.isArray(d.sections)?d.sections:[];}catch{_secByGrade[g]=[];}}
+      se.innerHTML=`<option value="">All Sections</option>`+(_secByGrade[g]||[]).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
+      se.disabled=false;
     });
+  }
 
-    const header = document.getElementById("siteHeader");
-    const contactLink = document.getElementById("contactLink");
-
-    function syncHeader(){
-      if (!header) return;
-      header.classList.toggle("is-scrolled", window.scrollY > 8);
+  // ── Data fetchers (each hits the correct API endpoint) ──
+  const FETCHERS={
+    async circulation(){const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),g=gfv("f_grade"),s=gfv("f_section");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);const r=await fetch(`${BASE_URL}/api/reports/generate?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();},
+    async students(){const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),g=gfv("f_grade"),s=gfv("f_section");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);const r=await fetch(`${BASE_URL}/api/reports/generate?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");const raw=await r.json();const grouped=new Map();(raw.rows||[]).forEach(row=>{const key=row.student_id||row.student_code||`${row.last_name||""}|${row.first_name||""}|${row.grade||""}|${row.student_section||""}`;if(!grouped.has(key)){grouped.set(key,{student_id:row.student_id||null,student_code:row.student_code||"",first_name:row.first_name||"",last_name:row.last_name||"",grade:row.grade||"",student_section:row.student_section||"",borrow_count:0,active_loans:0,overdue_count:0,outstanding_fines:0,total_fines:0,last_borrowed_at:null,last_due_at:null});}const item=grouped.get(key);item.borrow_count+=1;if(!row.returned_at)item.active_loans+=1;if(row.is_overdue&&!row.returned_at)item.overdue_count+=1;item.outstanding_fines+=Number(row.outstanding_fine||0);item.total_fines+=Number(row.total_fine||0);if(row.borrowed_at&&(!item.last_borrowed_at||new Date(row.borrowed_at)>new Date(item.last_borrowed_at)))item.last_borrowed_at=row.borrowed_at;if(row.due_at&&(!item.last_due_at||new Date(row.due_at)>new Date(item.last_due_at)))item.last_due_at=row.due_at;});const rows=[...grouped.values()];const srt=gfv("f_ssort")||"borrow_count_desc";if(srt==="overdue_desc")rows.sort((a,b)=>Number(b.overdue_count||0)-Number(a.overdue_count||0)||Number(b.borrow_count||0)-Number(a.borrow_count||0)||`${a.last_name||""}, ${a.first_name||""}`.localeCompare(`${b.last_name||""}, ${b.first_name||""}`));else if(srt==="fines_desc")rows.sort((a,b)=>Number(b.outstanding_fines||0)-Number(a.outstanding_fines||0)||Number(b.borrow_count||0)-Number(a.borrow_count||0)||`${a.last_name||""}, ${a.first_name||""}`.localeCompare(`${b.last_name||""}, ${b.first_name||""}`));else if(srt==="active_desc")rows.sort((a,b)=>Number(b.active_loans||0)-Number(a.active_loans||0)||Number(b.borrow_count||0)-Number(a.borrow_count||0)||`${a.last_name||""}, ${a.first_name||""}`.localeCompare(`${b.last_name||""}, ${b.first_name||""}`));else if(srt==="recent_desc")rows.sort((a,b)=>new Date(b.last_borrowed_at||0)-new Date(a.last_borrowed_at||0));else if(srt==="name_asc")rows.sort((a,b)=>`${a.last_name||""}, ${a.first_name||""}`.localeCompare(`${b.last_name||""}, ${b.first_name||""}`));else rows.sort((a,b)=>Number(b.borrow_count||0)-Number(a.borrow_count||0)||Number(b.active_loans||0)-Number(a.active_loans||0)||`${a.last_name||""}, ${a.first_name||""}`.localeCompare(`${b.last_name||""}, ${b.first_name||""}`));return{date_from:raw.filters?.date_from||df||"",date_to:raw.filters?.date_to||dt||"",grade:raw.filters?.grade||g||"",section:raw.filters?.section||s||"",rows,summary:{total_students:rows.length,total_loans:rows.reduce((sum,row)=>sum+Number(row.borrow_count||0),0),active_loans:rows.reduce((sum,row)=>sum+Number(row.active_loans||0),0),overdue_count:rows.reduce((sum,row)=>sum+Number(row.overdue_count||0),0),outstanding_fines:rows.reduce((sum,row)=>sum+Number(row.outstanding_fines||0),0)}};},
+    async fines(){const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),g=gfv("f_grade"),fs=gfv("f_fst");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(fs&&fs!=="all")p.set("status",fs);const r=await fetch(`${BASE_URL}/api/reports/fines?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();},
+    async most_borrowed(){const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),g=gfv("f_grade"),s=gfv("f_section");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);p.set("limit","50");const r=await fetch(`${BASE_URL}/api/reports/most-borrowed?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();},
+    async grade_summary(){const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);const r=await fetch(`${BASE_URL}/api/reports/grade-summary?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();},
+    async inventory(){const p=new URLSearchParams();const bs=gfv("f_bsec");if(bs)p.set("book_section",bs);const r=await fetch(`${BASE_URL}/api/reports/inventory?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");let d=await r.json();
+      // client-side status filter & sort (API returns all, we filter/sort here)
+      const st=gfv("f_ist"),srt=gfv("f_isort")||"title";
+      if(st&&d.rows)d.rows=d.rows.filter(r=>{if(st==="available")return Number(r.available??0)>0;if(st==="borrowed")return Number(r.borrowed??0)>0;if(st==="damaged")return Number(r.damaged??0)>0;if(st==="lost")return Number(r.lost??0)>0;return true;});
+      if(d.rows){if(srt==="total_desc")d.rows.sort((a,b)=>Number(b.total_copies??0)-Number(a.total_copies??0));else if(srt==="avail_asc")d.rows.sort((a,b)=>Number(a.available??0)-Number(b.available??0));else if(srt==="damaged_desc")d.rows.sort((a,b)=>Number(b.damaged??0)-Number(a.damaged??0));else d.rows.sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));}
+      return d;
     }
+  };
 
-    syncHeader();
-    window.addEventListener("scroll", syncHeader, { passive: true });
+  // ── Shared report header & footer builders ──
+  function buildHdr(brand,rptTitle){
+    const sn=brand.school_name||"Your School Name",sys=brand.system_name||"Library Management System";
+    const logo=brand.logo_url||"";
+    const now=new Date();
+    const ds=now.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
+    const ts=now.toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"});
+    const logoHtml=logo
+      ?`<img class="rptLogo" src="${esc(logo)}" alt="School Logo" onerror="this.style.display='none'">`
+      :`<div class="rptLogoFb">\ud83d\udcda</div>`;
+    return`<div class="rptHeader">${logoHtml}<div class="rptHdrText"><div class="rptSchoolName">${esc(sn)}</div><div class="rptSchoolSub">${esc(sys)}</div></div><div class="rptHdrMeta"><div class="rptTypeLbl">${esc(rptTitle)}</div><div class="rptTimestamp">${esc(ds)} \u00b7 ${esc(ts)}</div></div></div>`;
+  }
+  function buildFiltBar(parts){if(!parts.length)return"";return`<div class="rptFilters">${parts.map(p=>`<span>${esc(p.k)}: <b>${esc(p.v)}</b></span>`).join("")}</div>`;}
+  function buildSum(cards){return`<div class="rptSumGrid">${cards.map(c=>`<div class="rsc ${c.cls||""}"><div class="rv">${esc(String(c.val))}</div><div class="rl">${esc(c.lbl)}</div></div>`).join("")}</div>`;}
+  function buildFoot(cnt,rtype){return`<div class="rptFoot"><span>${esc(rtype)} \u2014 ${fmtNum(cnt)} record${cnt!==1?"s":""}</span><span>Generated ${esc(new Date().toLocaleString("en-PH"))} \u00b7 For official use only</span></div>`;}
 
-    contactLink?.addEventListener("click", (e) => {
-      e.preventDefault();
-      const footer = document.getElementById("footer");
-      const headerH = header?.getBoundingClientRect().height ?? 0;
-      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
-      window.scrollTo({ top: y, behavior: "smooth" });
+  // ── Per-report-type HTML renderers ──
+  const RENDERERS={
+    circulation(data,brand){
+      const rows=data.rows||[],filt=data.filters||{},summ=data.summary||{};
+      const fp=[{k:"Date",v:`${filt.date_from||"\u2014"} to ${filt.date_to||"\u2014"}`},{k:"Grade",v:filt.grade||"All"},{k:"Section",v:filt.section||"All"}];
+      const sc=[{val:fmtNum(summ.row_count),lbl:"Total Loans"},{val:fmtNum(rows.filter(r=>!r.returned_at&&r.is_overdue).length),lbl:"Currently Overdue",cls:"warn"},{val:peso(summ.fine_total),lbl:"Fines Assessed",cls:"warn"},{val:peso(summ.fine_outstanding_total),lbl:"Outstanding",cls:"danger"}];
+      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Book</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th><th>Fine</th></tr>`;
+      const tb=rows.length?rows.map((r,i)=>{
+        const ov=r.is_overdue&&!r.returned_at;
+        const st=r.returned_at?`<span class="pill green">Returned</span>`:ov?`<span class="pill red">Overdue</span>`:`<span class="pill blue">Active</span>`;
+        return`<tr><td>${i+1}</td><td><div class="ct">${esc(r.last_name||"")}, ${esc(r.first_name||"")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.student_section||"\u2014")}</td><td><div class="ct">${esc(r.title||"")}</div><div class="cs">${esc(r.author||"")}</div></td><td>${fmtDate(r.borrowed_at)}</td><td>${fmtDate(r.due_at)}</td><td>${r.returned_at?fmtDate(r.returned_at):"\u2014"}</td><td>${st}</td><td>${Number(r.outstanding_fine||0)>0?`<span class="pill red">${peso(r.outstanding_fine)}</span>`:"\u2014"}</td></tr>`;
+      }).join(""):`<tr><td colspan="9" class="rptEmpty">No circulation records found for these filters.</td></tr>`;
+      return buildHdr(brand,"Circulation Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Circulation Report");
+    },
+    students(data,brand){
+      const rows=data.rows||[],summ=data.summary||{};
+      const srt=gfv("f_ssort")||"borrow_count_desc";
+      const fp=[{k:"Date",v:`${data.date_from||"—"} to ${data.date_to||"—"}`},{k:"Grade",v:data.grade||gfv("f_grade")||"All"},{k:"Section",v:data.section||gfv("f_section")||"All"},{k:"Sort",v:srt.replace(/_/g," ")}];
+      const topBorrower=rows[0]||null;
+      const sc=[{val:fmtNum(summ.total_students||rows.length),lbl:"Students Included"},{val:fmtNum(summ.total_loans||0),lbl:"Total Borrows"},{val:fmtNum(summ.active_loans||0),lbl:"Active Loans",cls:Number(summ.active_loans||0)>0?"warn":""},{val:fmtNum(summ.overdue_count||0),lbl:"Overdue Loans",cls:Number(summ.overdue_count||0)>0?"danger":""},{val:peso(summ.outstanding_fines||0),lbl:"Outstanding Fines",cls:Number(summ.outstanding_fines||0)>0?"danger":""}];
+      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Total Borrows</th><th>Active Loans</th><th>Overdue</th><th>Outstanding Fines</th><th>Last Borrowed</th></tr>`;
+      const tb=rows.length?rows.map((r,i)=>{const studentName=`${r.last_name||""}, ${r.first_name||""}`.replace(/^,\s*/,"").trim()||r.student_code||"Student";return`<tr><td>${i+1}</td><td><div class="ct">${esc(studentName)}</div><div class="cs">${esc(r.student_code||"—")}</div></td><td>${esc(r.grade||"—")} / ${esc(r.student_section||"—")}</td><td><span class="pill blue">${fmtNum(r.borrow_count||0)}</span></td><td>${Number(r.active_loans||0)>0?`<span class="pill yellow">${fmtNum(r.active_loans)}</span>`:"—"}</td><td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td><td>${Number(r.outstanding_fines||0)>0?`<span class="pill orange">${peso(r.outstanding_fines)}</span>`:"—"}</td><td>${r.last_borrowed_at?fmtDate(r.last_borrowed_at):"—"}</td></tr>`;}).join(""):`<tr><td colspan="8" class="rptEmpty">No student borrowing records found for these filters.</td></tr>`;
+      const insightHtml=rows.length?`<div class="rptFilters" style="margin-bottom:14px;"><span><b>Top Borrower:</b> ${esc(`${topBorrower?.last_name||""}, ${topBorrower?.first_name||""}`.replace(/^,\s*/,"").trim()||topBorrower?.student_code||"—")}</span><span><b>Borrow Count:</b> ${fmtNum(topBorrower?.borrow_count||0)}</span><span><b>Active Loans:</b> ${fmtNum(topBorrower?.active_loans||0)}</span><span><b>Overdue:</b> ${fmtNum(topBorrower?.overdue_count||0)}</span></div>`:"";
+      return buildHdr(brand,"Students Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}${insightHtml}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Students Report");
+    },
+    fines(data,brand){
+      const rows=data.rows||[],summ=data.summary||{};
+      const fs=gfv("f_fst")||"all";
+      const fp=[{k:"Date",v:`${gfv("f_df")||"\u2014"} to ${gfv("f_dt")||"\u2014"}`},{k:"Grade",v:gfv("f_grade")||"All"},{k:"Status",v:fs==="all"?"All":fs==="unpaid"?"Unpaid Only":"Paid Only"}];
+      const sc=[{val:fmtNum(rows.length),lbl:"Fine Records"},{val:peso(summ.total_amount),lbl:"Total Assessed",cls:"warn"},{val:peso(summ.total_paid),lbl:"Total Collected"},{val:peso(summ.total_outstanding),lbl:"Still Outstanding",cls:"danger"}];
+      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Book</th><th>Reason</th><th>Assessed</th><th>Amount</th><th>Paid</th><th>Outstanding</th><th>Status</th></tr>`;
+      const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.last_name||"")}, ${esc(r.first_name||"")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.student_section||"\u2014")}</td><td>${r.title?`<div class="ct">${esc(r.title)}</div>`:"\u2014"}</td><td>${esc(r.reason||"\u2014")}</td><td>${fmtDate(r.assessed_at)}</td><td>${peso(r.amount)}</td><td>${Number(r.amount_paid||0)>0?peso(r.amount_paid):"\u2014"}</td><td>${Number(r.outstanding||0)>0?`<b style="color:#b91c1c">${peso(r.outstanding)}</b>`:`<span style="color:#16a34a">\u2713 Settled</span>`}</td><td>${r.status==="paid"?`<span class="pill green">Paid</span>`:`<span class="pill red">Unpaid</span>`}</td></tr>`).join(""):`<tr><td colspan="10" class="rptEmpty">No fine records found.</td></tr>`;
+      return buildHdr(brand,"Fines Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Fines Report");
+    },
+    most_borrowed(data,brand){
+      const rows=data.rows||[];
+      const totB=rows.reduce((s,r)=>s+Number(r.borrow_count||0),0);
+      const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"Grade",v:gfv("f_grade")||"All"},{k:"Section",v:gfv("f_section")||"All"}];
+      const sc=[{val:fmtNum(rows.length),lbl:"Books Ranked"},{val:fmtNum(totB),lbl:"Total Borrows"},{val:fmtNum(new Set(rows.map(r=>r.book_section)).size),lbl:"Sections"},{val:rows.length?fmtNum(rows[0].borrow_count):"\u2014",lbl:"Top Borrow Count"}];
+      const th=`<tr><th>Rank</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Borrow Count</th><th>Unique Readers</th></tr>`;
+      const tb=rows.length?rows.map((r,i)=>`<tr><td><b>#${i+1}</b></td><td><div class="ct">${esc(r.title||"")}</div></td><td>${esc(r.author||"\u2014")}</td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><span class="pill ${i===0?"yellow":i<3?"green":"gray"}">${fmtNum(r.borrow_count)}</span></td><td>${fmtNum(r.unique_borrowers)}</td></tr>`).join(""):`<tr><td colspan="7" class="rptEmpty">No borrowing data for this period.</td></tr>`;
+      return buildHdr(brand,"Most Borrowed Books")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Most Borrowed Books");
+    },
+    grade_summary(data,brand){
+      let rows=[...(data.rows||[])];
+      // Apply client-side sort
+      const srt=gfv("f_gsort")||"grade";
+      if(srt==="borrows_desc") rows.sort((a,b)=>Number(b.total_borrows||0)-Number(a.total_borrows||0));
+      else if(srt==="overdue_desc") rows.sort((a,b)=>Number(b.overdue_count||0)-Number(a.overdue_count||0));
+      else if(srt==="fines_desc") rows.sort((a,b)=>Number(b.outstanding_fines||0)-Number(a.outstanding_fines||0));
+      else rows.sort((a,b)=>String(a.grade||"").localeCompare(String(b.grade||"")));
+      const tB=rows.reduce((s,r)=>s+Number(r.total_borrows||0),0),tO=rows.reduce((s,r)=>s+Number(r.overdue_count||0),0),tF=rows.reduce((s,r)=>s+Number(r.outstanding_fines||0),0),tA=rows.reduce((s,r)=>s+Number(r.active_students||0),0);
+      const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"Sort",v:srt.replace("_"," ")}];
+      const sc=[{val:fmtNum(rows.length),lbl:"Grade Levels"},{val:fmtNum(tA),lbl:"Active Students"},{val:fmtNum(tB),lbl:"Total Borrows"},{val:fmtNum(tO),lbl:"Total Overdue",cls:"warn"},{val:peso(tF),lbl:"Outstanding Fines",cls:"danger"}];
+      const th=`<tr><th style="width:70px">Grade</th><th style="width:80px">Active Stud</th><th style="width:120px">No of Borrowers</th><th style="width:80px">Borrows</th><th style="width:80px">Overdue</th><th style="width:110px">Fines Due</th><th style="width:70px">Avg/Stud</th></tr>`;
+      const tb=rows.length?rows.map(r=>{
+        const active=Number(r.active_students||0);
+        const avg=active>0?(Number(r.total_borrows||0)/active).toFixed(2):"\u2014";
+        const pctBorrowed=active>0?Math.round(Number(r.students_who_borrowed||0)/active*100)+"%":"\u2014";
+        return`<tr>
+          <td><b>Gr. ${esc(r.grade||"?")}</b></td>
+          <td><b>${fmtNum(active)}</b></td>
+          <td>${fmtNum(r.students_who_borrowed)} <span style="color:#999;font-size:11px;">(${pctBorrowed})</span></td>
+          <td>${fmtNum(r.total_borrows)}</td>
+          <td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td>
+          <td>${Number(r.outstanding_fines||0)>0?`<span class="pill yellow">${peso(r.outstanding_fines)}</span>`:`<span class="pill green">\u2014</span>`}</td>
+          <td>${avg}</td>
+        </tr>`;
+      }).join(""):`<tr><td colspan="7" class="rptEmpty">No grade summary data for this period.</td></tr>`;
+      return buildHdr(brand,"Grade Summary Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable" style="table-layout:fixed;width:100%;"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Grade Summary");
+    },
+    inventory(data,brand){
+      const rows=data.rows||[];
+      const tC=rows.reduce((s,r)=>s+Number(r.total_copies||0),0),tA=rows.reduce((s,r)=>s+Number(r.available||0),0),tD=rows.reduce((s,r)=>s+Number(r.damaged||0),0),tL=rows.reduce((s,r)=>s+Number(r.lost||0),0);
+      const st=gfv("f_ist"),bs=gfv("f_bsec"),srt=gfv("f_isort")||"title";
+      const fp=[];if(st)fp.push({k:"Status",v:st});if(bs)fp.push({k:"Location",v:bs});fp.push({k:"Sort",v:srt.replace("_"," ")});
+      const sc=[{val:fmtNum(rows.length),lbl:"Book Titles"},{val:fmtNum(tC),lbl:"Total Copies"},{val:fmtNum(tA),lbl:"Available"},{val:fmtNum(tD+tL),lbl:"Damaged / Lost",cls:tD+tL>0?"danger":""}];
+      const th=`<tr><th>#</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Total</th><th>Available</th><th>Borrowed</th><th>Damaged</th><th>Lost</th><th>Printed</th></tr>`;
+      const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.title||"")}</div></td><td><div class="cs">${esc(r.author||"\u2014")}</div></td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><b>${fmtNum(r.total_copies)}</b></td><td><span class="pill ${Number(r.available||0)>0?"green":"gray"}">${fmtNum(r.available)}</span></td><td>${Number(r.borrowed||0)>0?`<span class="pill blue">${fmtNum(r.borrowed)}</span>`:"\u2014"}</td><td>${Number(r.damaged||0)>0?`<span class="pill yellow">${fmtNum(r.damaged)}</span>`:"\u2014"}</td><td>${Number(r.lost||0)>0?`<span class="pill red">${fmtNum(r.lost)}</span>`:"\u2014"}</td><td>${fmtNum(r.printed)}</td></tr>`).join(""):`<tr><td colspan="11" class="rptEmpty">No inventory records found.</td></tr>`;
+      return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody">${fp.length?buildFiltBar(fp):""}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
+    }
+  };
+
+  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot"};
+
+  // ── Main runner ──
+  async function generateReport(){
+    const fetch=FETCHERS[curRType],render=RENDERERS[curRType];
+    if(!fetch||!render)return;
+    document.getElementById("reportError").style.display="none";
+    document.getElementById("reportOutput").innerHTML="";
+    document.getElementById("previewLoading").style.display="grid";
+    showProg();
+    try{
+      const[data,brand]=await Promise.all([fetch(),getBrand()]);
+      document.getElementById("reportOutput").innerHTML=`<div class="rptDoc">${render(data,brand)}</div>`;
+      const cnt=data.rows?.length??data.total_records??0;
+      const rcEl=document.getElementById("reportRowCount");
+      rcEl.textContent=cnt>0?`${fmtNum(cnt)} records`:"";
+      rcEl.style.display=cnt>0?"inline":"none";
+      _rptLoaded=true;hideProg(true);
+    }catch(err){hideProg(false);document.getElementById("reportError").style.display="block";console.error("Report error",err);}
+    finally{document.getElementById("previewLoading").style.display="none";}
+  }
+
+  // ── Report type cards ──
+  document.getElementById("reportTypeGrid").querySelectorAll(".reportTypeCard").forEach(card=>{
+    card.addEventListener("click",()=>{
+      document.querySelectorAll(".reportTypeCard").forEach(c=>c.classList.remove("is-active"));
+      card.classList.add("is-active");
+      curRType=card.dataset.rtype;
+      document.getElementById("reportTypeLabel").textContent=LABELS[curRType]||"";
+      document.getElementById("reportRowCount").style.display="none";
+      FILTERS[curRType]?.();
+      generateReport();
     });
+  });
 
-    function esc(s){
-      return String(s ?? "").replace(/[&<>"']/g, m => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[m]));
-    }
+  document.getElementById("btnApply").addEventListener("click",generateReport);
+  document.getElementById("btnClear").addEventListener("click",()=>{FILTERS[curRType]?.();generateReport();});
 
-    function fmtNum(n){
-      const x = Number(n ?? 0);
-      if (!Number.isFinite(x)) return "0";
-      return x.toLocaleString();
-    }
+  // ── Print / Save PDF (client-side rendered, preserves branding colours) ──
+  const PRINT_CSS=`*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Poppins',Arial,sans-serif;background:#fff;color:#111;}.rptDoc{max-width:100%;margin:0;}.rptHeader{background:#1a2e0d;padding:16px 22px 13px;display:flex;align-items:center;gap:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rptLogo{width:46px;height:46px;object-fit:contain;border-radius:5px;flex-shrink:0;}.rptLogoFb{width:46px;height:46px;border-radius:5px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}.rptHdrText{flex:1;}.rptSchoolName{color:#f4e32f;font-size:16px;font-weight:900;letter-spacing:.02em;line-height:1.1;}.rptSchoolSub{color:rgba(255,255,255,.7);font-size:11px;font-weight:600;margin-top:2px;}.rptHdrMeta{text-align:right;flex-shrink:0;}.rptTypeLbl{color:#8dd959;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}.rptTimestamp{color:rgba(255,255,255,.55);font-size:10px;margin-top:3px;}.rptBody{padding:16px 22px;}.rptSumGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px;}.rsc{background:#f4faf0;border:1px solid #d4edca;border-radius:7px;padding:9px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rsc .rv{font-size:17px;font-weight:900;color:#1a4d0f;line-height:1;}.rsc .rl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4a7c3f;margin-top:3px;}.rsc.warn{background:#fffbf0;border-color:#fde68a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rsc.warn .rv{color:#92400e;}.rsc.warn .rl{color:#b45309;}.rsc.danger{background:#fff5f5;border-color:#fecaca;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rsc.danger .rv{color:#991b1b;}.rsc.danger .rl{color:#dc2626;}.rptFilters{background:#f7f7f7;border:1px solid #e5e5e5;border-radius:6px;padding:8px 12px;margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;font-weight:700;color:#666;}.rptFilters span b{color:#111;}.rptTable{width:100%;border-collapse:collapse;font-size:11px;}.rptTable thead tr{background:#1a2e0d;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rptTable thead th{padding:8px 10px;text-align:left;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}.rptTable tbody tr{border-bottom:1px solid #f0f0f0;}.rptTable tbody tr:nth-child(even){background:#fafafa;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.rptTable td{padding:7px 10px;vertical-align:middle;line-height:1.3;}.ct{font-weight:800;font-size:11px;color:#111;}.cs{font-size:10px;color:#777;margin-top:1px;}.pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.pill.green{background:#dcfce7;color:#166534;}.pill.red{background:#fee2e2;color:#991b1b;}.pill.yellow{background:#fef9c3;color:#854d0e;}.pill.blue{background:#dbeafe;color:#1e40af;}.pill.gray{background:#f3f4f6;color:#374151;}.pill.orange{background:#ffedd5;color:#9a3412;}.rptEmpty{text-align:center;padding:40px;color:#bbb;font-size:12px;font-weight:700;}.rptFoot{padding:9px 22px;background:#f7f7f7;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;}.rptFoot span{font-size:10px;color:#bbb;font-weight:700;}@page{margin:10mm;}`;
 
-    function safePct(part, whole){
-      const p = Number(part ?? 0);
-      const w = Number(whole ?? 0);
-      if (!Number.isFinite(p) || !Number.isFinite(w) || w <= 0) return 0;
-      return Math.round((p / w) * 100);
-    }
+  document.getElementById("btnPrint").addEventListener("click",()=>{
+    const doc=document.getElementById("reportOutput").innerHTML;
+    if(!doc.trim()){alert("No report loaded yet. Apply filters first.");return;}
+    const w=window.open("","_blank","width=1060,height=820");
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(LABELS[curRType]||"Report")}</title><style>${PRINT_CSS}</style></head><body>${doc}</body></html>`);
+    w.document.close();
+    setTimeout(()=>w.print(),700);
+  });
 
-    function peso(n){
-      const x = Number(n ?? 0);
-      if (!Number.isFinite(x)) return "₱0.00";
-      return "₱" + x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function cssVar(name){
-      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    }
-
-    function withAlpha(color, alpha){
-      color = String(color || "").trim();
-
-      if (color.startsWith("#")){
-        let hex = color.slice(1);
-        if (hex.length === 3){
-          hex = hex.split("").map(c => c + c).join("");
-        }
-        const int = parseInt(hex, 16);
-        const r = (int >> 16) & 255;
-        const g = (int >> 8) & 255;
-        const b = int & 255;
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-      }
-
-      if (color.startsWith("rgb(")){
-        const vals = color.replace(/[^\d,\s]/g, "").split(",").map(v => Number(v.trim()));
-        return `rgba(${vals[0]}, ${vals[1]}, ${vals[2]}, ${alpha})`;
-      }
-
-      if (color.startsWith("rgba(")){
-        const vals = color.match(/[\d.]+/g)?.map(Number) || [0,0,0,1];
-        return `rgba(${vals[0]}, ${vals[1]}, ${vals[2]}, ${alpha})`;
-      }
-
-      return color;
-    }
-
-    function getBrandPalette(){
-      const yellow = cssVar("--brand-yellow") || "#f4e32f";
-      const green = cssVar("--brand-green") || "#8dd959";
-      return {
-        yellow,
-        green,
-        yellowSoft: withAlpha(yellow, 0.80),
-        yellowMid: withAlpha(yellow, 0.68),
-        yellowLight: withAlpha(yellow, 0.48),
-        greenSoft: withAlpha(green, 0.80),
-        greenMid: withAlpha(green, 0.68),
-        greenLight: withAlpha(green, 0.48),
-        grid: withAlpha(green, 0.12),
-        fill: withAlpha(green, 0.18),
-        whiteLine: "rgba(255,255,255,0.78)"
-      };
-    }
-
-    function getManilaDateParts(date = new Date()){
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: APP_TIMEZONE,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).formatToParts(date);
-
-      const map = {};
-      for (const p of parts) {
-        if (p.type !== "literal") map[p.type] = p.value;
-      }
-
-      return {
-        year: map.year,
-        month: map.month,
-        day: map.day
-      };
-    }
-
-    function getManilaDateString(date = new Date()){
-      const p = getManilaDateParts(date);
-      return `${p.year}-${p.month}-${p.day}`;
-    }
-
-    function addDaysToYmd(ymd, days){
-      const [y, m, d] = String(ymd).split("-").map(Number);
-      const utc = new Date(Date.UTC(y, m - 1, d));
-      utc.setUTCDate(utc.getUTCDate() + days);
-      const yy = utc.getUTCFullYear();
-      const mm = String(utc.getUTCMonth() + 1).padStart(2, "0");
-      const dd = String(utc.getUTCDate()).padStart(2, "0");
-      return `${yy}-${mm}-${dd}`;
-    }
-
-    function compactDate(ymd){
-      return String(ymd || "").replace(/-/g, "");
-    }
-
-    function sanitizeSlug(v){
-      return String(v || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/^_+|_+$/g, "")
-        .slice(0, 40);
-    }
-
-    function buildExportFilename(ext){
-      const from = (dateFrom.value || "").trim();
-      const to = (dateTo.value || "").trim();
-      const grade = sanitizeSlug(gradeSel.value || "all_grades");
-      const section = sanitizeSlug(sectionSel.value || "all_sections");
-      const generatedOn = compactDate(getManilaDateString());
-
-      const rangePart = from && to
-        ? `${compactDate(from)}_to_${compactDate(to)}`
-        : from
-        ? `${compactDate(from)}_to_open`
-        : to
-        ? `up_to_${compactDate(to)}`
-        : "all_dates";
-
-      return `library_report_${rangePart}_${grade}_${section}_generated_${generatedOn}.${ext}`;
-    }
-
-    const progressWrap = document.getElementById("progressWrap");
-    const progressBar = document.getElementById("progressBar");
-    let progressTimer = null;
-
-    function showProgress(){
-      progressWrap.style.display = "block";
-      progressBar.style.width = "0%";
-      clearInterval(progressTimer);
-      let w = 0;
-      progressTimer = setInterval(() => {
-        w = Math.min(90, w + 8);
-        progressBar.style.width = w + "%";
-      }, 90);
-    }
-
-    function hideProgress(done=true){
-      clearInterval(progressTimer);
-      if (done){
-        progressBar.style.width = "100%";
-        setTimeout(() => {
-          progressWrap.style.display = "none";
-          progressBar.style.width = "0%";
-        }, 220);
-      } else {
-        progressWrap.style.display = "none";
-        progressBar.style.width = "0%";
-      }
-    }
-
-    const tabDashboard = document.getElementById("tabDashboard");
-    const tabGenerate = document.getElementById("tabGenerate");
-    const viewDashboard = document.getElementById("viewDashboard");
-    const viewGenerate = document.getElementById("viewGenerate");
-
-    function setTab(which){
-      const isDash = which === "dashboard";
-      tabDashboard.classList.toggle("is-active", isDash);
-      tabGenerate.classList.toggle("is-active", !isDash);
-      tabDashboard.setAttribute("aria-selected", isDash ? "true" : "false");
-      tabGenerate.setAttribute("aria-selected", !isDash ? "true" : "false");
-      viewDashboard.style.display = isDash ? "block" : "none";
-      viewGenerate.style.display = !isDash ? "block" : "none";
-    }
-
-    tabDashboard.addEventListener("click", () => setTab("dashboard"));
-    tabGenerate.addEventListener("click", () => setTab("generate"));
-
-    const dashboardPeriod = document.getElementById("dashboardPeriod");
-    const btnRefreshDashboard = document.getElementById("btnRefreshDashboard");
-    const trendTitle = document.getElementById("trendTitle");
-    const topBooksTitle = document.getElementById("topBooksTitle");
-    const topStudentsTitle = document.getElementById("topStudentsTitle");
-
-    function periodLabel(period){
-      if (period === "daily") return "Daily";
-      if (period === "weekly") return "Weekly";
-      return "Monthly";
-    }
-
-    function activityLabel(period){
-      if (period === "daily") return "Today";
-      if (period === "weekly") return "This Week";
-      return "This Month";
-    }
-
-    const dotsTrend = document.getElementById("dotsTrend");
-    const dotsBreakdown = document.getElementById("dotsBreakdown");
-    const dotsOps = document.getElementById("dotsOps");
-    const dotsBooks = document.getElementById("dotsBooks");
-    const dotsStudents = document.getElementById("dotsStudents");
-
-    function setDots(on){
-      for (const el of [dotsTrend, dotsBreakdown, dotsOps, dotsBooks, dotsStudents]){
-        if (!el) continue;
-        el.style.display = on ? "inline-flex" : "none";
-      }
-    }
-
-    function coverFallback(title){
-      const palette = getBrandPalette();
-      const t = (title || "No Cover").toString().slice(0, 18);
-      const svg =
-        `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280">
-          <defs>
-            <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0" stop-color="${palette.green}"/>
-              <stop offset="1" stop-color="${palette.yellow}"/>
-            </linearGradient>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#g)"/>
-          <rect x="18" y="18" width="164" height="244" rx="18" fill="rgba(255,255,255,0.25)"/>
-          <text x="100" y="140" font-size="22" text-anchor="middle" font-family="Arial" fill="rgba(0,0,0,0.65)" font-weight="700">${esc(t)}</text>
-        </svg>`;
-      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-    }
-
-    function hasAny(values){
-      return Array.isArray(values) && values.some(v => Number(v ?? 0) > 0);
-    }
-
-    const kpiBooks = document.getElementById("kpiBooks");
-    const kpiCopies = document.getElementById("kpiCopies");
-    const kpiStudents = document.getElementById("kpiStudents");
-    const kpiActiveLoans = document.getElementById("kpiActiveLoans");
-    const kpiOverdue = document.getElementById("kpiOverdue");
-    const kpiAvailPct = document.getElementById("kpiAvailPct");
-    const kpiAvailSub = document.getElementById("kpiAvailSub");
-    const kpiTotalFines = document.getElementById("kpiTotalFines");
-    const kpiUnpaidFines = document.getElementById("kpiUnpaidFines");
-    const kpiFinesSub = document.getElementById("kpiFinesSub");
-    const kpiUnpaidSub = document.getElementById("kpiUnpaidSub");
-
-    const monthlyEmpty = document.getElementById("monthlyEmpty");
-    const genresEmpty = document.getElementById("genresEmpty");
-    const borrowGradeEmpty = document.getElementById("borrowGradeEmpty");
-    const overdueGradeEmpty = document.getElementById("overdueGradeEmpty");
-    const inventoryEmpty = document.getElementById("inventoryEmpty");
-
-    const topBooks = document.getElementById("topBooks");
-    const topBooksEmpty = document.getElementById("topBooksEmpty");
-    const topStudents = document.getElementById("topStudents");
-    const topStudentsEmpty = document.getElementById("topStudentsEmpty");
-
-    const activityLogs = document.getElementById("activityLogs");
-    const activityEmpty = document.getElementById("activityEmpty");
-    const borrowViewport = document.getElementById("borrowViewport");
-
-    let chartMonthly = null;
-    let chartGenres = null;
-    let chartBorrowByGrade = null;
-    let chartOverdueGrade = null;
-    let chartInventory = null;
-
-    function destroyCharts(){
-      for (const c of [chartMonthly, chartGenres, chartBorrowByGrade, chartOverdueGrade, chartInventory]){
-        if (c) c.destroy();
-      }
-      chartMonthly = chartGenres = chartBorrowByGrade = chartOverdueGrade = chartInventory = null;
-    }
-
-    function fmtDateTime(ts){
+  // ── CSV export ──
+  const CSV_URLS={
+    circulation:`/api/reports/export/csv`,
+    students:null,
+    fines:`/api/reports/export-typed/csv?report_type=fines`,
+    most_borrowed:`/api/reports/export-typed/csv?report_type=most_borrowed`,
+    grade_summary:`/api/reports/export-typed/csv?report_type=grade_summary`,
+    inventory:`/api/reports/export-typed/csv?report_type=inventory`
+  };
+  document.getElementById("btnCsv").addEventListener("click",async()=>{
+    if(curRType==="students"){
+      showProg();
       try{
-        const d = new Date(ts);
-        if (Number.isNaN(d.getTime())) return String(ts);
-        return d.toLocaleString();
-      } catch {
-        return String(ts);
-      }
+        const data=await FETCHERS.students();
+        const rows=data.rows||[];
+        const headers=["student_code","last_name","first_name","grade","section","borrow_count","active_loans","overdue_count","outstanding_fines","total_fines","last_borrowed_at"];
+        const csv=[headers.join(",")].concat(rows.map(r=>headers.map(h=>{const key=h==="section"?"student_section":h;const val=r[key]??"";const str=String(val).replace(/"/g,'""');return /[",\n]/.test(str)?`"${str}"`:str;}).join(",")));
+        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");a.href=url;a.download=`students_report_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+        hideProg(true);
+      }catch{hideProg(false);alert("CSV export failed.");}
+      return;
     }
+    const base=CSV_URLS[curRType]||CSV_URLS.circulation;
+    const p=new URLSearchParams();
+    const df=gfv("f_df"),dt=gfv("f_dt"),g=gfv("f_grade"),s=gfv("f_section"),fs=gfv("f_fst"),bs=gfv("f_bsec");
+    if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);if(fs&&fs!=="all")p.set("status",fs);if(bs)p.set("book_section",bs);
+    const sep=base.includes("?")?"&":"?";
+    showProg();
+    try{
+      const r=await fetch(`${BASE_URL}${base}${sep}${p}`,{headers:authHdr()});
+      if(!r.ok)throw new Error();
+      const blob=await r.blob();
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");a.href=url;a.download=`${curRType}_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+      hideProg(true);
+    }catch{hideProg(false);alert("CSV export failed.");}
+  });
 
-    function logTargetHref(item){
-      const bookId = item?.book_id;
-      const studentId = item?.student_id;
-      if (bookId) return `details.html?book_id=${encodeURIComponent(bookId)}`;
-      if (studentId) return `student_details.html?student_id=${encodeURIComponent(studentId)}`;
-      return "#";
-    }
+  // ─────────────────────────────────────────────
+  // INIT
+  // ─────────────────────────────────────────────
+  async function loadFilterMeta(){
+    try{const r=await fetch(`${BASE_URL}/api/reports/filters`,{headers:authHdr()});const d=await r.json().catch(()=>({}));_grades=Array.isArray(d.grades)?d.grades:[];}catch{}
+  }
 
-    async function loadActivity(){
-      try{
-        const res = await fetch(`${BASE_URL}/api/reports/activity?limit=40`, { headers: authHeaders() });
-        const rows = await res.json().catch(() => []);
-        if (!res.ok || !Array.isArray(rows) || rows.length === 0){
-          activityLogs.innerHTML = "";
-          activityEmpty.style.display = "block";
-          return;
-        }
-
-        activityEmpty.style.display = "none";
-        activityLogs.innerHTML = rows.map(r => {
-          const href = logTargetHref(r);
-          const clickable = href !== "#";
-          const type = (r.type || "activity").toString().replace(/_/g, " ");
-          const msg = r.message || "";
-          const time = fmtDateTime(r.ts || "");
-          return `
-            <div class="logItem" ${clickable ? `onclick="window.location.href='${href}'"` : ""}>
-              <div class="logTop">
-                <div class="logType">${esc(type)}</div>
-                <div class="logTime">${esc(time)}</div>
-              </div>
-              <div class="logMsg">${esc(msg)}</div>
-            </div>
-          `;
-        }).join("");
-      } catch {
-        activityLogs.innerHTML = "";
-        activityEmpty.style.display = "block";
-      }
-    }
-
-    function chartBaseOptions(){
-      return { responsive:true, maintainAspectRatio:false };
-    }
-
-    async function loadDashboard(){
-      const period = (dashboardPeriod.value || "monthly").trim().toLowerCase();
-      const palette = getBrandPalette();
-
-      trendTitle.textContent = `Borrowing Trend (${periodLabel(period)})`;
-      topBooksTitle.textContent = `Most Borrowed Books (${activityLabel(period)})`;
-      topStudentsTitle.textContent = `Most Active Students (${activityLabel(period)})`;
-
-      setDots(true);
-      showProgress();
-
-      try{
-        const res = await fetch(`${BASE_URL}/api/reports/dashboard?period=${encodeURIComponent(period)}`, {
-          headers: authHeaders()
-        });
-        const data = await res.json().catch(() => ({}));
-        hideProgress(true);
-        setDots(false);
-
-        if (!res.ok){
-          destroyCharts();
-          monthlyEmpty.style.display = "block";
-          genresEmpty.style.display = "block";
-          borrowGradeEmpty.style.display = "block";
-          overdueGradeEmpty.style.display = "block";
-          inventoryEmpty.style.display = "block";
-          topBooksEmpty.style.display = "block";
-          topStudentsEmpty.style.display = "block";
-          return;
-        }
-
-        const totals = data?.totals || {};
-        const inventory = data?.inventory || {};
-        const fines = data?.fines || {};
-
-        const totalBooks = Number(totals.total_books ?? 0);
-        const totalCopies = Number(totals.total_copies ?? 0);
-        const totalStudents = Number(totals.total_students ?? 0);
-        const activeLoans = Number(totals.active_loans ?? 0);
-        const overdueLoans = Number(totals.overdue_loans ?? 0);
-
-        kpiBooks.textContent = fmtNum(totalBooks);
-        kpiCopies.textContent = fmtNum(totalCopies);
-        kpiStudents.textContent = fmtNum(totalStudents);
-        kpiActiveLoans.textContent = fmtNum(activeLoans);
-        kpiOverdue.textContent = fmtNum(overdueLoans);
-
-        const copyStatus = Array.isArray(inventory.copy_status_distribution) ? inventory.copy_status_distribution : [];
-        const availableRow = copyStatus.find(x => String(x.status).toLowerCase() === "available");
-        const availableCount = Number(availableRow?.count ?? 0);
-        const availPct = safePct(availableCount, totalCopies);
-        kpiAvailPct.textContent = `${availPct}%`;
-        kpiAvailSub.textContent = `${fmtNum(availableCount)} / ${fmtNum(totalCopies)}`;
-
-        const outstandingTotal = Number(fines.outstanding_total ?? 0);
-        const unpaidCount = Number(fines.unpaid_fine_count ?? 0);
-        kpiTotalFines.textContent = peso(outstandingTotal);
-        kpiUnpaidFines.textContent = fmtNum(unpaidCount);
-        kpiFinesSub.textContent = "Outstanding amount";
-        kpiUnpaidSub.textContent = "Unpaid records";
-
-        destroyCharts();
-
-        const trendRows = Array.isArray(data?.borrow_trend) ? data.borrow_trend : [];
-        const mLabels = trendRows.map(x => x.label ?? "");
-        const mVals = trendRows.map(x => Number(x.borrow_count ?? 0));
-
-        if (!hasAny(mVals)){
-          monthlyEmpty.style.display = "block";
-        } else {
-          monthlyEmpty.style.display = "none";
-          chartMonthly = new Chart(document.getElementById("chartMonthly"), {
-            type: "line",
-            data: {
-              labels: mLabels,
-              datasets: [{
-                label: "Borrowed",
-                data: mVals,
-                borderColor: palette.green,
-                backgroundColor: palette.fill,
-                pointBackgroundColor: palette.yellow,
-                pointBorderColor: palette.green,
-                pointHoverBackgroundColor: palette.yellow,
-                pointHoverBorderColor: palette.green,
-                borderWidth: 3,
-                fill: true,
-                tension: 0.28
-              }]
-            },
-            options: {
-              ...chartBaseOptions(),
-              plugins:{ legend:{ display:false } },
-              scales:{
-                y:{
-                  beginAtZero:true,
-                  grid:{ color: palette.grid },
-                  ticks:{ precision:0 }
-                },
-                x:{ grid:{ display:false } }
-              }
-            }
-          });
-        }
-
-        const genres = Array.isArray(data?.genre_distribution) ? data.genre_distribution : [];
-        const gLabels = genres.map(x => x.genre ?? "Unknown");
-        const gVals = genres.map(x => Number(x.book_count ?? 0));
-
-        if (!hasAny(gVals)){
-          genresEmpty.style.display = "block";
-        } else {
-          genresEmpty.style.display = "none";
-          chartGenres = new Chart(document.getElementById("chartGenres"), {
-            type: "pie",
-            data: {
-              labels: gLabels,
-              datasets: [{
-                data: gVals,
-                backgroundColor: [
-                  palette.greenSoft,
-                  palette.yellowSoft,
-                  palette.greenMid,
-                  palette.yellowMid,
-                  palette.greenLight,
-                  palette.yellowLight
-                ],
-                borderColor: palette.whiteLine,
-                borderWidth: 1
-              }]
-            },
-            options: {
-              ...chartBaseOptions(),
-              plugins:{
-                legend:{
-                  display:true,
-                  position:"bottom",
-                  labels:{ boxWidth:10, font:{ size:10 } }
-                }
-              }
-            }
-          });
-        }
-
-        const borrowedByGrade = Array.isArray(data?.borrowed_by_grade) ? data.borrowed_by_grade : [];
-        const bgLabels = borrowedByGrade.map(x => x.grade ?? "Unknown");
-        const bgVals = borrowedByGrade.map(x => Number(x.borrow_count ?? 0));
-
-        const barCanvas = document.getElementById("chartBorrowByGrade");
-        const rows = Math.max(bgLabels.length, 1);
-        const desiredH = Math.min(900, Math.max(250, rows * 28 + 70));
-        barCanvas.height = desiredH;
-        if (borrowViewport) borrowViewport.scrollTop = 0;
-
-        if (!hasAny(bgVals)){
-          borrowGradeEmpty.style.display = "block";
-        } else {
-          borrowGradeEmpty.style.display = "none";
-          chartBorrowByGrade = new Chart(barCanvas, {
-            type: "bar",
-            data: {
-              labels: bgLabels,
-              datasets: [{
-                label: "Borrows",
-                data: bgVals,
-                backgroundColor: palette.greenSoft,
-                borderColor: palette.yellow,
-                borderWidth: 1.5,
-                borderRadius: 8
-              }]
-            },
-            options: {
-              ...chartBaseOptions(),
-              indexAxis: "y",
-              plugins:{ legend:{ display:false } },
-              scales:{
-                x:{
-                  beginAtZero:true,
-                  title:{ display:true, text:"Borrow Count" },
-                  grid:{ color: palette.grid },
-                  ticks:{ precision:0 }
-                },
-                y:{
-                  title:{ display:true, text:"Grade Level" },
-                  grid:{ display:false },
-                  ticks:{ autoSkip:false, font:{ size:10 } }
-                }
-              }
-            }
-          });
-        }
-
-        const overdueByGrade = Array.isArray(data?.overdue_breakdown?.by_grade) ? data.overdue_breakdown.by_grade : [];
-        const ogLabels = overdueByGrade.map(x => x.grade ?? "Unknown");
-        const ogVals = overdueByGrade.map(x => Number(x.overdue_count ?? 0));
-
-        if (!hasAny(ogVals)){
-          overdueGradeEmpty.style.display = "block";
-        } else {
-          overdueGradeEmpty.style.display = "none";
-          chartOverdueGrade = new Chart(document.getElementById("chartOverdueGrade"), {
-            type: "bar",
-            data: {
-              labels: ogLabels,
-              datasets: [{
-                label:"Overdue",
-                data: ogVals,
-                backgroundColor: palette.yellowSoft,
-                borderColor: palette.green,
-                borderWidth: 1.5,
-                borderRadius: 8
-              }]
-            },
-            options: {
-              ...chartBaseOptions(),
-              plugins:{ legend:{ display:false } },
-              scales:{
-                y:{ beginAtZero:true, grid:{ color: palette.grid }, ticks:{ precision:0 } },
-                x:{ grid:{ display:false } }
-              }
-            }
-          });
-        }
-
-        const invLabels = copyStatus.map(x => (x.status ?? "unknown"));
-        const invVals = copyStatus.map(x => Number(x.count ?? 0));
-
-        if (!hasAny(invVals)){
-          inventoryEmpty.style.display = "block";
-        } else {
-          inventoryEmpty.style.display = "none";
-          chartInventory = new Chart(document.getElementById("chartInventory"), {
-            type: "doughnut",
-            data: {
-              labels: invLabels,
-              datasets: [{
-                data: invVals,
-                backgroundColor: [
-                  palette.greenSoft,
-                  palette.yellowSoft,
-                  palette.greenMid,
-                  palette.yellowMid
-                ],
-                borderColor: palette.whiteLine,
-                borderWidth: 1
-              }]
-            },
-            options: {
-              ...chartBaseOptions(),
-              plugins:{
-                legend:{
-                  position:"bottom",
-                  labels:{ boxWidth:10, font:{ size:10 } }
-                }
-              }
-            }
-          });
-        }
-
-        const books = Array.isArray(data?.most_borrowed_books) ? data.most_borrowed_books : [];
-        if (!books.length){
-          topBooks.innerHTML = "";
-          topBooksEmpty.style.display = "block";
-        } else {
-          topBooksEmpty.style.display = "none";
-          topBooks.innerHTML = books.map(b => {
-            const bookId = b.book_id ?? "";
-            const title = b.title || "Untitled";
-            const author = b.author || "";
-            const cover = b.cover_url || coverFallback(title);
-            const borrowCount = Number(b.borrow_count ?? 0);
-            const href = bookId ? `details.html?book_id=${encodeURIComponent(bookId)}` : "#";
-
-            return `
-              <a class="rowLink" href="${href}" ${bookId ? "" : 'onclick="return false;"'}>
-                <div class="rowItem">
-                  <div class="cover">
-                    <img src="${esc(cover)}" alt="${esc(title)} cover" onerror="this.src='${coverFallback(title)}'">
-                  </div>
-                  <div>
-                    <div class="metaTitle">${esc(title)}</div>
-                    <div class="metaSub">${esc(author)}</div>
-                    <div class="metaBadges">
-                      <span class="badge yellow">Borrowed in ${activityLabel(period)}: ${fmtNum(borrowCount)}</span>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            `;
-          }).join("");
-        }
-
-        const students = Array.isArray(data?.most_active_students) ? data.most_active_students : [];
-        if (!students.length){
-          topStudents.innerHTML = "";
-          topStudentsEmpty.style.display = "block";
-        } else {
-          topStudentsEmpty.style.display = "none";
-          topStudents.innerHTML = students.map(s => {
-            const studentId = s.student_id ?? "";
-            const name = `${s.last_name || ""}, ${s.first_name || ""}`.replace(/^,\s*/,"").trim() || (s.student_code || "Student");
-            const grade = s.grade || "—";
-            const section = s.section || "—";
-            const borrowCount = Number(s.borrow_count ?? 0);
-            const href = studentId ? `student_details.html?student_id=${encodeURIComponent(studentId)}` : "#";
-
-            return `
-              <a class="rowLink" href="${href}" ${studentId ? "" : 'onclick="return false;"'}>
-                <div class="rowItem" style="grid-template-columns: 1fr;">
-                  <div>
-                    <div class="metaTitle">${esc(name)}</div>
-                    <div class="metaSub">${esc(s.student_code || "")} • Grade ${esc(grade)} • ${esc(section)}</div>
-                    <div class="metaBadges">
-                      <span class="badge">Borrows in ${activityLabel(period)}: ${fmtNum(borrowCount)}</span>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            `;
-          }).join("");
-        }
-
-        await loadActivity();
-
-      } catch {
-        hideProgress(false);
-        setDots(false);
-        destroyCharts();
-      }
-    }
-
-    dashboardPeriod.addEventListener("change", loadDashboard);
-    btnRefreshDashboard.addEventListener("click", loadDashboard);
-
-    const dateFrom = document.getElementById("dateFrom");
-    const dateTo = document.getElementById("dateTo");
-    const gradeSel = document.getElementById("gradeSel");
-    const sectionSel = document.getElementById("sectionSel");
-
-    const btnApply = document.getElementById("btnApply");
-    const btnClear = document.getElementById("btnClear");
-    const btnPdf = document.getElementById("btnPdf");
-    const btnCsv = document.getElementById("btnCsv");
-
-    const pdfFrame = document.getElementById("pdfFrame");
-    const pdfLoader = document.getElementById("pdfLoader");
-    const pdfError = document.getElementById("pdfError");
-
-    let currentPdfUrl = null;
-
-    function setDefaults(){
-      const todayManila = getManilaDateString();
-      const thirtyDaysAgoManila = addDaysToYmd(todayManila, -30);
-      dateTo.value = todayManila;
-      dateFrom.value = thirtyDaysAgoManila;
-    }
-
-    function buildParams(){
-      const p = new URLSearchParams();
-      const df = (dateFrom.value || "").trim();
-      const dt = (dateTo.value || "").trim();
-      const g = (gradeSel.value || "").trim();
-      const s = (sectionSel.value || "").trim();
-      if (df) p.set("date_from", df);
-      if (dt) p.set("date_to", dt);
-      if (g) p.set("grade", g);
-      if (s) p.set("section", s);
-      return p;
-    }
-
-    function setPdfLoading(on){
-      pdfLoader.style.display = on ? "grid" : "none";
-    }
-
-    async function loadPdfPreview(){
-      if (currentPdfUrl){
-        try{ URL.revokeObjectURL(currentPdfUrl); }catch{}
-        currentPdfUrl = null;
-      }
-
-      pdfError.style.display = "none";
-      setPdfLoading(true);
-      showProgress();
-
-      try{
-        const params = buildParams();
-        const url = `${BASE_URL}/api/reports/export/pdf?${params.toString()}`;
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error("PDF fetch failed");
-        const blob = await res.blob();
-        currentPdfUrl = URL.createObjectURL(blob);
-        pdfFrame.src = currentPdfUrl + "#toolbar=1&navpanes=0&scrollbar=1&view=FitH";
-        hideProgress(true);
-        setPdfLoading(false);
-      } catch {
-        hideProgress(false);
-        setPdfLoading(false);
-        pdfFrame.removeAttribute("src");
-        pdfError.style.display = "block";
-      }
-    }
-
-    async function downloadWithAuth(url, desiredFilename){
-      showProgress();
-      try{
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error("Download failed");
-        const blob = await res.blob();
-
-        let filename = desiredFilename || "report";
-        const cd = res.headers.get("content-disposition") || "";
-        const m = cd.match(/filename=\"?([^\";]+)\"?/i);
-        if (!desiredFilename && m && m[1]) filename = m[1];
-
-        const a = document.createElement("a");
-        const objectUrl = URL.createObjectURL(blob);
-        a.href = objectUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(objectUrl);
-        hideProgress(true);
-      } catch {
-        hideProgress(false);
-        alert("Unable to download. Please try again.");
-      }
-    }
-
-    async function loadGrades(){
-      try{
-        const res = await fetch(`${BASE_URL}/api/reports/filters`, { headers: authHeaders() });
-        if (!res.ok) return;
-        const data = await res.json().catch(() => ({}));
-        const grades = Array.isArray(data.grades) ? data.grades : [];
-        gradeSel.innerHTML = `<option value="">All</option>` + grades.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
-        sectionSel.innerHTML = `<option value="">All</option>`;
-        sectionSel.disabled = true;
-      } catch {}
-    }
-
-    async function loadSectionsForGrade(grade){
-      try{
-        sectionSel.disabled = true;
-        sectionSel.innerHTML = `<option value="">Loading...</option>`;
-        const url = `${BASE_URL}/api/reports/filters?grade=${encodeURIComponent(grade)}`;
-        const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error("filters failed");
-        const data = await res.json().catch(() => ({}));
-        const sections = Array.isArray(data.sections) ? data.sections : [];
-        sectionSel.innerHTML = `<option value="">All</option>` + sections.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
-        sectionSel.disabled = false;
-      } catch {
-        sectionSel.innerHTML = `<option value="">All</option>`;
-        sectionSel.disabled = false;
-      }
-    }
-
-    gradeSel.addEventListener("change", async () => {
-      const g = (gradeSel.value || "").trim();
-      sectionSel.value = "";
-      if (!g){
-        sectionSel.innerHTML = `<option value="">All</option>`;
-        sectionSel.disabled = true;
-      } else {
-        await loadSectionsForGrade(g);
-      }
-      loadPdfPreview();
-    });
-
-    btnApply.addEventListener("click", loadPdfPreview);
-
-    btnClear.addEventListener("click", () => {
-      gradeSel.value = "";
-      sectionSel.value = "";
-      sectionSel.innerHTML = `<option value="">All</option>`;
-      sectionSel.disabled = true;
-      setDefaults();
-      loadPdfPreview();
-    });
-
-    btnPdf.addEventListener("click", () => {
-      const params = buildParams();
-      downloadWithAuth(
-        `${BASE_URL}/api/reports/export/pdf?${params.toString()}`,
-        buildExportFilename("pdf")
-      );
-    });
-
-    btnCsv.addEventListener("click", () => {
-      const params = buildParams();
-      downloadWithAuth(
-        `${BASE_URL}/api/reports/export/csv?${params.toString()}`,
-        buildExportFilename("csv")
-      );
-    });
-
-    setDefaults();
-
-    window.addEventListener("load", () => {
-      loadGrades();
-      loadDashboard();
-      loadPdfPreview();
-    });
-
-    setTimeout(() => {
-      loadDashboard();
-    }, 500);
-
-
+  window.addEventListener("load",async()=>{
+    await loadFilterMeta();
+    FILTERS["circulation"]();
+    loadDashboard();
+  });
+  setTimeout(()=>loadDashboard(),500);
   </script>
   <script src="branding.js"></script>
 </body>

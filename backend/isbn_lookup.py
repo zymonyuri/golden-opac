@@ -78,53 +78,53 @@ def fetch_open_library(isbn: str) -> dict | None:
     """
     Open Library Books API:
       https://openlibrary.org/isbn/{isbn}.json
-    Cover:
-      https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg
-    Returns a normalized dict or None.
+    Never raises to the caller.
     """
-    url = f"https://openlibrary.org/isbn/{isbn}.json"
-    r = requests.get(url, timeout=15)
+    try:
+        url = f"https://openlibrary.org/isbn/{isbn}.json"
+        r = requests.get(url, timeout=15)
 
-    if r.status_code == 404:
+        if r.status_code == 404:
+            return None
+
+        if r.status_code != 200:
+            return None
+
+        data = r.json()
+
+        title = data.get("title")
+        publisher = None
+        pubs = data.get("publishers") or []
+        if pubs:
+            publisher = pubs[0]
+
+        pub_year = None
+        publish_date = data.get("publish_date")
+        if isinstance(publish_date, str):
+            m = re.search(r"\b(\d{4})\b", publish_date)
+            if m:
+                pub_year = int(m.group(1))
+
+        subjects = data.get("subjects") or []
+        subject = ", ".join(subjects[:10]) if subjects else None
+
+        cover = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
+
+        return {
+            "title": title,
+            "author": None,
+            "publisher": publisher,
+            "pub_year": pub_year,
+            "genre": None,
+            "subject": subject,
+            "cover_url": cover,
+            "source": "open_library",
+        }
+
+    except Exception:
         return None
-
-    r.raise_for_status()
-    data = r.json()
-
-    title = data.get("title")
-    publisher = None
-    pubs = data.get("publishers") or []
-    if pubs:
-        publisher = pubs[0]
-
-    pub_year = None
-    publish_date = data.get("publish_date")  # e.g. "October 2005"
-    if isinstance(publish_date, str):
-        # Grab first 4-digit year if present
-        m = re.search(r"\b(\d{4})\b", publish_date)
-        if m:
-            pub_year = int(m.group(1))
-
-    # Authors in Open Library are keys; resolving names requires extra calls.
-    # We'll keep author as None here (Google usually covers authors better).
-    cover = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
-
-    # Subjects sometimes exist in OL, but not always
-    subjects = data.get("subjects") or []
-    subject = ", ".join(subjects[:10]) if subjects else None
-
-    return {
-        "title": title,
-        "author": None,
-        "publisher": publisher,
-        "pub_year": pub_year,
-        "genre": None,
-        "subject": subject,
-        "cover_url": cover,
-        "source": "open_library",
-    }
-
-
+    
+    
 def lookup_isbn(isbn_raw: str) -> dict:
     """
     Merge strategy:
