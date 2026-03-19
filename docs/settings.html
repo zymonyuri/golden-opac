@@ -245,15 +245,15 @@ document.documentElement.classList.add("branding-loading");
     }
 
     .cardBody{
-  padding:16px;
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-  flex:1 1 auto;
-  min-height:0;
-  overflow:hidden;
-  max-height:none;
-}
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      flex:1 1 auto;
+      min-height:0;
+      overflow:hidden;
+      max-height:none;
+    }
 
     .formGrid{
       display:grid;
@@ -280,7 +280,7 @@ document.documentElement.classList.add("branding-loading");
       line-height:1.15;
     }
 
-    input, select, textarea{
+    input, textarea{
       width:100%;
       min-height:48px;
       padding:11px 14px;
@@ -295,6 +295,28 @@ document.documentElement.classList.add("branding-loading");
       transition: box-shadow .16s ease, border-color .16s ease, background .16s ease;
     }
 
+    select {
+      width:100%;
+      min-height:48px;
+      padding:11px 40px 11px 14px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.12);
+      background-color: rgba(0,0,0,0.04);
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:800;
+      font-family:inherit;
+      transition: box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+      appearance:none;
+      -webkit-appearance:none;
+      background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSI4IiB2aWV3Qm94PSIwIDAgMTIgOCI+PHBhdGggZD0iTTEgMWw1IDUgNS01IiBzdHJva2U9IiM1NTUiIHN0cm9rZS13aWR0aD0iMS44IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=");
+      background-repeat:no-repeat;
+      background-position:right 14px center;
+      background-size:12px 8px;
+      cursor:pointer;
+    }
+
     textarea{
       min-height:96px;
       resize:vertical;
@@ -304,7 +326,18 @@ document.documentElement.classList.add("branding-loading");
     input:focus, select:focus, textarea:focus{
       border-color: color-mix(in srgb, var(--brand-yellow) 45%, rgba(0,0,0,0.16));
       box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 28%, transparent);
-      background: rgba(0,0,0,0.02);
+      background-color: rgba(255,255,255,0.85);
+    }
+
+    select:focus {
+      border-color: rgba(0,0,0,0.30);
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.07);
+      background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMiIgaGVpZ2h0PSI4IiB2aWV3Qm94PSIwIDAgMTIgOCI+PHBhdGggZD0iTTEgMWw1IDUgNS01IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMS44IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=");
+    }
+
+    select:hover {
+      background-color: rgba(255,255,255,0.80);
+      border-color: rgba(0,0,0,0.20);
     }
 
     input[disabled], select[disabled], textarea[disabled]{
@@ -336,7 +369,7 @@ document.documentElement.classList.add("branding-loading");
       margin-top:auto;
     }
 
-    .btn, .btnGhost, .btnDark, .btnGreen{
+    .btn, .btnGhost, .btnDark, .btnGreen, .btnDanger{
       border-radius:999px;
       padding:11px 18px;
       min-height:42px;
@@ -375,7 +408,14 @@ document.documentElement.classList.add("branding-loading");
       box-shadow: 0 16px 34px rgba(0,0,0,0.18);
     }
 
-    .btn:hover, .btnGhost:hover, .btnDark:hover, .btnGreen:hover{
+    .btnDanger{
+      border:0;
+      background:#dc2626;
+      color:#fff;
+      box-shadow: 0 16px 34px rgba(220,38,38,0.30);
+    }
+
+    .btn:hover, .btnGhost:hover, .btnDark:hover, .btnGreen:hover, .btnDanger:hover{
       transform: translateY(-2px);
       opacity:.96;
     }
@@ -426,6 +466,188 @@ document.documentElement.classList.add("branding-loading");
 
     .successBox.show{ display:block; }
 
+    /* ── Danger Zone card ── */
+    .dangerZone{
+      border:1px solid rgba(220,38,38,0.28);
+      background: rgba(254,242,242,0.70);
+      border-radius:16px;
+      overflow:hidden;
+    }
+
+    .dangerZone .cardHead{
+      background: rgba(220,38,38,0.08);
+      border-bottom:1px solid rgba(220,38,38,0.18);
+    }
+
+    .dangerZone .cardTitle{
+      color: #b91c1c;
+    }
+
+    .dangerZoneBody{
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .dangerZoneDesc{
+      font-size:13px;
+      font-weight:800;
+      color: rgba(0,0,0,0.72);
+      line-height:1.55;
+    }
+
+    .dangerZoneDesc b{
+      color: #b91c1c;
+    }
+
+    /* ── Delete confirmation modal ── */
+    .deleteModal{
+      position:fixed;
+      inset:0;
+      z-index:3000;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background: rgba(0,0,0,0.60);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .deleteModal.show{ display:flex; }
+
+    .deleteModalBox{
+      width:min(480px, 94vw);
+      border-radius:20px;
+      background:#fff;
+      box-shadow: 0 28px 70px rgba(0,0,0,0.30);
+      overflow:hidden;
+      animation: modalIn 260ms cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes modalIn{
+      from{ opacity:0; transform:scale(0.88) translateY(12px); }
+      to{ opacity:1; transform:scale(1) translateY(0); }
+    }
+
+    .deleteModalHead{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:20px 22px 16px;
+      border-bottom:1px solid rgba(220,38,38,0.16);
+      background: rgba(254,242,242,0.80);
+    }
+
+    .deleteModalIcon{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      background: rgba(220,38,38,0.12);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:22px;
+      flex:0 0 auto;
+    }
+
+    .deleteModalTitle{
+      font-size:17px;
+      font-weight:1000;
+      color:#111;
+      line-height:1.15;
+    }
+
+    .deleteModalSubtitle{
+      margin-top:3px;
+      font-size:12px;
+      font-weight:800;
+      color: rgba(0,0,0,0.60);
+    }
+
+    .deleteModalBody{
+      padding:20px 22px;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .deleteModalWarning{
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(220,38,38,0.22);
+      background: rgba(254,242,242,0.90);
+      font-size:13px;
+      font-weight:800;
+      color: #991b1b;
+      line-height:1.55;
+    }
+
+    .deleteModalWarning ul{
+      margin:8px 0 0 18px;
+      padding:0;
+    }
+
+    .deleteModalWarning li{
+      margin-bottom:4px;
+    }
+
+    .deleteModalField{
+      display:grid;
+      gap:8px;
+    }
+
+    .deleteModalField label{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.65);
+    }
+
+    .deleteModalStep{
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.55);
+    }
+
+    .deleteModalConfirmInput{
+      width:100%;
+      min-height:48px;
+      padding:11px 14px;
+      border-radius:14px;
+      border:2px solid rgba(220,38,38,0.30);
+      background: #fff;
+      color:#111;
+      outline:none;
+      font-size:14px;
+      font-weight:800;
+      font-family:inherit;
+      transition: border-color .16s ease, box-shadow .16s ease;
+    }
+
+    .deleteModalConfirmInput:focus{
+      border-color: #dc2626;
+      box-shadow: 0 0 0 4px rgba(220,38,38,0.14);
+    }
+
+    .deleteModalFooter{
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      padding:14px 22px 20px;
+      border-top:1px solid rgba(0,0,0,0.07);
+    }
+
+    .deleteModalStatus{
+      min-height:16px;
+      font-size:12px;
+      font-weight:900;
+      color: #dc2626;
+    }
+
+    /* ── Grade Rules Table ── */
     .rulesWrap{
       border:1px solid rgba(0,0,0,0.08);
       background: rgba(255,255,255,0.92);
@@ -441,6 +663,7 @@ document.documentElement.classList.add("branding-loading");
       flex:0 0 auto;
       background: color-mix(in srgb, var(--brand-yellow) 88%, white);
       border-bottom:1px solid rgba(0,0,0,0.08);
+      overflow:hidden;
     }
 
     .rulesScroll{
@@ -457,12 +680,13 @@ document.documentElement.classList.add("branding-loading");
 
     .rulesTable th,
     .rulesTable td{
-      padding:12px;
+      padding:10px 10px;
       border-bottom:1px solid rgba(0,0,0,0.07);
       font-size:12px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      /* FIX: allow wrapping so nothing is cut off */
+      white-space:normal;
+      overflow:visible;
+      word-break:break-word;
     }
 
     .rulesTable th{
@@ -471,6 +695,7 @@ document.documentElement.classList.add("branding-loading");
       letter-spacing:.05em;
       text-transform:uppercase;
       color:#111;
+      white-space:nowrap;
     }
 
     .rulesTable td{
@@ -479,18 +704,43 @@ document.documentElement.classList.add("branding-loading");
       color: rgba(0,0,0,0.78);
     }
 
-    .rulesTable--grades col:nth-child(1){ width:15%; }
-    .rulesTable--grades col:nth-child(2){ width:14%; }
-    .rulesTable--grades col:nth-child(3){ width:12%; }
-    .rulesTable--grades col:nth-child(4){ width:17%; }
-    .rulesTable--grades col:nth-child(5){ width:16%; }
-    .rulesTable--grades col:nth-child(6){ width:15%; }
-    .rulesTable--grades col:nth-child(7){ width:11%; }
+    /* 8 columns now: Grade / Loan Days / Fine/Day / Max Borrow / Max Renewals / Block Overdue / Updated / Actions */
+    .rulesTable--grades col:nth-child(1){ width:9%; }
+    .rulesTable--grades col:nth-child(2){ width:11%; }
+    .rulesTable--grades col:nth-child(3){ width:10%; }
+    .rulesTable--grades col:nth-child(4){ width:12%; }
+    .rulesTable--grades col:nth-child(5){ width:13%; }
+    .rulesTable--grades col:nth-child(6){ width:14%; }
+    .rulesTable--grades col:nth-child(7){ width:22%; }
+    .rulesTable--grades col:nth-child(8){ width:9%; }
 
-    .rulesTable--libs col:nth-child(1){ width:24%; }
-    .rulesTable--libs col:nth-child(2){ width:28%; }
+    .rulesTable--libs col:nth-child(1){ width:22%; }
+    .rulesTable--libs col:nth-child(2){ width:26%; }
     .rulesTable--libs col:nth-child(3){ width:34%; }
-    .rulesTable--libs col:nth-child(4){ width:14%; }
+    .rulesTable--libs col:nth-child(4){ width:18%; }
+
+    /* ── Delete Rule Button ── */
+    .deleteRuleBtn{
+      width:26px; height:26px; min-width:26px;
+      border-radius:999px;
+      border:1px solid rgba(220,38,38,0.25);
+      background:rgba(254,242,242,0.90);
+      color:#b91c1c;
+      font-weight:1000;
+      font-size:11px;
+      cursor:pointer;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+      transition:transform .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+    .deleteRuleBtn:hover{
+      transform:translateY(-1px);
+      background:rgba(220,38,38,0.14);
+      box-shadow:0 4px 12px rgba(220,38,38,0.18);
+    }
+    .deleteRuleBtn:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
 
     .hint{
       margin-top:-4px;
@@ -556,39 +806,29 @@ document.documentElement.classList.add("branding-loading");
       font-size:13px;
       padding:9px 12px;
     }
+
+    .displayGridCompact select{
+      padding-right:38px;
+    }
     
     .displayGridCompact textarea{
       min-height:80px;
     }
 
     .displayScroll{
-  max-height:600px;
-  overflow-y:auto;
-  padding-right:8px;
-  border-radius:12px;
-  padding:16px;
-  background: rgba(255,255,255,0.6);
-  border:1px solid rgba(0,0,0,0.06);
-}
+      max-height:600px;
+      overflow-y:auto;
+      padding-right:8px;
+      border-radius:12px;
+      padding:16px;
+      background: rgba(255,255,255,0.6);
+      border:1px solid rgba(0,0,0,0.06);
+    }
 
-.displayScroll::-webkit-scrollbar{
-  width:8px;
-}
-
-.displayScroll::-webkit-scrollbar-track{
-  background: rgba(0,0,0,0.02);
-  border-radius:999px;
-}
-
-.displayScroll::-webkit-scrollbar-thumb{
-  background:rgba(0,0,0,0.20);
-  border-radius:999px;
-  transition: background 200ms ease;
-}
-
-.displayScroll::-webkit-scrollbar-thumb:hover{
-  background:rgba(0,0,0,0.35);
-}
+    .displayScroll::-webkit-scrollbar{ width:8px; }
+    .displayScroll::-webkit-scrollbar-track{ background:rgba(0,0,0,0.02); border-radius:999px; }
+    .displayScroll::-webkit-scrollbar-thumb{ background:rgba(0,0,0,0.20); border-radius:999px; }
+    .displayScroll::-webkit-scrollbar-thumb:hover{ background:rgba(0,0,0,0.35); }
 
     .colorPickerWrap{
       display:grid;
@@ -629,11 +869,7 @@ document.documentElement.classList.add("branding-loading");
       transition: transform .16s ease, opacity .16s ease, background .16s ease;
     }
 
-    .uploadBtn:hover{
-      transform: translateY(-1px);
-      opacity:.96;
-      background: rgba(255,255,255,0.92);
-    }
+    .uploadBtn:hover{ transform:translateY(-1px); opacity:.96; background:rgba(255,255,255,0.92); }
 
     .uploadMeta{
       min-height:42px;
@@ -671,7 +907,7 @@ document.documentElement.classList.add("branding-loading");
       border-color: var(--brand-yellow);
       box-shadow: inset 0 0 0 1.5px rgba(0,0,0,0.04);
     }
-    
+
     .displayCard.is-editing .field input:not([disabled]):focus,
     .displayCard.is-editing .field textarea:not([disabled]):focus,
     .displayCard.is-editing .field select:not([disabled]):focus{
@@ -694,23 +930,7 @@ document.documentElement.classList.add("branding-loading");
 
     .editBanner.show{ display:flex; }
 
-    .editBannerTitle{
-      font-size:13px;
-      font-weight:1000;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-    }
-
-    .editBannerText{
-      font-size:12px;
-      font-weight:900;
-      color: rgba(0,0,0,0.68);
-    }
-
-    .logoPanel{
-      display:grid;
-      gap:12px;
-    }
+    .logoPanel{ display:grid; gap:12px; }
 
     .logoThumbWrap{
       display:none;
@@ -740,757 +960,376 @@ document.documentElement.classList.add("branding-loading");
       position:relative;
     }
 
-    .logoThumbLink img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
-    }
+    .logoThumbLink img{ width:100%; height:100%; object-fit:cover; display:block; }
 
-    .logoThumbInfo{
-      display:grid;
-      gap:6px;
-      min-width:0;
-      padding-top:2px;
-    }
-
-    .logoThumbTitle{
-      font-size:12px;
-      font-weight:1000;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.70);
-    }
-
-    .logoThumbText{
-      font-size:12px;
-      font-weight:900;
-      color: rgba(0,0,0,0.62);
-      line-height:1.45;
-    }
+    .logoThumbInfo{ display:grid; gap:6px; min-width:0; padding-top:2px; }
+    .logoThumbTitle{ font-size:12px; font-weight:1000; letter-spacing:.05em; text-transform:uppercase; color:rgba(0,0,0,0.70); }
+    .logoThumbText{ font-size:12px; font-weight:900; color:rgba(0,0,0,0.62); line-height:1.45; }
 
     .logoDeleteBtn{
-      width:28px;
-      height:28px;
-      min-width:28px;
-      border-radius:999px;
-      border:1px solid rgba(0,0,0,0.10);
-      background:#fff;
-      color:#111;
-      font-weight:1000;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:0;
-      transition: transform .16s ease, background .16s ease, opacity .16s ease;
+      width:28px; height:28px; min-width:28px;
+      border-radius:999px; border:1px solid rgba(0,0,0,0.10);
+      background:#fff; color:#111; font-weight:1000;
+      cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+      padding:0; transition:transform .16s ease, background .16s ease, opacity .16s ease;
     }
+    .logoDeleteBtn:hover{ transform:translateY(-1px); background:rgba(0,0,0,0.04); opacity:.96; }
 
-    .logoDeleteBtn:hover{
-      transform: translateY(-1px);
-      background: rgba(0,0,0,0.04);
-      opacity:.96;
-    }
-
-    .hiddenInput{
-      display:none !important;
-    }
+    .hiddenInput{ display:none !important; }
 
     .fullPagePreview{
-      border-radius:18px;
-      overflow:hidden;
-      border:1px solid rgba(0,0,0,0.08);
-      background:#f7f8fb;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.10);
-      width:100%;
+      border-radius:18px; overflow:hidden;
+      border:1px solid rgba(0,0,0,0.08); background:#f7f8fb;
+      box-shadow:0 16px 34px rgba(0,0,0,0.10); width:100%;
     }
 
     .previewBrowserBar{
-      display:flex;
-      align-items:center;
-      gap:8px;
+      display:flex; align-items:center; gap:8px;
       padding:10px 14px;
-      background: rgba(255,255,255,0.88);
-      border-bottom:1px solid rgba(0,0,0,0.08);
+      background:rgba(255,255,255,0.88); border-bottom:1px solid rgba(0,0,0,0.08);
     }
 
-    .browserDot{
-      width:10px;
-      height:10px;
-      border-radius:999px;
-      background: rgba(0,0,0,0.18);
-    }
-
+    .browserDot{ width:10px; height:10px; border-radius:999px; background:rgba(0,0,0,0.18); }
     .browserAddress{
-      margin-left:6px;
-      min-height:30px;
-      border-radius:999px;
-      background: rgba(0,0,0,0.04);
-      border:1px solid rgba(0,0,0,0.08);
-      padding:7px 12px;
-      font-size:11px;
-      font-weight:900;
-      color: rgba(0,0,0,0.62);
-      flex:1 1 auto;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
+      margin-left:6px; min-height:30px; border-radius:999px;
+      background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08);
+      padding:7px 12px; font-size:11px; font-weight:900; color:rgba(0,0,0,0.62);
+      flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
 
-    .previewFrameWrap{
-      display:flex;
-      flex-direction:column;
-      flex:1 1 auto;
-      min-height:0;
-    }
+    .previewFrameWrap{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
 
-    .previewViewport{
-  display:flex;
-  align-items:stretch;
-  height:720px;
-  overflow:hidden;
-}
+    .previewViewport{ display:flex; align-items:stretch; height:720px; overflow:hidden; }
 
     .previewCanvas{
-      padding:18px;
-      display:grid;
-      gap:18px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.88));
+      padding:18px; display:grid; gap:18px;
+      background:linear-gradient(180deg,rgba(255,255,255,0.62),rgba(255,255,255,0.88));
       overflow-y:auto;
     }
 
-    .previewHeaderSection{
-      display:none;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .previewHeaderSection.show{ display:flex; }
-
-    .previewFooterSection{
-      display:none;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    .previewFooterSection.show{ display:flex; }
-
-    .previewHeaderMock{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding:14px 16px;
-      border-radius:14px;
-      background: rgba(15,23,42,0.85);
-      border:1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.20);
-    }
-
-    .previewBrandSection{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      flex:0 0 auto;
-    }
-
-    .previewLogo{
-      width:36px;
-      height:36px;
-      border-radius:8px;
-      background: rgba(255,255,255,0.12);
-      border:1px solid rgba(255,255,255,0.10);
-      flex:0 0 auto;
-    }
-
-    .previewBrandText{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      min-width:0;
-    }
-
-    .previewBrandName{
-      font-size:13px;
-      font-weight:1000;
-      color: var(--brand-yellow);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-
-    .previewBrandSubtitle{
-      font-size:10px;
-      font-weight:900;
-      color: var(--brand-green);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-
-    .previewNavMock{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
-
-    .previewNavItem{
-      padding:8px 12px;
-      border-radius:999px;
-      background: rgba(255,255,255,0.08);
-      border:1px solid rgba(255,255,255,0.10);
-      color: rgba(255,255,255,0.88);
-      font-size:11px;
-      font-weight:1000;
-      letter-spacing:.04em;
-      text-transform:uppercase;
-    }
-
-    .previewFooterMock{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:24px;
-      padding:16px;
-      border-radius:14px;
-      background: rgba(15,23,42,0.85);
-      border:1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.20);
-    }
-
-    .previewFooterRow{
-      display:flex;
-      gap:8px;
-      font-size:11px;
-      color: rgba(255,255,255,0.78);
-      font-weight:900;
-    }
-
-    .previewFooterTitle{
-      font-size:12px;
-      font-weight:1000;
-      color:#fff;
-      margin-bottom:4px;
-    }
-
-    .previewFooterDesc{
-      font-size:10px;
-      color: rgba(255,255,255,0.72);
-      line-height:1.4;
-      margin-bottom:8px;
-    }
-
-    .previewFooterCopy{
-      font-size:9px;
-      color: rgba(255,255,255,0.60);
-      font-weight:900;
-    }
-
-    .previewFooterSubtitle{
-      font-size:11px;
-      font-weight:1000;
-      color:#fff;
-      margin-bottom:6px;
-    }
-
-    .previewFooterContactItem{
-      font-size:10px;
-      color: rgba(255,255,255,0.80);
-      margin-bottom:4px;
-      display:flex;
-      gap:6px;
-      align-items:center;
-      justify-content:flex-end;
-    }
-
-    .previewFooterSocials{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      color: rgba(255,255,255,0.85);
-    }
-
     .loadingModal{
-      position:fixed;
-      top:0;
-      left:0;
-      right:0;
-      bottom:0;
-      background: rgba(0,0,0,0.40);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
+      position:fixed; top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.40); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+      display:none; align-items:center; justify-content:center; z-index:9999;
     }
-
     .loadingModal.show{ display:flex; }
 
     .loadingBox{
-      background: white;
-      border-radius:18px;
-      padding:32px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:20px;
+      background:white; border-radius:18px; padding:32px;
+      box-shadow:0 20px 50px rgba(0,0,0,0.25);
+      display:flex; flex-direction:column; align-items:center; gap:20px;
     }
 
-    .loadingText{
-      font-size:14px;
-      font-weight:1000;
-      color:#111;
-      letter-spacing:.02em;
-    }
+    .loadingText{ font-size:14px; font-weight:1000; color:#111; letter-spacing:.02em; }
 
     .dots{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:12px 14px;
-      border-radius:999px;
-      background: rgba(0,0,0,0.08);
-      border:1px solid rgba(0,0,0,0.08);
+      display:inline-flex; align-items:center; gap:8px;
+      padding:12px 14px; border-radius:999px;
+      background:rgba(0,0,0,0.08); border:1px solid rgba(0,0,0,0.08);
     }
 
     .dot{
-      width:9px;
-      height:9px;
-      border-radius:999px;
-      background: var(--brand-yellow);
-      animation: dotBounce 850ms infinite ease-in-out;
+      width:9px; height:9px; border-radius:999px;
+      background:var(--brand-yellow);
+      animation:dotBounce 850ms infinite ease-in-out;
     }
-
     .dot:nth-child(1){ animation-delay:0ms; }
     .dot:nth-child(2){ animation-delay:160ms; }
     .dot:nth-child(3){ animation-delay:320ms; }
 
     @keyframes dotBounce{
-      0%, 100%{ transform: translateY(0); opacity:0.55; }
-      50%{ transform: translateY(-5px); opacity:1; }
-    }
-
-    .previewButtonMock{
-      justify-content:center;
-      background: var(--preview-primary, var(--brand-yellow));
-      color:#111;
-      box-shadow: 0 12px 24px rgba(0,0,0,0.10);
-    }
-
-    .previewCards{
-      display:grid;
-      gap:12px;
-      margin-top:14px;
-    }
-
-    .previewBookCard{
-      display:grid;
-      grid-template-columns:72px 1fr;
-      gap:12px;
-      padding:12px;
-      border-radius:16px;
-      border:1px solid rgba(0,0,0,0.08);
-      background:#fff;
-    }
-
-    .previewBookCover{
-      border-radius:12px;
-      background: linear-gradient(180deg, color-mix(in srgb, var(--preview-primary, var(--brand-yellow)) 32%, white), color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 24%, white));
-      min-height:96px;
-      border:1px solid rgba(0,0,0,0.06);
-    }
-
-    .previewLine,
-    .previewTinyLine{
-      border-radius:999px;
-      background: rgba(0,0,0,0.08);
-    }
-
-    .previewLine{ height:12px; }
-    .previewTinyLine{ height:9px; }
-
-    .previewLine.w70{ width:70%; }
-    .previewLine.w55{ width:55%; }
-    .previewLine.w40{ width:40%; }
-    .previewTinyLine.w85{ width:85%; }
-    .previewTinyLine.w68{ width:68%; }
-    .previewTinyLine.w52{ width:52%; }
-
-    .previewMetaRow{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:10px;
-    }
-
-    .previewBadge{
-      padding:7px 10px;
-      border-radius:999px;
-      font-size:10px;
-      font-weight:1000;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-      background: color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 14%, white);
-      border:1px solid color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 24%, rgba(0,0,0,0.08));
-      color:#111;
-    }
-
-    .previewSidePanel{
-      padding:16px;
-      display:grid;
-      gap:12px;
-    }
-
-    .previewMiniCard{
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.08);
-      background:#fff;
-      padding:12px;
-      display:grid;
-      gap:10px;
-    }
-
-
-
-    .headerFooterPreview{
-      border-radius:16px;
-      overflow:hidden;
-      border:1px solid rgba(0,0,0,0.08);
-      background:#fff;
-      box-shadow: 0 16px 34px rgba(0,0,0,0.10);
-    }
-
-    .previewHeader{
-      position:relative;
-      min-height:146px;
-      padding:18px;
-      background:
-        radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--preview-primary, var(--brand-yellow)) 35%, transparent), transparent 60%),
-        radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--preview-secondary, var(--brand-green)) 35%, transparent), transparent 60%),
-        linear-gradient(0deg, rgba(0,0,0,0.22), rgba(0,0,0,0.22)),
-        url("assets/bg.png") center/cover no-repeat;
-    }
-
-    .previewHeader::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background: linear-gradient(rgba(0,0,0,.44), rgba(0,0,0,.22));
-      pointer-events:none;
-    }
-
-    .previewHeaderInner{
-      position:relative;
-      z-index:1;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
-      flex-wrap:wrap;
-    }
-
-    .previewBrand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      min-width:0;
-    }
-
-    .previewBrand img{
-      width:52px;
-      height:52px;
-      border-radius:14px;
-      object-fit:cover;
-      background:#fff;
-      border:1px solid rgba(255,255,255,0.28);
-      box-shadow: 0 12px 26px rgba(0,0,0,0.20);
-      flex:0 0 auto;
-    }
-
-    .previewBrandTitle{
-      font-weight:1000;
-      font-size:16px;
-      color:#fff;
-      line-height:1.1;
-    }
-
-    .previewBrandSub{
-      margin-top:4px;
-      font-weight:800;
-      font-size:11px;
-      color: rgba(255,255,255,0.82);
-      letter-spacing:.05em;
-      text-transform:uppercase;
-    }
-
-    .previewHeroTitle{
-      position:relative;
-      z-index:1;
-      margin-top:26px;
-      font-size:24px;
-      font-weight:1000;
-      line-height:1.08;
-      color:#fff;
-      max-width:620px;
-    }
-
-    .previewHeroTitle .a{
-      color: var(--preview-primary, var(--brand-yellow));
-    }
-
-    .previewHeroTitle .b{
-      color: var(--preview-secondary, var(--brand-green));
-    }
-
-    .previewPill{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-height:34px;
-      padding:8px 12px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.12);
-      color:#fff;
-      font-weight:1000;
-      font-size:12px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-
-    .previewFooter{
-      display:grid;
-      grid-template-columns:1fr auto;
-      gap:14px;
-      align-items:start;
-      padding:14px 16px;
-      background: rgba(255,255,255,0.92);
-      border-top:1px solid rgba(0,0,0,0.08);
-    }
-
-    .previewFooter h4{
-      margin:0 0 6px;
-      font-size:13px;
-      font-weight:1000;
-      letter-spacing:.05em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.78);
-    }
-
-    .previewFooter p{
-      margin:0;
-      font-size:12px;
-      font-weight:800;
-      color: rgba(0,0,0,0.64);
-      line-height:1.5;
-    }
-
-    .swatches{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-    }
-
-    .swatch{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      padding:7px 10px;
-      border-radius:999px;
-      background: rgba(255,255,255,0.96);
-      border:1px solid rgba(0,0,0,0.08);
-      font-weight:1000;
-      font-size:11px;
-      color: rgba(0,0,0,0.78);
-    }
-
-    .swatchColor{
-      width:16px;
-      height:16px;
-      border-radius:999px;
-      border:1px solid rgba(0,0,0,0.10);
-      flex:0 0 auto;
-    }
-
-    .logoImageModal{
-      position:fixed;
-      inset:0;
-      z-index:2500;
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:18px;
-      background: rgba(0,0,0,0.74);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-
-    .logoImageModal.show{ display:flex; }
-
-    .logoImageModalContent{
-      position:relative;
-      width:min(500px, 90vw);
-      height:auto;
-      max-height:85vh;
-      border-radius:18px;
-      overflow:hidden;
-      background:#fff;
-      box-shadow: 0 28px 70px rgba(0,0,0,0.32);
-      animation: modalIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    @keyframes modalIn{
-      from{ opacity: 0; transform: scale(0.88); }
-      to{ opacity: 1; transform: scale(1); }
-    }
-
-    .logoImageModalImg{
-      width:100%;
-      height:auto;
-      display:block;
-      object-fit:contain;
-      max-height:85vh;
-    }
-
-    .logoImageModalClose{
-      position:absolute;
-      top:12px;
-      right:12px;
-      width:40px;
-      height:40px;
-      border-radius:999px;
-      background: rgba(0,0,0,0.6);
-      border:0;
-      color:#fff;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:24px;
-      font-weight:900;
-      transition: background 200ms ease, transform 200ms ease;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-
-    .logoImageModalClose:hover{
-      background: rgba(0,0,0,0.8);
-      transform: scale(1.08);
+      0%,100%{ transform:translateY(0); opacity:0.55; }
+      50%{ transform:translateY(-5px); opacity:1; }
     }
 
     .toast{
-      position:fixed;
-      left:50%;
-      bottom:18px;
-      transform: translateX(-50%) translateY(18px);
-      background: rgba(255,255,255,0.90);
-      color:#111;
-      border:1px solid rgba(0,0,0,0.10);
-      border-radius:999px;
-      padding:10px 14px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.22);
-      z-index:2200;
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
-      font-weight:900;
-      max-width:min(820px,92vw);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      position:fixed; left:50%; bottom:18px;
+      transform:translateX(-50%) translateY(18px);
+      background:rgba(255,255,255,0.90); color:#111;
+      border:1px solid rgba(0,0,0,0.10); border-radius:999px;
+      padding:10px 14px; box-shadow:0 20px 40px rgba(0,0,0,0.22);
+      z-index:2200; opacity:0; pointer-events:none;
+      transition:opacity .18s ease,transform .18s ease;
+      font-weight:900; max-width:min(820px,92vw);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-
-    .toast.show{
-      opacity:1;
-      transform: translateX(-50%) translateY(0);
-    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
     .topbar{
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 999;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
-      box-shadow: none;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease;
+      position:fixed; top:0; left:0; right:0; z-index:999;
+      border-bottom:1px solid rgba(0,0,0,0.08);
+      backdrop-filter:none; -webkit-backdrop-filter:none;
+      transition:background 200ms ease,border-color 200ms ease,box-shadow 200ms ease,backdrop-filter 200ms ease;
     }
-
     .topbar.is-scrolled{
-      background: rgba(0,0,0,0.22);
-      border-bottom: 1px solid rgba(255,255,255,0.14);
-      backdrop-filter: blur(16px) saturate(160%);
-      -webkit-backdrop-filter: blur(16px) saturate(160%);
-      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+      background:rgba(0,0,0,0.22); border-bottom:1px solid rgba(255,255,255,0.14);
+      backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
+      box-shadow:0 18px 45px rgba(0,0,0,0.22);
+    }
+    .nav__link:hover{ color:rgba(255,255,255,0.78); }
+    .brand__school{ color:var(--brand-yellow); font-weight:900; }
+    .brand__subtitle{ color:var(--brand-green); font-weight:700; }
+    .site-footer{ margin-top:0; }
+
+    .logoImageModal{
+      position:fixed; inset:0; z-index:2500;
+      display:none; align-items:center; justify-content:center;
+      padding:18px; background:rgba(0,0,0,0.74);
+      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    }
+    .logoImageModal.show{ display:flex; }
+    .logoImageModalContent{
+      position:relative; width:min(500px,90vw); height:auto; max-height:85vh;
+      border-radius:18px; overflow:hidden; background:#fff;
+      box-shadow:0 28px 70px rgba(0,0,0,0.32);
+      animation:modalIn 300ms cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes modalIn{ from{opacity:0;transform:scale(0.88);}to{opacity:1;transform:scale(1);} }
+    .logoImageModalImg{ width:100%; height:auto; display:block; object-fit:contain; max-height:85vh; }
+    .logoImageModalClose{
+      position:absolute; top:12px; right:12px;
+      width:40px; height:40px; border-radius:999px;
+      background:rgba(0,0,0,0.6); border:0; color:#fff; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; font-weight:900;
+      transition:background 200ms ease,transform 200ms ease;
+      backdrop-filter:blur(8px);
+    }
+    .logoImageModalClose:hover{ background:rgba(0,0,0,0.8); transform:scale(1.08); }
+
+    /* ══════════════════════════════════════════════
+       DELETE GRADE RULE MODAL
+    ══════════════════════════════════════════════ */
+    .deleteRuleModal {
+      position: fixed;
+      inset: 0;
+      z-index: 3500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .deleteRuleModal.show { display: flex; }
+
+    .deleteRuleModalBox {
+      width: min(460px, 94vw);
+      border-radius: 22px;
+      background: #fff;
+      box-shadow:
+        0 32px 80px rgba(0,0,0,0.28),
+        0 0 0 1px rgba(0,0,0,0.06);
+      overflow: hidden;
+      animation: deleteRuleModalIn 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
 
-    .nav__link:hover{
-      color: rgba(255,255,255,0.78);
+    @keyframes deleteRuleModalIn {
+      from { opacity: 0; transform: scale(0.85) translateY(16px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    .brand__school{
-      color: var(--brand-yellow);
-      font-weight:900;
+    /* ── Header ── */
+    .deleteRuleModalHead {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      padding: 0;
+      background: linear-gradient(135deg,
+        color-mix(in srgb, var(--brand-yellow, #d4af37) 14%, white),
+        color-mix(in srgb, var(--brand-yellow, #d4af37) 5%, white)
+      );
+      border-bottom: 1px solid color-mix(in srgb, var(--brand-yellow, #d4af37) 30%, rgba(0,0,0,0.08));
     }
 
-    .brand__subtitle{
-      color: var(--brand-green);
-      font-weight:700;
+    .deleteRuleModalAccentBar {
+      flex: 0 0 5px;
+      background: var(--brand-yellow, #d4af37);
+      border-radius: 22px 0 0 0;
     }
 
-    .site-footer{
-      margin-top:0;
+    .deleteRuleModalHeadText {
+      min-width: 0;
+      padding: 22px 22px 18px 18px;
     }
 
-    @media (max-width:1100px){
+    .deleteRuleModalTitle {
+      font-size: 16px;
+      font-weight: 1000;
+      color: #111;
+      letter-spacing: .02em;
+      line-height: 1.2;
+      text-transform: uppercase;
+    }
+
+    .deleteRuleModalSubtitle {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(0,0,0,0.52);
+      line-height: 1.45;
+    }
+
+    /* ── Body ── */
+    .deleteRuleModalBody {
+      padding: 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Grade badge */
+    .deleteRuleGradeBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--brand-yellow, #d4af37) 16%, white);
+      border: 1.5px solid color-mix(in srgb, var(--brand-yellow, #d4af37) 40%, rgba(0,0,0,0.08));
+      width: fit-content;
+    }
+
+    .deleteRuleGradeBadgeLabel {
+      font-size: 11px;
+      font-weight: 1000;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.55);
+    }
+
+    .deleteRuleGradeBadgeValue {
+      font-size: 28px;
+      font-weight: 1000;
+      color: #111;
+      letter-spacing: -.01em;
+      line-height: 1;
+      min-width: 24px;
+    }
+
+    /* Info box */
+    .deleteRuleInfoBox {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.03);
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .deleteRuleInfoText {
+      font-size: 13px;
+      font-weight: 800;
+      color: rgba(0,0,0,0.65);
+      line-height: 1.65;
+    }
+
+    .deleteRuleInfoText strong { color: #111; font-weight: 1000; }
+    .deleteRuleInfoText em { font-style: normal; font-weight: 1000; color: #111; }
+
+    /* Loading dots */
+    .deleteRuleLoadingWrap {
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--brand-yellow, #d4af37) 12%, white);
+      border: 1px solid color-mix(in srgb, var(--brand-yellow, #d4af37) 30%, rgba(0,0,0,0.08));
+    }
+
+    .deleteRuleLoadingDot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand-yellow, #d4af37);
+      animation: deleteRuleDotBounce 850ms infinite ease-in-out;
+      flex-shrink: 0;
+    }
+    .deleteRuleLoadingDot:nth-child(1) { animation-delay: 0ms; }
+    .deleteRuleLoadingDot:nth-child(2) { animation-delay: 160ms; }
+    .deleteRuleLoadingDot:nth-child(3) { animation-delay: 320ms; }
+
+    @keyframes deleteRuleDotBounce {
+      0%,100% { transform: translateY(0); opacity: 0.45; }
+      50%      { transform: translateY(-5px); opacity: 1; }
+    }
+
+    .deleteRuleLoadingText {
+      font-size: 13px;
+      font-weight: 900;
+      color: rgba(0,0,0,0.65);
+      letter-spacing: .02em;
+    }
+
+    .deleteRuleStatus {
+      min-height: 16px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #dc2626;
+      line-height: 1.4;
+    }
+
+    /* ── Footer ── */
+    .deleteRuleModalFooter {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 14px 24px 20px;
+      border-top: 1px solid rgba(0,0,0,0.07);
+    }
+
+    .deleteRuleConfirmBtn {
+      border-radius: 999px;
+      padding: 11px 20px;
+      min-height: 42px;
+      cursor: pointer;
+      font-weight: 1000;
+      font-size: 13px;
+      font-family: inherit;
+      white-space: nowrap;
+      border: 0;
+      background: #dc2626;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(220,38,38,0.30);
+      transition: transform .16s ease, opacity .16s ease, box-shadow .16s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .deleteRuleConfirmBtn::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+
+    .deleteRuleConfirmBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 32px rgba(220,38,38,0.36);
+    }
+
+    .deleteRuleConfirmBtn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @media(max-width:1100px){
       .grid2{ grid-template-columns:1fr; }
       .displayGridCompact{ grid-template-columns:1fr; }
-      .previewFooter{ grid-template-columns:1fr; }
-      .previewMainMock{ grid-template-columns:1fr; }
-      .swatches{ justify-content:flex-start; }
     }
-
-    @media (max-width:980px){
-      .shell{ grid-template-columns:74px 1fr; }
-    }
-
-    @media (max-width:720px){
+    @media(max-width:980px){ .shell{ grid-template-columns:74px 1fr; } }
+    @media(max-width:720px){
       .shell{ grid-template-columns:1fr; }
-      .sidebar{
-        display:grid;
-        grid-template-columns:repeat(6, 1fr);
-      }
-      .side-item{
-        height:64px;
-        border-bottom:0;
-        border-right:1px solid rgba(255,255,255,0.10);
-      }
+      .sidebar{ display:grid; grid-template-columns:repeat(6,1fr); }
+      .side-item{ height:64px; border-bottom:0; border-right:1px solid rgba(255,255,255,0.10); }
       .side-item:last-child{ border-right:0; }
     }
-
-    @media (max-width:640px){
-      .wrap{
-        padding:104px 12px 80px;
-      }
-      .content{
-        padding:14px 14px 18px;
-      }
-      h1{
-        font-size:24px;
-      }
-      .formGrid{
-        grid-template-columns:1fr;
-      }
-      .previewHeroTitle{
-        font-size:22px;
-      }
+    @media(max-width:640px){
+      .wrap{ padding:104px 12px 80px; }
+      .content{ padding:14px 14px 18px; }
+      h1{ font-size:24px; }
+      .formGrid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -1502,20 +1341,16 @@ document.documentElement.classList.add("branding-loading");
   window.location.protocol === "file:"
     ? "http://127.0.0.1:8000"
     : window.location.origin;
-</script>
+  </script>
+
   <div class="topbar" id="siteHeader">
     <div class="brand">
       <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" />
       <div class="brand__text">
-        <div class="brand__name">
-          <span class="brand__school" data-brand-school-name>Your School Name</span>
-        </div>
-        <div class="brand__sub">
-          <span class="brand__subtitle" data-brand-role="portal">Librarian Portal</span>
-        </div>
+        <div class="brand__name"><span class="brand__school" data-brand-school-name>Your School Name</span></div>
+        <div class="brand__sub"><span class="brand__subtitle" data-brand-role="portal">Librarian Portal</span></div>
       </div>
     </div>
-
     <nav class="nav" aria-label="Primary">
       <a href="home.html" class="nav__link">Home</a>
       <a href="#footer" class="nav__link" id="contactLink">Contact</a>
@@ -1553,6 +1388,8 @@ document.documentElement.classList.add("branding-loading");
 
           <div class="content">
             <h1>SETTINGS</h1>
+
+            <!-- PERSONAL INFORMATION TAB -->
             <section class="section is-active" id="tab-personal">
               <div class="stack">
                 <div class="grid2">
@@ -1579,7 +1416,6 @@ document.documentElement.classList.add("branding-loading");
                           <input id="meLastName" type="text">
                         </div>
                       </div>
-
                       <div class="actions">
                         <button class="btnGhost" id="reloadMeBtn" type="button">Reload</button>
                         <button class="btn" id="saveProfileBtn" type="button">Save Profile</button>
@@ -1607,7 +1443,6 @@ document.documentElement.classList.add("branding-loading");
                           <input id="confirmPassword" type="password">
                         </div>
                       </div>
-
                       <div class="actions">
                         <button class="btnDark" id="changePasswordBtn" type="button">Change Password</button>
                       </div>
@@ -1615,9 +1450,27 @@ document.documentElement.classList.add("branding-loading");
                     </div>
                   </article>
                 </div>
+
+                <article class="card dangerZone">
+                  <div class="cardHead">
+                    <div class="cardTitle">⚠ Danger Zone</div>
+                  </div>
+                  <div class="dangerZoneBody">
+                    <p class="dangerZoneDesc">
+                      <b>Delete this librarian account.</b> This action is permanent and cannot be undone.
+                      Your account will be deactivated and you will be logged out immediately.
+                      Make sure another active librarian account exists before proceeding.
+                    </p>
+                    <div class="actions" style="justify-content:flex-start; margin-top:0;">
+                      <button class="btnDanger" id="openDeleteModalBtn" type="button">Delete My Account</button>
+                    </div>
+                  </div>
+                </article>
+
               </div>
             </section>
 
+            <!-- CIRCULATION SETTINGS TAB -->
             <section class="section" id="tab-circulation">
               <div class="stack">
                 <div class="grid2">
@@ -1628,126 +1481,50 @@ document.documentElement.classList.add("branding-loading");
                         <button class="iconBtn" id="editDefaultsBtn" type="button" aria-label="Edit defaults" title="Edit defaults">✎</button>
                       </div>
                     </div>
-
                     <div class="cardBody">
                       <div class="formGrid" id="defaultViewMode">
-                        <div class="field">
-                          <label>Loan Period (Days)</label>
-                          <div class="valueBox" id="viewLoanDays">7</div>
-                        </div>
-                        <div class="field">
-                          <label>Fine Per Day</label>
-                          <div class="valueBox" id="viewFinePerDay">₱5.00</div>
-                        </div>
-                        <div class="field">
-                          <label>Max Borrow Limit</label>
-                          <div class="valueBox" id="viewBorrowLimit">3</div>
-                        </div>
-                        <div class="field">
-                          <label>Max Renewals</label>
-                          <div class="valueBox" id="viewRenewals">1</div>
-                        </div>
-                        <div class="field">
-                          <label>Damage Fine (Minor)</label>
-                          <div class="valueBox" id="viewDamageMinor">₱50.00</div>
-                        </div>
-                        <div class="field">
-                          <label>Damage Fine (Major)</label>
-                          <div class="valueBox" id="viewDamageMajor">₱200.00</div>
-                        </div>
-                        <div class="field">
-                          <label>Lost Book Fine</label>
-                          <div class="valueBox" id="viewLostFine">₱500.00</div>
-                        </div>
-                        <div class="field">
-                          <label>Block Renew If Overdue</label>
-                          <div class="valueBox" id="viewBlockRenew">Yes</div>
-                        </div>
+                        <div class="field"><label>Loan Period (Days)</label><div class="valueBox" id="viewLoanDays">7</div></div>
+                        <div class="field"><label>Fine Per Day</label><div class="valueBox" id="viewFinePerDay">₱5.00</div></div>
+                        <div class="field"><label>Max Borrow Limit</label><div class="valueBox" id="viewBorrowLimit">3</div></div>
+                        <div class="field"><label>Max Renewals</label><div class="valueBox" id="viewRenewals">1</div></div>
+                        <div class="field"><label>Damage Fine (Minor)</label><div class="valueBox" id="viewDamageMinor">₱50.00</div></div>
+                        <div class="field"><label>Damage Fine (Major)</label><div class="valueBox" id="viewDamageMajor">₱200.00</div></div>
+                        <div class="field"><label>Lost Book Fine</label><div class="valueBox" id="viewLostFine">₱500.00</div></div>
+                        <div class="field"><label>Block Renew If Overdue</label><div class="valueBox" id="viewBlockRenew">Yes</div></div>
                       </div>
-
                       <div class="formGrid" id="defaultEditMode" style="display:none;">
-                        <div class="field">
-                          <label>Loan Period (Days)</label>
-                          <input id="globalLoanDays" type="number" min="1" value="7">
-                        </div>
-                        <div class="field">
-                          <label>Fine Per Day</label>
-                          <input id="globalFinePerDay" type="number" min="0" step="0.01" value="5.00">
-                        </div>
-                        <div class="field">
-                          <label>Max Borrow Limit</label>
-                          <input id="globalBorrowLimit" type="number" min="1" value="3">
-                        </div>
-                        <div class="field">
-                          <label>Max Renewals</label>
-                          <input id="globalRenewals" type="number" min="0" value="1">
-                        </div>
-                        <div class="field">
-                          <label>Damage Fine (Minor)</label>
-                          <input id="globalDamageMinor" type="number" min="0" step="0.01" value="50.00">
-                        </div>
-                        <div class="field">
-                          <label>Damage Fine (Major)</label>
-                          <input id="globalDamageMajor" type="number" min="0" step="0.01" value="200.00">
-                        </div>
-                        <div class="field">
-                          <label>Lost Book Fine</label>
-                          <input id="globalLostFine" type="number" min="0" step="0.01" value="500.00">
-                        </div>
-                        <div class="field">
-                          <label>Block Renew If Overdue</label>
-                          <select id="globalBlockRenew">
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                          </select>
+                        <div class="field"><label>Loan Period (Days)</label><input id="globalLoanDays" type="number" min="1" value="7"></div>
+                        <div class="field"><label>Fine Per Day</label><input id="globalFinePerDay" type="number" min="0" step="0.01" value="5.00"></div>
+                        <div class="field"><label>Max Borrow Limit</label><input id="globalBorrowLimit" type="number" min="1" value="3"></div>
+                        <div class="field"><label>Max Renewals</label><input id="globalRenewals" type="number" min="0" value="1"></div>
+                        <div class="field"><label>Damage Fine (Minor)</label><input id="globalDamageMinor" type="number" min="0" step="0.01" value="50.00"></div>
+                        <div class="field"><label>Damage Fine (Major)</label><input id="globalDamageMajor" type="number" min="0" step="0.01" value="200.00"></div>
+                        <div class="field"><label>Lost Book Fine</label><input id="globalLostFine" type="number" min="0" step="0.01" value="500.00"></div>
+                        <div class="field"><label>Block Renew If Overdue</label>
+                          <select id="globalBlockRenew"><option value="true">Yes</option><option value="false">No</option></select>
                         </div>
                       </div>
-
                       <div class="actions" id="defaultEditActions" style="display:none;">
                         <button class="btnGhost" id="cancelDefaultsBtn" type="button">Cancel</button>
                         <button class="btn" id="saveGlobalBtn" type="button">Save Defaults</button>
                       </div>
-
                       <div class="statusLine" id="globalStatus"></div>
                     </div>
                   </article>
 
                   <article class="card">
-                    <div class="cardHead">
-                      <div class="cardTitle">Grade Rule</div>
-                    </div>
-
+                    <div class="cardHead"><div class="cardTitle">Grade Rule</div></div>
                     <div class="cardBody">
                       <div class="formGrid">
-                        <div class="field">
-                          <label>Grade</label>
-                          <select id="ruleGrade"></select>
-                        </div>
-                        <div class="field">
-                          <label>Loan Period (Days)</label>
-                          <input id="ruleLoanDays" type="number" min="1">
-                        </div>
-                        <div class="field">
-                          <label>Max Borrow Limit</label>
-                          <input id="ruleBorrowLimit" type="number" min="1">
-                        </div>
-                        <div class="field">
-                          <label>Fine Per Day</label>
-                          <input id="ruleFinePerDay" type="number" min="0" step="0.01">
-                        </div>
-                        <div class="field">
-                          <label>Max Renewals</label>
-                          <input id="ruleRenewals" type="number" min="0">
-                        </div>
-                        <div class="field">
-                          <label>Block Renew If Overdue</label>
-                          <select id="ruleBlockRenew">
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                          </select>
+                        <div class="field"><label>Grade</label><select id="ruleGrade"></select></div>
+                        <div class="field"><label>Loan Period (Days)</label><input id="ruleLoanDays" type="number" min="1"></div>
+                        <div class="field"><label>Max Borrow Limit</label><input id="ruleBorrowLimit" type="number" min="1"></div>
+                        <div class="field"><label>Fine Per Day</label><input id="ruleFinePerDay" type="number" min="0" step="0.01"></div>
+                        <div class="field"><label>Max Renewals</label><input id="ruleRenewals" type="number" min="0"></div>
+                        <div class="field"><label>Block Renew If Overdue</label>
+                          <select id="ruleBlockRenew"><option value="true">Yes</option><option value="false">No</option></select>
                         </div>
                       </div>
-
                       <div class="actions">
                         <button class="btn" id="saveRuleBtn" type="button">Save Grade Rule</button>
                       </div>
@@ -1757,16 +1534,12 @@ document.documentElement.classList.add("branding-loading");
                 </div>
 
                 <article class="card">
-                  <div class="cardHead">
-                    <div class="cardTitle">Existing Grade Rules</div>
-                  </div>
+                  <div class="cardHead"><div class="cardTitle">Existing Grade Rules</div></div>
                   <div class="cardBody">
                     <div class="rulesWrap">
                       <div class="rulesHead">
                         <table class="rulesTable rulesTable--grades">
-                          <colgroup>
-                            <col><col><col><col><col><col><col>
-                          </colgroup>
+                          <colgroup><col><col><col><col><col><col><col><col></colgroup>
                           <thead>
                             <tr>
                               <th>Grade</th>
@@ -1776,18 +1549,15 @@ document.documentElement.classList.add("branding-loading");
                               <th>Max Renewals</th>
                               <th>Block Overdue</th>
                               <th>Updated</th>
+                              <th>Actions</th>
                             </tr>
                           </thead>
                         </table>
                       </div>
                       <div class="rulesScroll">
                         <table class="rulesTable rulesTable--grades">
-                          <colgroup>
-                            <col><col><col><col><col><col><col>
-                          </colgroup>
-                          <tbody id="rulesTableBody">
-                            <tr><td colspan="7">No grade rules yet.</td></tr>
-                          </tbody>
+                          <colgroup><col><col><col><col><col><col><col><col></colgroup>
+                          <tbody id="rulesTableBody"><tr><td colspan="8">No grade rules yet.</td></tr></tbody>
                         </table>
                       </div>
                     </div>
@@ -1796,33 +1566,19 @@ document.documentElement.classList.add("branding-loading");
               </div>
             </section>
 
+            <!-- STUDENT EDIT TAB -->
             <section class="section" id="tab-student">
               <div class="stack">
                 <div class="grid2">
                   <article class="card">
-                    <div class="cardHead">
-                      <div class="cardTitle">Promote Students</div>
-                    </div>
+                    <div class="cardHead"><div class="cardTitle">Promote Students</div></div>
                     <div class="cardBody">
                       <div class="formGrid">
-                        <div class="field">
-                          <label>From Grade</label>
-                          <select id="promoteFromGrade"></select>
-                        </div>
-                        <div class="field">
-                          <label>From Section</label>
-                          <select id="promoteFromSection"></select>
-                        </div>
-                        <div class="field">
-                          <label>To Grade</label>
-                          <input id="promoteToGrade" type="text" placeholder="Enter target grade">
-                        </div>
-                        <div class="field">
-                          <label>To Section</label>
-                          <input id="promoteToSection" type="text">
-                        </div>
+                        <div class="field"><label>From Grade</label><select id="promoteFromGrade"></select></div>
+                        <div class="field"><label>From Section</label><select id="promoteFromSection"></select></div>
+                        <div class="field"><label>To Grade</label><input id="promoteToGrade" type="text" placeholder="Enter target grade"></div>
+                        <div class="field"><label>To Section</label><input id="promoteToSection" type="text"></div>
                       </div>
-
                       <div class="actions">
                         <button class="btn" id="promoteBtn" type="button">Promote</button>
                       </div>
@@ -1832,21 +1588,12 @@ document.documentElement.classList.add("branding-loading");
                   </article>
 
                   <article class="card">
-                    <div class="cardHead">
-                      <div class="cardTitle">Graduate Grade 12</div>
-                    </div>
+                    <div class="cardHead"><div class="cardTitle">Graduate Grade 12</div></div>
                     <div class="cardBody">
                       <div class="formGrid">
-                        <div class="field">
-                          <label>Grade</label>
-                          <select id="graduateGrade"></select>
-                        </div>
-                        <div class="field">
-                          <label>Section (Optional)</label>
-                          <select id="graduateSection"></select>
-                        </div>
+                        <div class="field"><label>Grade</label><select id="graduateGrade"></select></div>
+                        <div class="field"><label>Section (Optional)</label><select id="graduateSection"></select></div>
                       </div>
-
                       <div class="actions">
                         <button class="btnDark" id="graduateBtn" type="button">Graduate Students</button>
                       </div>
@@ -1858,37 +1605,20 @@ document.documentElement.classList.add("branding-loading");
               </div>
             </section>
 
+            <!-- NEW PROFILE TAB -->
             <section class="section" id="tab-profile">
               <div class="stack">
                 <div class="grid2">
                   <article class="card">
-                    <div class="cardHead">
-                      <div class="cardTitle">Create Librarian</div>
-                    </div>
+                    <div class="cardHead"><div class="cardTitle">Create Librarian</div></div>
                     <div class="cardBody">
                       <div class="formGrid">
-                        <div class="field">
-                          <label>Username</label>
-                          <input id="newLibUsername" type="text">
-                        </div>
-                        <div class="field">
-                          <label>Email</label>
-                          <input id="newLibEmail" type="email">
-                        </div>
-                        <div class="field">
-                          <label>First Name</label>
-                          <input id="newLibFirst" type="text">
-                        </div>
-                        <div class="field">
-                          <label>Last Name</label>
-                          <input id="newLibLast" type="text">
-                        </div>
-                        <div class="field full">
-                          <label>Password</label>
-                          <input id="newLibPassword" type="password">
-                        </div>
+                        <div class="field"><label>Username</label><input id="newLibUsername" type="text"></div>
+                        <div class="field"><label>Email</label><input id="newLibEmail" type="email"></div>
+                        <div class="field"><label>First Name</label><input id="newLibFirst" type="text"></div>
+                        <div class="field"><label>Last Name</label><input id="newLibLast" type="text"></div>
+                        <div class="field full"><label>Password</label><input id="newLibPassword" type="password"></div>
                       </div>
-
                       <div class="actions">
                         <button class="btn" id="createLibBtn" type="button">Create Profile</button>
                       </div>
@@ -1897,34 +1627,19 @@ document.documentElement.classList.add("branding-loading");
                   </article>
 
                   <article class="card">
-                    <div class="cardHead">
-                      <div class="cardTitle">Existing Librarians</div>
-                    </div>
+                    <div class="cardHead"><div class="cardTitle">Existing Librarians</div></div>
                     <div class="cardBody">
                       <div class="rulesWrap" style="min-height:350px;max-height:350px;">
                         <div class="rulesHead">
                           <table class="rulesTable rulesTable--libs">
-                            <colgroup>
-                              <col><col><col><col>
-                            </colgroup>
-                            <thead>
-                              <tr>
-                                <th>Username</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                              </tr>
-                            </thead>
+                            <colgroup><col><col><col><col></colgroup>
+                            <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Status</th></tr></thead>
                           </table>
                         </div>
                         <div class="rulesScroll">
                           <table class="rulesTable rulesTable--libs">
-                            <colgroup>
-                              <col><col><col><col>
-                            </colgroup>
-                            <tbody id="librariansTableBody">
-                              <tr><td colspan="4">No librarian accounts found.</td></tr>
-                            </tbody>
+                            <colgroup><col><col><col><col></colgroup>
+                            <tbody id="librariansTableBody"><tr><td colspan="4">No librarian accounts found.</td></tr></tbody>
                           </table>
                         </div>
                       </div>
@@ -1934,6 +1649,7 @@ document.documentElement.classList.add("branding-loading");
               </div>
             </section>
 
+            <!-- DISPLAY SETTINGS TAB -->
             <section class="section" id="tab-display">
               <div class="stack">
                 <article class="card displayCard" id="displaySettingsCard">
@@ -1944,45 +1660,30 @@ document.documentElement.classList.add("branding-loading");
                       <button class="btnGreen" id="editDisplayBtn" type="button">Edit</button>
                     </div>
                   </div>
-
                   <div class="cardBody">
                     <div class="displayToolbar">
                       <div class="displayState">
                         <span class="stateDot"></span>
                         <span id="displayStateText">View mode</span>
                       </div>
-                      <div class="hint" style="margin:0;">
-                        Edit only when needed, then save to update the shared branding used across the system.
-                      </div>
+                      <div class="hint" style="margin:0;">Edit only when needed, then save to update the shared branding used across the system.</div>
                     </div>
 
                     <div class="displayGridCompact displayScroll">
-                      <div class="field">
-                        <label>School Name</label>
-                        <input id="displaySchoolName" type="text" disabled>
-                      </div>
-
-                      <div class="field">
-                        <label>Header Subtitle</label>
-                        <input id="displayHeaderSubtitle" type="text" disabled>
-                      </div>
-
-                      <div class="field">
-                        <label>Primary Brand Color</label>
+                      <div class="field"><label>School Name</label><input id="displaySchoolName" type="text" disabled></div>
+                      <div class="field"><label>Header Subtitle</label><input id="displayHeaderSubtitle" type="text" disabled></div>
+                      <div class="field"><label>Primary Brand Color</label>
                         <div class="colorPickerWrap">
                           <input id="displayBrandPrimaryPicker" type="color" value="#2563eb" disabled>
                           <input id="displayBrandPrimary" type="text" placeholder="#2563eb" disabled>
                         </div>
                       </div>
-
-                      <div class="field">
-                        <label>Secondary Brand Color</label>
+                      <div class="field"><label>Secondary Brand Color</label>
                         <div class="colorPickerWrap">
                           <input id="displayBrandSecondaryPicker" type="color" value="#94a3b8" disabled>
                           <input id="displayBrandSecondary" type="text" placeholder="#94a3b8" disabled>
                         </div>
                       </div>
-
                       <div class="field" style="grid-column:1 / -1;">
                         <label>Logo Upload</label>
                         <div class="logoPanel">
@@ -2004,46 +1705,14 @@ document.documentElement.classList.add("branding-loading");
                           <div class="hint">Upload an image for the school logo. The current saved logo will stay unless you choose a new file.</div>
                         </div>
                       </div>
-
-                      <div class="field">
-                        <label>Footer Title</label>
-                        <input id="displayFooterTitle" type="text" disabled>
-                      </div>
-
-                      <div class="field">
-                        <label>Footer Email</label>
-                        <input id="displayFooterEmail" type="text" disabled>
-                      </div>
-
-                      <div class="field" style="grid-column:1 / -1;">
-                        <label>Footer Description</label>
-                        <textarea id="displayFooterDescription" disabled></textarea>
-                      </div>
-
-                      <div class="field">
-                        <label>Footer Address</label>
-                        <input id="displayFooterAddress" type="text" disabled>
-                      </div>
-
-                      <div class="field">
-                        <label>Footer Phone</label>
-                        <input id="displayFooterPhone" type="text" disabled>
-                      </div>
-
-                      <div class="field">
-                        <label>Footer Website</label>
-                        <input id="displayFooterWebsite" type="text" disabled>
-                      </div>
-
-                      <div class="field">
-                        <label>Footer Facebook</label>
-                        <input id="displayFooterFacebook" type="text" disabled>
-                      </div>
-
-                      <div class="field" style="grid-column:1 / -1;">
-                        <label>Footer Copyright</label>
-                        <input id="displayFooterCopyright" type="text" disabled>
-                      </div>
+                      <div class="field"><label>Footer Title</label><input id="displayFooterTitle" type="text" disabled></div>
+                      <div class="field"><label>Footer Email</label><input id="displayFooterEmail" type="text" disabled></div>
+                      <div class="field" style="grid-column:1 / -1;"><label>Footer Description</label><textarea id="displayFooterDescription" disabled></textarea></div>
+                      <div class="field"><label>Footer Address</label><input id="displayFooterAddress" type="text" disabled></div>
+                      <div class="field"><label>Footer Phone</label><input id="displayFooterPhone" type="text" disabled></div>
+                      <div class="field"><label>Footer Website</label><input id="displayFooterWebsite" type="text" disabled></div>
+                      <div class="field"><label>Footer Facebook</label><input id="displayFooterFacebook" type="text" disabled></div>
+                      <div class="field" style="grid-column:1 / -1;"><label>Footer Copyright</label><input id="displayFooterCopyright" type="text" disabled></div>
                     </div>
 
                     <div class="actions" id="displayEditActions" style="display:none;">
@@ -2051,7 +1720,6 @@ document.documentElement.classList.add("branding-loading");
                       <button class="btnGreen" id="previewDisplayBtn" type="button">Preview</button>
                       <button class="btn" id="saveDisplayBtn" type="button">Save Display Settings</button>
                     </div>
-
                     <div class="statusLine" id="displayStatus"></div>
                   </div>
                 </article>
@@ -2073,14 +1741,9 @@ document.documentElement.classList.add("branding-loading");
                         <iframe id="indexPreview" src="index.html" style="width:100%; height:720px; border:0; display:block; background:#fff;"></iframe>
                       </div>
                     </div>
-
-                    <div class="hint">
-                      Live preview — footer and brand colors update instantly as you type. 
-                    </div>
+                    <div class="hint">Live preview — footer and brand colors update instantly as you type.</div>
                   </div>
                 </article>
-
-
               </div>
             </section>
 
@@ -2094,75 +1757,27 @@ document.documentElement.classList.add("branding-loading");
     <div class="site-footer__inner">
       <section class="site-footer__col">
         <h3 class="site-footer__title" id="footerBrandTitle">Library Management System</h3>
-        <p class="site-footer__text" id="footerBrandDescription">
-          Customize your school branding, contact details, and interface appearance in Display Settings.
-        </p>
-        <p class="site-footer__fineprint">
-          © <span id="footerYear"></span>
-          <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span>
-        </p>
+        <p class="site-footer__text" id="footerBrandDescription">Customize your school branding, contact details, and interface appearance in Display Settings.</p>
+        <p class="site-footer__fineprint">&copy; <span id="footerYear"></span> <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span></p>
       </section>
-
       <section class="site-footer__col site-footer__col--right">
         <h3 class="site-footer__title">Contact &amp; Support</h3>
-
         <div class="site-footer__item">
-          <span class="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
-            </svg>
-          </span>
-          <div>
-            <div id="footerBrandAddress">School Address</div>
-          </div>
+          <span class="site-footer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg></span>
+          <div><div id="footerBrandAddress">School Address</div></div>
         </div>
-
         <div class="site-footer__item">
-          <span class="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
-            </svg>
-          </span>
-          <div>
-            <div id="footerBrandPhone">School Contact Number</div>
-          </div>
+          <span class="site-footer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/></svg></span>
+          <div><div id="footerBrandPhone">School Contact Number</div></div>
         </div>
-
         <div class="site-footer__item">
-          <span class="site-footer__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
-            </svg>
-          </span>
-          <div>
-            <div id="footerBrandEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6804010a1a091a11281b0b00070704460d0c1d">[email&#160;protected]</a></div>
-          </div>
+          <span class="site-footer__icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/></svg></span>
+          <div><div id="footerBrandEmail"><a href="/cdn-cgi/l/email-protection#771b1e150516050e3704141f18181b59121302"><span class="__cf_email__" data-cfemail="b9d5d0dbcbd8cbc0f9cadad1d6d6d597dcddcc">[email&#160;protected]</span></a></div></div>
         </div>
-
         <div class="site-footer__row" style="margin-top:14px;">
-          <a
-            class="site-footer__social"
-            id="footerBrandFacebook"
-            href="#"
-            target="_blank"
-            rel="noopener"
-            style="display:none;"
-          >
-            Facebook
-          </a>
-
-          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
-
-          <a
-            class="site-footer__social"
-            id="footerBrandWebsite"
-            href="#"
-            target="_blank"
-            rel="noopener"
-            style="display:none;"
-          >
-            Official Website
-          </a>
+          <a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a>
+          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">&bull;</span>
+          <a class="site-footer__social" id="footerBrandWebsite" href="#" target="_blank" rel="noopener" style="display:none;">Official Website</a>
         </div>
       </section>
     </div>
@@ -2170,21 +1785,116 @@ document.documentElement.classList.add("branding-loading");
 
   <div class="toast" id="toast"></div>
 
+  <!-- Loading modal -->
   <div class="loadingModal" id="loadingModal">
     <div class="loadingBox">
       <div class="loadingText">Applying Changes</div>
-      <div class="dots">
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-      </div>
+      <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
     </div>
   </div>
 
+  <!-- Logo preview modal -->
   <div class="logoImageModal" id="logoImageModal">
     <div class="logoImageModalContent">
       <img class="logoImageModalImg" id="logoImageModalImg" src="" alt="Logo preview">
       <button class="logoImageModalClose" id="logoImageModalClose" type="button" aria-label="Close preview">✕</button>
+    </div>
+  </div>
+
+  <!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+  <div class="deleteModal" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="deleteModalBox">
+      <div class="deleteModalHead">
+        <div class="deleteModalIcon">⚠️</div>
+        <div>
+          <div class="deleteModalTitle" id="deleteModalTitle">Delete Account</div>
+          <div class="deleteModalSubtitle">This action is permanent and cannot be undone.</div>
+        </div>
+      </div>
+
+      <div class="deleteModalBody">
+        <div class="deleteModalWarning">
+          <strong>Before you continue, please understand:</strong>
+          <ul>
+            <li>Your account will be permanently deactivated.</li>
+            <li>You will be logged out immediately after deletion.</li>
+            <li>This cannot be reversed — there is no recovery.</li>
+            <li>You must have at least one other active librarian account.</li>
+          </ul>
+        </div>
+
+        <div class="deleteModalField">
+          <label>Step 1 — Type your username to confirm</label>
+          <p class="deleteModalStep">Type <strong id="deleteConfirmTarget"></strong> to proceed.</p>
+          <input class="deleteModalConfirmInput" id="deleteConfirmUsername" type="text" placeholder="Type your username here" autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="deleteModalField">
+          <label>Step 2 — Enter your current password</label>
+          <input class="deleteModalConfirmInput" id="deleteConfirmPassword" type="password" placeholder="Current password">
+        </div>
+
+        <div class="deleteModalStatus" id="deleteModalStatus"></div>
+      </div>
+
+      <div class="deleteModalFooter">
+        <button class="btnGhost" id="cancelDeleteBtn" type="button">Cancel</button>
+        <button class="btnDanger" id="confirmDeleteBtn" type="button" disabled>Delete My Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       DELETE GRADE RULE CONFIRMATION MODAL
+  ══════════════════════════════════════════════ -->
+  <div class="deleteRuleModal" id="deleteRuleModal" role="dialog" aria-modal="true" aria-labelledby="deleteRuleModalTitle">
+    <div class="deleteRuleModalBox">
+
+      <!-- Header -->
+      <div class="deleteRuleModalHead">
+        <div class="deleteRuleModalAccentBar"></div>
+        <div class="deleteRuleModalHeadText">
+          <div class="deleteRuleModalTitle" id="deleteRuleModalTitle">Delete Grade Rule</div>
+          <div class="deleteRuleModalSubtitle">This will remove the custom circulation rule for this grade.</div>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="deleteRuleModalBody">
+        <!-- Grade badge -->
+        <div class="deleteRuleGradeBadge">
+          <span class="deleteRuleGradeBadgeLabel">Grade</span>
+          <span class="deleteRuleGradeBadgeValue" id="deleteRuleGradeLabel">—</span>
+        </div>
+
+        <!-- Info box -->
+        <div class="deleteRuleInfoBox">
+          <div class="deleteRuleInfoText">
+            Deleting this rule means <strong>Grade <span id="deleteRuleGradeLabel2"></span></strong> will fall back to the
+            <strong>system default</strong> circulation settings instead.
+            This does <em>not</em> affect any active loans or fines.
+          </div>
+        </div>
+
+        <!-- Loading dots (hidden by default) -->
+        <div class="deleteRuleLoadingWrap" id="deleteRuleDots" style="display:none;">
+          <div class="deleteRuleLoadingDot"></div>
+          <div class="deleteRuleLoadingDot"></div>
+          <div class="deleteRuleLoadingDot"></div>
+          <span class="deleteRuleLoadingText">Deleting rule…</span>
+        </div>
+
+        <div class="deleteRuleStatus" id="deleteRuleStatus"></div>
+      </div>
+
+      <!-- Footer -->
+      <div class="deleteRuleModalFooter">
+        <button class="btnGhost" id="cancelDeleteRuleBtn" type="button">Cancel</button>
+        <button class="deleteRuleConfirmBtn" id="confirmDeleteRuleBtn" type="button">
+          <span id="deleteRuleBtnText">Yes, Delete Rule</span>
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -2218,36 +1928,23 @@ document.documentElement.classList.add("branding-loading");
     }
 
     function esc(v){
-      return String(v ?? "").replace(/[&<>"']/g, m => ({
-        "&":"&amp;",
-        "<":"&lt;",
-        ">":"&gt;",
-        "\"":"&quot;",
-        "'":"&#39;"
-      }[m]));
+      return String(v ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
     }
 
     function qs(obj){
       const p = new URLSearchParams();
-      Object.entries(obj).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== "") p.append(k, v);
-      });
+      Object.entries(obj).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== "") p.append(k, v); });
       return p.toString();
     }
 
     async function apiFetch(path, options = {}){
       const res = await fetch(BASE_URL + path, {
         ...options,
-        headers: {
-          ...authHeaders(),
-          ...(options.headers || {})
-        }
+        headers: { ...authHeaders(), ...(options.headers || {}) }
       });
-
       const text = await res.text();
       let data = null;
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-
       if (!res.ok){
         const msg = (data && data.detail)
           ? (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail))
@@ -2301,24 +1998,96 @@ document.documentElement.classList.add("branding-loading");
     });
 
     const header = document.getElementById("siteHeader");
-    function syncHeader(){
-      if (!header) return;
-      header.classList.toggle("is-scrolled", window.scrollY > 8);
-    }
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
     syncHeader();
     window.addEventListener("scroll", syncHeader, { passive: true });
 
-    const tabs = document.querySelectorAll(".tab");
-    const sections = document.querySelectorAll(".section");
-    tabs.forEach(tab => {
+    document.querySelectorAll(".tab").forEach(tab => {
       tab.addEventListener("click", () => {
-        tabs.forEach(t => t.classList.remove("is-active"));
-        sections.forEach(s => s.classList.remove("is-active"));
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("is-active"));
+        document.querySelectorAll(".section").forEach(s => s.classList.remove("is-active"));
         tab.classList.add("is-active");
         document.getElementById("tab-" + tab.dataset.tab).classList.add("is-active");
       });
     });
 
+    // ── DELETE ACCOUNT MODAL ──
+    let _currentUsername = "";
+
+    function openDeleteModal(){
+      _currentUsername = document.getElementById("meUsername").value.trim() || "";
+      document.getElementById("deleteConfirmTarget").textContent = _currentUsername || "your username";
+      document.getElementById("deleteConfirmUsername").value = "";
+      document.getElementById("deleteConfirmPassword").value = "";
+      document.getElementById("deleteModalStatus").textContent = "";
+      document.getElementById("confirmDeleteBtn").disabled = true;
+      document.getElementById("deleteModal").classList.add("show");
+      setTimeout(() => document.getElementById("deleteConfirmUsername").focus(), 80);
+    }
+
+    function closeDeleteModal(){
+      document.getElementById("deleteModal").classList.remove("show");
+      document.getElementById("deleteConfirmUsername").value = "";
+      document.getElementById("deleteConfirmPassword").value = "";
+      document.getElementById("deleteModalStatus").textContent = "";
+      document.getElementById("confirmDeleteBtn").disabled = true;
+    }
+
+    function checkDeleteReady(){
+      const usernameOk = document.getElementById("deleteConfirmUsername").value.trim() === _currentUsername;
+      const passwordOk = document.getElementById("deleteConfirmPassword").value.length > 0;
+      document.getElementById("confirmDeleteBtn").disabled = !(usernameOk && passwordOk);
+    }
+
+    document.getElementById("deleteConfirmUsername").addEventListener("input", checkDeleteReady);
+    document.getElementById("deleteConfirmPassword").addEventListener("input", checkDeleteReady);
+
+    document.getElementById("openDeleteModalBtn").addEventListener("click", openDeleteModal);
+    document.getElementById("cancelDeleteBtn").addEventListener("click", closeDeleteModal);
+
+    document.getElementById("deleteModal").addEventListener("click", (e) => {
+      if (e.target === document.getElementById("deleteModal")) closeDeleteModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.getElementById("deleteModal").classList.contains("show")){
+        closeDeleteModal();
+      }
+    });
+
+    document.getElementById("confirmDeleteBtn").addEventListener("click", async () => {
+      const password = document.getElementById("deleteConfirmPassword").value;
+      const statusEl = document.getElementById("deleteModalStatus");
+      const btn = document.getElementById("confirmDeleteBtn");
+
+      if (!password){ statusEl.textContent = "Please enter your password."; return; }
+
+      btn.disabled = true;
+      btn.textContent = "Deleting…";
+      statusEl.textContent = "";
+
+      try {
+        await apiFetch("/api/settings/me?" + qs({ password }), { method: "DELETE" });
+
+        ["gk_token","token","access_token"].forEach(k => {
+          try { sessionStorage.removeItem(k); } catch(_) {}
+          try { localStorage.removeItem(k); } catch(_) {}
+        });
+
+        document.getElementById("deleteModal").classList.remove("show");
+        document.getElementById("loadingModal").querySelector(".loadingText").textContent = "Account deleted. Redirecting…";
+        document.getElementById("loadingModal").classList.add("show");
+
+        setTimeout(() => { window.location.href = "login.html"; }, 1600);
+
+      } catch(err) {
+        statusEl.textContent = err.message || "Deletion failed. Please try again.";
+        btn.disabled = false;
+        btn.textContent = "Delete My Account";
+      }
+    });
+
+    // ── STATE ──
     let currentDefaults = null;
     let latestGradeRules = {};
     let studentMeta = { grades: [], sections_by_grade: {} };
@@ -2328,71 +2097,42 @@ document.documentElement.classList.add("branding-loading");
     let pendingLogoFileUrl = null;
 
     async function compressLogoFile(file) {
-  const bitmap = await createImageBitmap(file);
+      const bitmap = await createImageBitmap(file);
+      const maxWidth = 500;
+      const scale = Math.min(1, maxWidth / bitmap.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob){ reject(new Error("Failed to compress logo")); return; }
+          resolve(blob);
+        }, "image/webp", 0.82);
+      });
+    }
 
-  const maxWidth = 500;
-  const scale = Math.min(1, maxWidth / bitmap.width);
-
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Failed to compress logo"));
-        return;
-      }
-      resolve(blob);
-    }, "image/webp", 0.82);
-  });
-}
-
-
-
-async function uploadCompressedLogo(blob) {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("Missing auth token");
-
-  const form = new FormData();
-  form.append("file", blob, "logo.webp");
-
-  const res = await fetch(`${API_ORIGIN}/api/settings/display/logo`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`
-    },
-    body: form
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.detail || data.message || "Failed to upload logo");
-  }
-
-  return data.logo_url;
-}
+    async function uploadCompressedLogo(blob) {
+      const token = getToken();
+      if (!token) throw new Error("Missing auth token");
+      const form = new FormData();
+      form.append("file", blob, "logo.webp");
+      const res = await fetch(`${API_ORIGIN}/api/settings/display/logo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.message || "Failed to upload logo");
+      return data.logo_url;
+    }
 
     function getSystemDefaultSettings(){
-      return {
-        loan_period_days: 7,
-        fine_per_day: 5.00,
-        max_borrow_limit: 3,
-        max_renewals: 1,
-        block_renew_if_overdue: true,
-        damage_fine_minor: 50.00,
-        damage_fine_major: 200.00,
-        lost_book_fine: 500.00
-      };
+      return { loan_period_days:7, fine_per_day:5.00, max_borrow_limit:3, max_renewals:1, block_renew_if_overdue:true, damage_fine_minor:50.00, damage_fine_major:200.00, lost_book_fine:500.00 };
     }
 
-    function coalesceSetting(value, fallback){
-      return value === null || value === undefined || value === "" ? fallback : value;
-    }
+    function coalesceSetting(value, fallback){ return (value === null || value === undefined || value === "") ? fallback : value; }
 
     function normalizeDefaults(data){
       const fallback = getSystemDefaultSettings();
@@ -2409,10 +2149,7 @@ async function uploadCompressedLogo(blob) {
       };
     }
 
-    function fmtCurrency(value){
-      const n = Number(value);
-      return Number.isFinite(n) ? `₱${n.toFixed(2)}` : "—";
-    }
+    function fmtCurrency(value){ const n = Number(value); return Number.isFinite(n) ? `₱${n.toFixed(2)}` : "—"; }
 
     function toggleDefaultEdit(isEditing){
       document.getElementById("defaultViewMode").style.display = isEditing ? "none" : "grid";
@@ -2421,22 +2158,33 @@ async function uploadCompressedLogo(blob) {
       document.getElementById("editDefaultsBtn").style.display = isEditing ? "none" : "inline-flex";
     }
 
+    function sortGradesNumeric(grades) {
+      return [...grades].sort((a, b) => {
+        const na = Number(String(a).trim());
+        const nb = Number(String(b).trim());
+        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+        if (Number.isFinite(na)) return -1;
+        if (Number.isFinite(nb)) return 1;
+        return String(a).localeCompare(String(b));
+      });
+    }
+
     function buildGradeSelect(selectEl, includeBlank = false){
       selectEl.innerHTML = "";
-
       if (includeBlank){
-        const blank = document.createElement("option");
-        blank.value = "";
-        blank.textContent = "Select";
-        selectEl.appendChild(blank);
+        const b = document.createElement("option");
+        b.value = "";
+        b.textContent = "Select";
+        selectEl.appendChild(b);
       }
-
-      const grades = studentMeta.grades?.length ? studentMeta.grades : ["7","8","9","10","11","12"];
+      const rawGrades = studentMeta.grades?.length
+        ? studentMeta.grades
+        : ["7","8","9","10","11","12"];
+      const grades = sortGradesNumeric(rawGrades);
       grades.forEach(g => {
-        const clean = String(g).trim();
         const opt = document.createElement("option");
-        opt.value = clean;
-        opt.textContent = clean;
+        opt.value = String(g).trim();
+        opt.textContent = String(g).trim();
         selectEl.appendChild(opt);
       });
     }
@@ -2446,13 +2194,8 @@ async function uploadCompressedLogo(blob) {
       rows.forEach(r => {
         const g = String(r.grade || "").trim();
         if (!g) return;
-        if (!latest[g]) {
-          latest[g] = r;
-          return;
-        }
-        const oldTime = new Date(latest[g].updated_at || 0).getTime();
-        const newTime = new Date(r.updated_at || 0).getTime();
-        if (newTime >= oldTime) latest[g] = r;
+        if (!latest[g]) { latest[g] = r; return; }
+        if (new Date(r.updated_at||0) >= new Date(latest[g].updated_at||0)) latest[g] = r;
       });
       return latest;
     }
@@ -2460,58 +2203,22 @@ async function uploadCompressedLogo(blob) {
     function syncSectionsForGrade(gradeSelectId, sectionSelectId, includeBlank){
       const grade = document.getElementById(gradeSelectId).value;
       const sectionSelect = document.getElementById(sectionSelectId);
-      const sections = (studentMeta.sections_by_grade && studentMeta.sections_by_grade[String(grade)])
-        ? studentMeta.sections_by_grade[String(grade)]
-        : [];
-
+      const sections = (studentMeta.sections_by_grade?.[String(grade)]) || [];
       sectionSelect.innerHTML = "";
-
-      if (includeBlank){
-        const blank = document.createElement("option");
-        blank.value = "";
-        blank.textContent = "All Sections";
-        sectionSelect.appendChild(blank);
-      }
-
-      if (!sections.length && !includeBlank){
-        const opt = document.createElement("option");
-        opt.value = "";
-        opt.textContent = "No sections found";
-        sectionSelect.appendChild(opt);
-        return;
-      }
-
-      sections.forEach(sec => {
-        const opt = document.createElement("option");
-        opt.value = sec;
-        opt.textContent = sec;
-        sectionSelect.appendChild(opt);
-      });
+      if (includeBlank){ const b = document.createElement("option"); b.value = ""; b.textContent = "All Sections"; sectionSelect.appendChild(b); }
+      if (!sections.length && !includeBlank){ const opt = document.createElement("option"); opt.value = ""; opt.textContent = "No sections found"; sectionSelect.appendChild(opt); return; }
+      sections.forEach(sec => { const opt = document.createElement("option"); opt.value = sec; opt.textContent = sec; sectionSelect.appendChild(opt); });
     }
 
     function fillRuleFormFromSelectedGrade(){
       const grade = document.getElementById("ruleGrade").value;
       const existing = latestGradeRules[String(grade)];
-
-      if (existing){
-        document.getElementById("ruleLoanDays").value = existing.loan_period_days ?? "";
-        document.getElementById("ruleBorrowLimit").value = existing.max_borrow_limit ?? "";
-        document.getElementById("ruleFinePerDay").value = existing.fine_per_day ?? "";
-        document.getElementById("ruleRenewals").value = existing.max_renewals ?? "";
-        document.getElementById("ruleBlockRenew").value = String(Boolean(existing.block_renew_if_overdue));
-      } else if (currentDefaults){
-        document.getElementById("ruleLoanDays").value = currentDefaults.loan_period_days ?? "";
-        document.getElementById("ruleBorrowLimit").value = currentDefaults.max_borrow_limit ?? "";
-        document.getElementById("ruleFinePerDay").value = currentDefaults.fine_per_day ?? "";
-        document.getElementById("ruleRenewals").value = currentDefaults.max_renewals ?? "";
-        document.getElementById("ruleBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
-      } else {
-        document.getElementById("ruleLoanDays").value = "";
-        document.getElementById("ruleBorrowLimit").value = "";
-        document.getElementById("ruleFinePerDay").value = "";
-        document.getElementById("ruleRenewals").value = "";
-        document.getElementById("ruleBlockRenew").value = "true";
-      }
+      const src = existing || currentDefaults || {};
+      document.getElementById("ruleLoanDays").value = src.loan_period_days ?? "";
+      document.getElementById("ruleBorrowLimit").value = src.max_borrow_limit ?? "";
+      document.getElementById("ruleFinePerDay").value = src.fine_per_day ?? "";
+      document.getElementById("ruleRenewals").value = src.max_renewals ?? "";
+      document.getElementById("ruleBlockRenew").value = String(Boolean(src.block_renew_if_overdue ?? true));
     }
 
     async function loadMe(){
@@ -2520,17 +2227,14 @@ async function uploadCompressedLogo(blob) {
       document.getElementById("meEmail").value = data.email || "";
       document.getElementById("meFirstName").value = data.first_name || "";
       document.getElementById("meLastName").value = data.last_name || "";
+      _currentUsername = data.username || "";
     }
 
     async function saveProfile(){
       const first_name = document.getElementById("meFirstName").value.trim();
       const last_name = document.getElementById("meLastName").value.trim();
       const email = document.getElementById("meEmail").value.trim();
-
-      await apiFetch("/api/settings/me?" + qs({ first_name, last_name, email }), {
-        method: "PUT"
-      });
-
+      await apiFetch("/api/settings/me?" + qs({ first_name, last_name, email }), { method: "PUT" });
       document.getElementById("profileStatus").textContent = "Profile updated successfully.";
       showToast("Profile updated");
       await loadMe();
@@ -2540,20 +2244,9 @@ async function uploadCompressedLogo(blob) {
       const current_password = document.getElementById("currentPassword").value;
       const new_password = document.getElementById("newPassword").value;
       const confirm_password = document.getElementById("confirmPassword").value;
-
-      if (!current_password || !new_password || !confirm_password){
-        showToast("Please complete all password fields");
-        return;
-      }
-      if (new_password !== confirm_password){
-        showToast("New passwords do not match");
-        return;
-      }
-
-      await apiFetch("/api/settings/change-password?" + qs({ current_password, new_password }), {
-        method: "POST"
-      });
-
+      if (!current_password || !new_password || !confirm_password){ showToast("Please complete all password fields"); return; }
+      if (new_password !== confirm_password){ showToast("New passwords do not match"); return; }
+      await apiFetch("/api/settings/change-password?" + qs({ current_password, new_password }), { method: "POST" });
       document.getElementById("passwordStatus").textContent = "Password changed successfully.";
       document.getElementById("currentPassword").value = "";
       document.getElementById("newPassword").value = "";
@@ -2564,7 +2257,6 @@ async function uploadCompressedLogo(blob) {
     async function loadGlobalSettings(){
       const data = await apiFetch("/api/settings/circulation");
       currentDefaults = normalizeDefaults(data);
-
       document.getElementById("viewLoanDays").textContent = currentDefaults.loan_period_days;
       document.getElementById("viewFinePerDay").textContent = fmtCurrency(currentDefaults.fine_per_day);
       document.getElementById("viewBorrowLimit").textContent = currentDefaults.max_borrow_limit;
@@ -2573,7 +2265,6 @@ async function uploadCompressedLogo(blob) {
       document.getElementById("viewDamageMajor").textContent = fmtCurrency(currentDefaults.damage_fine_major);
       document.getElementById("viewLostFine").textContent = fmtCurrency(currentDefaults.lost_book_fine);
       document.getElementById("viewBlockRenew").textContent = currentDefaults.block_renew_if_overdue ? "Yes" : "No";
-
       document.getElementById("globalLoanDays").value = currentDefaults.loan_period_days;
       document.getElementById("globalFinePerDay").value = currentDefaults.fine_per_day.toFixed(2);
       document.getElementById("globalBorrowLimit").value = currentDefaults.max_borrow_limit;
@@ -2582,31 +2273,20 @@ async function uploadCompressedLogo(blob) {
       document.getElementById("globalDamageMajor").value = currentDefaults.damage_fine_major.toFixed(2);
       document.getElementById("globalLostFine").value = currentDefaults.lost_book_fine.toFixed(2);
       document.getElementById("globalBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
-
       fillRuleFormFromSelectedGrade();
     }
 
     async function saveGlobalSettings(){
-      const loan_period_days = document.getElementById("globalLoanDays").value;
-      const fine_per_day = document.getElementById("globalFinePerDay").value;
-      const max_borrow_limit = document.getElementById("globalBorrowLimit").value;
-      const max_renewals = document.getElementById("globalRenewals").value;
-      const damage_fine_minor = document.getElementById("globalDamageMinor").value;
-      const damage_fine_major = document.getElementById("globalDamageMajor").value;
-      const lost_book_fine = document.getElementById("globalLostFine").value;
-      const block_renew_if_overdue = document.getElementById("globalBlockRenew").value;
-
       await apiFetch("/api/settings/circulation?" + qs({
-        loan_period_days,
-        fine_per_day,
-        max_borrow_limit,
-        max_renewals,
-        damage_fine_minor,
-        damage_fine_major,
-        lost_book_fine,
-        block_renew_if_overdue
+        loan_period_days: document.getElementById("globalLoanDays").value,
+        fine_per_day: document.getElementById("globalFinePerDay").value,
+        max_borrow_limit: document.getElementById("globalBorrowLimit").value,
+        max_renewals: document.getElementById("globalRenewals").value,
+        damage_fine_minor: document.getElementById("globalDamageMinor").value,
+        damage_fine_major: document.getElementById("globalDamageMajor").value,
+        lost_book_fine: document.getElementById("globalLostFine").value,
+        block_renew_if_overdue: document.getElementById("globalBlockRenew").value
       }), { method: "PUT" });
-
       document.getElementById("globalStatus").textContent = "Default configuration updated successfully.";
       showToast("Defaults updated");
       toggleDefaultEdit(false);
@@ -2616,79 +2296,125 @@ async function uploadCompressedLogo(blob) {
     async function loadGradeRules(){
       const rows = await apiFetch("/api/settings/grade-rules");
       latestGradeRules = latestRulesByGrade(Array.isArray(rows) ? rows : []);
-      const sorted = Object.values(latestGradeRules).sort((a,b) => Number(a.grade) - Number(b.grade));
+      const sorted = Object.values(latestGradeRules).sort((a,b) => {
+        const na = Number(a.grade), nb = Number(b.grade);
+        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+        return String(a.grade).localeCompare(String(b.grade));
+      });
       const tbody = document.getElementById("rulesTableBody");
-
       if (!sorted.length){
-        tbody.innerHTML = `<tr><td colspan="7">No grade rules yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:rgba(0,0,0,0.45);padding:18px;">No grade rules yet.</td></tr>`;
       } else {
-        tbody.innerHTML = sorted.map(r => `
-          <tr>
-            <td>${esc(r.grade ?? "—")}</td>
-            <td>${esc(r.loan_period_days ?? "—")}</td>
-            <td>${esc(r.fine_per_day ?? "—")}</td>
-            <td>${esc(r.max_borrow_limit ?? "—")}</td>
-            <td>${esc(r.max_renewals ?? "—")}</td>
-            <td>${esc(r.block_renew_if_overdue ? "Yes" : "No")}</td>
-            <td>${esc(fmtDateTime(r.updated_at))}</td>
-          </tr>
-        `).join("");
+        tbody.innerHTML = sorted.map(r => `<tr>
+          <td>${esc(r.grade ?? '—')}</td>
+          <td>${esc(r.loan_period_days ?? '—')}</td>
+          <td>${esc(r.fine_per_day ?? '—')}</td>
+          <td>${esc(r.max_borrow_limit ?? '—')}</td>
+          <td>${esc(r.max_renewals ?? '—')}</td>
+          <td>${esc(r.block_renew_if_overdue ? 'Yes' : 'No')}</td>
+          <td style="font-size:11px;">${esc(fmtDateTime(r.updated_at))}</td>
+          <td style="text-align:center;">
+            <button
+              class="deleteRuleBtn"
+              onclick="deleteGradeRule('${esc(r.grade ?? '')}', this)"
+              type="button"
+              title="Delete rule for Grade ${esc(r.grade ?? '')}"
+            >✕</button>
+          </td>
+        </tr>`).join("");
       }
-
       fillRuleFormFromSelectedGrade();
     }
 
     async function saveGradeRule(){
       const grade = document.getElementById("ruleGrade").value;
-      const loan_period_days = document.getElementById("ruleLoanDays").value;
-      const fine_per_day = document.getElementById("ruleFinePerDay").value;
-      const max_borrow_limit = document.getElementById("ruleBorrowLimit").value;
-      const max_renewals = document.getElementById("ruleRenewals").value;
-      const block_renew_if_overdue = document.getElementById("ruleBlockRenew").value;
-
-      if (!grade){
-        showToast("Please select a grade");
-        return;
-      }
-
-      await apiFetch("/api/settings/grade-rules?" + qs({
-        grade,
-        loan_period_days,
-        fine_per_day,
-        max_borrow_limit,
-        max_renewals,
-        block_renew_if_overdue
-      }), { method: "POST" });
-
+      if (!grade){ showToast("Please select a grade"); return; }
+      await apiFetch("/api/settings/grade-rules?" + qs({ grade, loan_period_days: document.getElementById("ruleLoanDays").value, fine_per_day: document.getElementById("ruleFinePerDay").value, max_borrow_limit: document.getElementById("ruleBorrowLimit").value, max_renewals: document.getElementById("ruleRenewals").value, block_renew_if_overdue: document.getElementById("ruleBlockRenew").value }), { method: "POST" });
       document.getElementById("ruleStatus").textContent = `Rule for ${grade} saved successfully.`;
       showToast(`Rule ${grade} saved`);
       await loadGradeRules();
     }
 
+    // ── DELETE GRADE RULE MODAL ──
+    let _deleteRuleGrade = "";
+    let _deleteRuleBtn = null;
+
+    function deleteGradeRule(grade, btn) {
+      if (!grade) return;
+      _deleteRuleGrade = grade;
+      _deleteRuleBtn = btn;
+      document.getElementById("deleteRuleGradeLabel").textContent = grade;
+      document.getElementById("deleteRuleGradeLabel2").textContent = grade;
+      document.getElementById("deleteRuleStatus").textContent = "";
+      setDeleteRuleLoading(false);
+      document.getElementById("deleteRuleModal").classList.add("show");
+    }
+
+    function closeDeleteRuleModal() {
+      document.getElementById("deleteRuleModal").classList.remove("show");
+      _deleteRuleGrade = "";
+      _deleteRuleBtn = null;
+    }
+
+    function setDeleteRuleLoading(on) {
+      const btn = document.getElementById("confirmDeleteRuleBtn");
+      const cancelBtn = document.getElementById("cancelDeleteRuleBtn");
+      const dotsWrap = document.getElementById("deleteRuleDots");
+      const btnText = document.getElementById("deleteRuleBtnText");
+
+      btn.disabled = on;
+      cancelBtn.disabled = on;
+      dotsWrap.style.display = on ? "flex" : "none";
+      btnText.textContent = on ? "Deleting…" : "Yes, Delete Rule";
+    }
+
+    document.getElementById("cancelDeleteRuleBtn").addEventListener("click", closeDeleteRuleModal);
+
+    document.getElementById("deleteRuleModal").addEventListener("click", (e) => {
+      if (e.target === document.getElementById("deleteRuleModal")) closeDeleteRuleModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.getElementById("deleteRuleModal").classList.contains("show")) {
+        closeDeleteRuleModal();
+      }
+    });
+
+    document.getElementById("confirmDeleteRuleBtn").addEventListener("click", async () => {
+      if (!_deleteRuleGrade) return;
+      const statusEl = document.getElementById("deleteRuleStatus");
+      statusEl.textContent = "";
+      setDeleteRuleLoading(true);
+
+      try {
+        await apiFetch("/api/settings/grade-rules?" + qs({ grade: _deleteRuleGrade }), { method: "DELETE" });
+        closeDeleteRuleModal();
+        showToast(`Grade ${_deleteRuleGrade} rule deleted`);
+        await loadGradeRules();
+      } catch(err) {
+        statusEl.textContent = err.message || "Delete failed. Please try again.";
+        setDeleteRuleLoading(false);
+        if (_deleteRuleBtn) {
+          _deleteRuleBtn.disabled = false;
+          _deleteRuleBtn.textContent = "✕";
+        }
+      }
+    });
+
     async function loadStudentOptions(){
       let data = null;
-
-      try{
-        data = await apiFetch("/api/students/meta");
-      }catch(err){
-        data = { grades: ["7","8","9","10","11","12"], sections_by_grade: {} };
-      }
-
+      try { data = await apiFetch("/api/students/meta"); } catch { data = { grades: ["7","8","9","10","11","12"], sections_by_grade: {} }; }
       studentMeta = {
-        grades: Array.isArray(data?.grades) ? data.grades.map(v => String(v).trim()) : ["7","8","9","10","11","12"],
-        sections_by_grade: data?.sections_by_grade || data?.sections || {}
+        grades: sortGradesNumeric(Array.isArray(data?.grades) ? data.grades.map(v => String(v).trim()) : ["7","8","9","10","11","12"]),
+        sections_by_grade: data?.sections_by_grade || {}
       };
-
       buildGradeSelect(document.getElementById("ruleGrade"), false);
       buildGradeSelect(document.getElementById("promoteFromGrade"), false);
       buildGradeSelect(document.getElementById("graduateGrade"), false);
-
       const gradSelect = document.getElementById("graduateGrade");
       gradSelect.value = studentMeta.grades.includes("12") ? "12" : (studentMeta.grades[0] || "12");
-
       syncSectionsForGrade("promoteFromGrade", "promoteFromSection", false);
       syncSectionsForGrade("graduateGrade", "graduateSection", true);
-
       fillRuleFormFromSelectedGrade();
     }
 
@@ -2696,28 +2422,12 @@ async function uploadCompressedLogo(blob) {
       const from_grade = document.getElementById("promoteFromGrade").value.trim();
       const from_section = document.getElementById("promoteFromSection").value.trim();
       const to_grade = document.getElementById("promoteToGrade").value.trim();
-      const to_section = document.getElementById("promoteToSection").value.trim();
-
-      if (!from_grade || !to_grade){
-        showToast("Please complete the promotion fields");
-        return;
-      }
-
-      const data = await apiFetch("/api/students/bulk-promote?" + qs({
-        from_grade,
-        to_grade,
-        only_status: "active"
-      }), { method: "POST" });
-
+      if (!from_grade || !to_grade){ showToast("Please complete the promotion fields"); return; }
+      const data = await apiFetch("/api/students/bulk-promote?" + qs({ from_grade, to_grade, only_status: "active" }), { method: "POST" });
       document.getElementById("promoteStatus").textContent = "Promotion completed.";
-
       const success = document.getElementById("promoteSuccess");
-      let extra = "";
-      if (from_section) extra += ` from section ${from_section}`;
-      if (to_section) extra += ` to section ${to_section}`;
-      success.textContent = `${data?.updated_count ?? 0} student(s) promoted from ${from_grade}${extra ? extra : ""} to ${to_grade}.`;
+      success.textContent = `${data?.updated_count ?? 0} student(s) promoted from ${from_grade}${from_section ? " ("+from_section+")" : ""} to ${to_grade}.`;
       success.classList.add("show");
-
       showToast("Students promoted");
       document.getElementById("promoteToGrade").value = "";
       document.getElementById("promoteToSection").value = "";
@@ -2727,50 +2437,25 @@ async function uploadCompressedLogo(blob) {
     async function graduateStudents(){
       const grade = document.getElementById("graduateGrade").value.trim();
       const section = document.getElementById("graduateSection").value.trim();
-
-      if (!grade){
-        showToast("Please select a grade");
-        return;
-      }
-
-      const data = await apiFetch("/api/students/bulk-status?" + qs({
-        from_status: "active",
-        to_status: "graduated",
-        grade,
-        section
-      }), { method: "POST" });
-
+      if (!grade){ showToast("Please select a grade"); return; }
+      const data = await apiFetch("/api/students/bulk-status?" + qs({ from_status: "active", to_status: "graduated", grade, section }), { method: "POST" });
       document.getElementById("graduateStatus").textContent = "Graduation update completed.";
-
       const success = document.getElementById("graduateSuccess");
       success.textContent = `${data?.updated_count ?? 0} student(s) marked as graduated.`;
       success.classList.add("show");
-
       showToast("Students graduated");
       await loadStudentOptions();
     }
 
     async function loadLibrarians(){
-      try{
+      try {
         const rows = await apiFetch("/api/settings/librarians");
         const tbody = document.getElementById("librariansTableBody");
-
-        if (!Array.isArray(rows) || !rows.length){
-          tbody.innerHTML = `<tr><td colspan="4">No librarian accounts found.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = rows.map(r => `
-          <tr>
-            <td>${esc(r.username ?? "—")}</td>
-            <td>${esc([r.first_name, r.last_name].filter(Boolean).join(" ") || "—")}</td>
-            <td>${esc(r.email ?? "—")}</td>
-            <td>${esc(r.is_active === false ? "Inactive" : "Active")}</td>
-          </tr>
-        `).join("");
-      }catch(err){
-        document.getElementById("librariansTableBody").innerHTML = `<tr><td colspan="4">Unable to load librarians.</td></tr>`;
-      }
+        if (!Array.isArray(rows) || !rows.length){ tbody.innerHTML = `<tr><td colspan="4">No librarian accounts found.</td></tr>`; return; }
+        const active = rows.filter(r => r.is_active !== false);
+        if (!active.length){ tbody.innerHTML = `<tr><td colspan="4">No active librarian accounts found.</td></tr>`; return; }
+        tbody.innerHTML = active.map(r => `<tr><td>${esc(r.username??'—')}</td><td>${esc([r.first_name,r.last_name].filter(Boolean).join(" ")||'—')}</td><td>${esc(r.email??'—')}</td><td>Active</td></tr>`).join("");
+      } catch { document.getElementById("librariansTableBody").innerHTML = `<tr><td colspan="4">Unable to load librarians.</td></tr>`; }
     }
 
     async function createLibrarian(){
@@ -2779,31 +2464,15 @@ async function uploadCompressedLogo(blob) {
       const first_name = document.getElementById("newLibFirst").value.trim();
       const last_name = document.getElementById("newLibLast").value.trim();
       const password = document.getElementById("newLibPassword").value;
-
-      if (!username || !email || !password){
-        showToast("Username, email, and password are required");
-        return;
-      }
-
-      await apiFetch("/api/settings/librarians/create?" + qs({
-        username,
-        email,
-        first_name,
-        last_name,
-        password
-      }), { method: "POST" });
-
+      if (!username || !email || !password){ showToast("Username, email, and password are required"); return; }
+      await apiFetch("/api/settings/librarians/create?" + qs({ username, email, first_name, last_name, password }), { method: "POST" });
       document.getElementById("createLibStatus").textContent = "Librarian profile created successfully.";
-      document.getElementById("newLibUsername").value = "";
-      document.getElementById("newLibEmail").value = "";
-      document.getElementById("newLibFirst").value = "";
-      document.getElementById("newLibLast").value = "";
-      document.getElementById("newLibPassword").value = "";
-
+      ["newLibUsername","newLibEmail","newLibFirst","newLibLast","newLibPassword"].forEach(id => { document.getElementById(id).value = ""; });
       showToast("Librarian created");
       await loadLibrarians();
     }
 
+    // ── Display Settings ──
     function normalizeDisplaySettings(row){
       return {
         school_name: row?.school_name || "Your School Name",
@@ -2814,7 +2483,7 @@ async function uploadCompressedLogo(blob) {
         brand_secondary: row?.brand_secondary || "#94a3b8",
         logo_url: row?.logo_url || "",
         footer_title: row?.footer_title || "Library Management System",
-        footer_description: row?.footer_description || "Customize your school branding, contact details, and interface appearance in Display Settings.",
+        footer_description: row?.footer_description || "Customize your school branding.",
         footer_address: row?.footer_address || "",
         footer_phone: row?.footer_phone || "",
         footer_email: row?.footer_email || "",
@@ -2825,26 +2494,9 @@ async function uploadCompressedLogo(blob) {
     }
 
     function setDisplayInputsDisabled(disabled){
-      [
-        "displaySchoolName",
-        "displayHeaderSubtitle",
-        "displayBrandPrimaryPicker",
-        "displayBrandPrimary",
-        "displayBrandSecondaryPicker",
-        "displayBrandSecondary",
-        "displayFooterTitle",
-        "displayFooterDescription",
-        "displayFooterAddress",
-        "displayFooterPhone",
-        "displayFooterEmail",
-        "displayFooterWebsite",
-        "displayFooterFacebook",
-        "displayFooterCopyright"
-      ].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.disabled = disabled;
+      ["displaySchoolName","displayHeaderSubtitle","displayBrandPrimaryPicker","displayBrandPrimary","displayBrandSecondaryPicker","displayBrandSecondary","displayFooterTitle","displayFooterDescription","displayFooterAddress","displayFooterPhone","displayFooterEmail","displayFooterWebsite","displayFooterFacebook","displayFooterCopyright"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.disabled = disabled;
       });
-
       document.getElementById("displayLogoUploadBtn").disabled = disabled;
     }
 
@@ -2855,13 +2507,8 @@ async function uploadCompressedLogo(blob) {
       document.getElementById("editDisplayBtn").textContent = editing ? "Editing..." : "Edit";
       document.getElementById("editDisplayBtn").disabled = editing;
       const card = document.getElementById("displaySettingsCard");
-      if (editing) {
-        card.classList.add("is-editing");
-        document.getElementById("displayStateText").textContent = "Edit mode";
-      } else {
-        card.classList.remove("is-editing");
-        document.getElementById("displayStateText").textContent = "View mode";
-      }
+      if (editing){ card.classList.add("is-editing"); document.getElementById("displayStateText").textContent = "Edit mode"; }
+      else { card.classList.remove("is-editing"); document.getElementById("displayStateText").textContent = "View mode"; }
     }
 
     function setDisplayForm(data){
@@ -2879,9 +2526,7 @@ async function uploadCompressedLogo(blob) {
       document.getElementById("displayFooterWebsite").value = data.footer_website;
       document.getElementById("displayFooterFacebook").value = data.footer_facebook;
       document.getElementById("displayFooterCopyright").value = data.footer_copyright;
-      
-      // Logo display
-      if (data.logo_url) {
+      if (data.logo_url){
         document.getElementById("logoThumbWrap").classList.add("show");
         document.getElementById("logoThumbImg").src = data.logo_url;
         document.getElementById("logoThumbLink").href = data.logo_url;
@@ -2913,12 +2558,7 @@ async function uploadCompressedLogo(blob) {
     function applyDisplayPreview(data){
       const iframe = document.getElementById("indexPreview");
       if (!iframe) return;
-
-      // Send live update into the iframe via postMessage — no reload needed
-      iframe.contentWindow.postMessage({
-        type: "DISPLAY_PREVIEW_UPDATE",
-        data: data
-      }, "*");
+      iframe.contentWindow.postMessage({ type: "DISPLAY_PREVIEW_UPDATE", data }, "*");
     }
 
     async function loadDisplaySettings(){
@@ -2927,103 +2567,37 @@ async function uploadCompressedLogo(blob) {
       pendingLogoData = "";
       setDisplayForm(currentDisplaySettings);
       setDisplayEditMode(false);
-
-      // Send initial data once iframe has loaded
       const iframe = document.getElementById("indexPreview");
-      if (iframe) {
-        const sendInitial = () => {
-          iframe.contentWindow.postMessage({
-            type: "DISPLAY_PREVIEW_UPDATE",
-            data: currentDisplaySettings
-          }, "*");
-        };
-        if (iframe.contentDocument && iframe.contentDocument.readyState === "complete") {
-          sendInitial();
-        } else {
-          iframe.addEventListener("load", sendInitial, { once: true });
-        }
+      if (iframe){
+        const sendInitial = () => iframe.contentWindow.postMessage({ type: "DISPLAY_PREVIEW_UPDATE", data: currentDisplaySettings }, "*");
+        if (iframe.contentDocument?.readyState === "complete") sendInitial();
+        else iframe.addEventListener("load", sendInitial, { once: true });
       }
     }
 
     async function saveDisplaySettings(){
       const payload = getDisplayFormData();
-
-      
-
       document.getElementById("loadingModal").classList.add("show");
-
       try {
-        const result = await apiFetch("/api/settings/display", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
+        const result = await apiFetch("/api/settings/display", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         await new Promise(resolve => setTimeout(resolve, 1200));
-
-        if (result && result.settings) {
-          if (window.saveBrandingCache) {
-            window.saveBrandingCache(result.settings);
-          }
-
-          if (window.applyBranding) {
-            window.applyBranding(result.settings);
-          }
+        if (result?.settings){
+          if (window.saveBrandingCache) window.saveBrandingCache(result.settings);
+          if (window.applyBranding) window.applyBranding(result.settings);
         }
-
         document.getElementById("displayStatus").textContent = "Display settings updated successfully.";
         showToast("Display settings saved");
         await loadDisplaySettings();
-      } finally {
-        document.getElementById("loadingModal").classList.remove("show");
-      }
+      } finally { document.getElementById("loadingModal").classList.remove("show"); }
     }
 
-    function previewDisplaySettings(){
-      const payload = normalizeDisplaySettings(getDisplayFormData());
-      applyDisplayPreview(payload);
-    }
+    function previewDisplaySettings(){ applyDisplayPreview(normalizeDisplaySettings(getDisplayFormData())); }
 
-    document.getElementById("reloadMeBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await loadMe();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Reload failed");
-      }
-    });
-
-    document.getElementById("saveProfileBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await saveProfile();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Profile save failed");
-      }
-    });
-
-    document.getElementById("changePasswordBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await changePassword();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Password change failed");
-      }
-    });
-
-    document.getElementById("editDefaultsBtn").addEventListener("click", () => {
-      toggleDefaultEdit(true);
-    });
-
+    // ── Event Listeners ──
+    document.getElementById("reloadMeBtn").addEventListener("click", async () => { try { setProgress(true,20); await loadMe(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Reload failed"); } });
+    document.getElementById("saveProfileBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveProfile(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Profile save failed"); } });
+    document.getElementById("changePasswordBtn").addEventListener("click", async () => { try { setProgress(true,20); await changePassword(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Password change failed"); } });
+    document.getElementById("editDefaultsBtn").addEventListener("click", () => toggleDefaultEdit(true));
     document.getElementById("cancelDefaultsBtn").addEventListener("click", () => {
       toggleDefaultEdit(false);
       if (currentDefaults){
@@ -3037,259 +2611,70 @@ async function uploadCompressedLogo(blob) {
         document.getElementById("globalBlockRenew").value = String(Boolean(currentDefaults.block_renew_if_overdue));
       }
     });
-
-    document.getElementById("saveGlobalBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await saveGlobalSettings();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Saving defaults failed");
-      }
-    });
-
+    document.getElementById("saveGlobalBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveGlobalSettings(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Saving defaults failed"); } });
     document.getElementById("ruleGrade").addEventListener("change", fillRuleFormFromSelectedGrade);
+    document.getElementById("saveRuleBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveGradeRule(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Saving grade rule failed"); } });
+    document.getElementById("promoteFromGrade").addEventListener("change", () => syncSectionsForGrade("promoteFromGrade","promoteFromSection",false));
+    document.getElementById("graduateGrade").addEventListener("change", () => syncSectionsForGrade("graduateGrade","graduateSection",true));
+    document.getElementById("promoteBtn").addEventListener("click", async () => { try { setProgress(true,20); await promoteStudents(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Promotion failed"); } });
+    document.getElementById("graduateBtn").addEventListener("click", async () => { try { setProgress(true,20); await graduateStudents(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Graduation update failed"); } });
+    document.getElementById("createLibBtn").addEventListener("click", async () => { try { setProgress(true,20); await createLibrarian(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Creating librarian failed"); } });
+    document.getElementById("reloadDisplayBtn").addEventListener("click", async () => { try { setProgress(true,20); await loadDisplaySettings(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Reload display settings failed"); } });
+    document.getElementById("editDisplayBtn").addEventListener("click", () => { setDisplayEditMode(true); document.getElementById("displayStatus").textContent = "Editing enabled. Input fields are now highlighted."; });
+    document.getElementById("cancelDisplayBtn").addEventListener("click", () => { pendingLogoData = null; pendingLogoFileUrl = null; if (currentDisplaySettings){ setDisplayForm(currentDisplaySettings); applyDisplayPreview(currentDisplaySettings); } setDisplayEditMode(false); document.getElementById("displayStatus").textContent = "Changes discarded."; });
+    document.getElementById("previewDisplayBtn").addEventListener("click", () => { previewDisplaySettings(); showToast("Preview updated"); });
+    document.getElementById("saveDisplayBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveDisplaySettings(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Saving display settings failed"); } });
 
-    document.getElementById("saveRuleBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await saveGradeRule();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Saving grade rule failed");
-      }
-    });
+    document.getElementById("displayBrandPrimaryPicker").addEventListener("input", (e) => { document.getElementById("displayBrandPrimary").value = e.target.value; if (displayEditing) previewDisplaySettings(); });
+    document.getElementById("displayBrandSecondaryPicker").addEventListener("input", (e) => { document.getElementById("displayBrandSecondary").value = e.target.value; if (displayEditing) previewDisplaySettings(); });
+    document.getElementById("displayBrandPrimary").addEventListener("input", (e) => { const v = e.target.value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById("displayBrandPrimaryPicker").value = v; if (displayEditing) previewDisplaySettings(); });
+    document.getElementById("displayBrandSecondary").addEventListener("input", (e) => { const v = e.target.value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById("displayBrandSecondaryPicker").value = v; if (displayEditing) previewDisplaySettings(); });
 
-    document.getElementById("promoteFromGrade").addEventListener("change", () => {
-      syncSectionsForGrade("promoteFromGrade", "promoteFromSection", false);
-    });
-
-    document.getElementById("graduateGrade").addEventListener("change", () => {
-      syncSectionsForGrade("graduateGrade", "graduateSection", true);
-    });
-
-    document.getElementById("promoteBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await promoteStudents();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Promotion failed");
-      }
-    });
-
-    document.getElementById("graduateBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await graduateStudents();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Graduation update failed");
-      }
-    });
-
-    document.getElementById("createLibBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await createLibrarian();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Creating librarian failed");
-      }
-    });
-
-    document.getElementById("reloadDisplayBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await loadDisplaySettings();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Reload display settings failed");
-      }
-    });
-
-    document.getElementById("editDisplayBtn").addEventListener("click", () => {
-      setDisplayEditMode(true);
-      document.getElementById("displayStatus").textContent = "Editing enabled. Input fields are now highlighted.";
-    });
-
-    document.getElementById("cancelDisplayBtn").addEventListener("click", () => {
-      
-      pendingLogoData = null;
-      pendingLogoFileUrl = null;
-      if (currentDisplaySettings){
-        setDisplayForm(currentDisplaySettings);
-        applyDisplayPreview(currentDisplaySettings);
-      }
-      setDisplayEditMode(false);
-      document.getElementById("displayStatus").textContent = "Changes discarded.";
-    });
-
-    document.getElementById("previewDisplayBtn").addEventListener("click", () => {
-      previewDisplaySettings();
-      showToast("Preview updated");
-    });
-
-    document.getElementById("saveDisplayBtn").addEventListener("click", async () => {
-      try{
-        setProgress(true, 20);
-        await saveDisplaySettings();
-        setProgress(true, 100);
-        setTimeout(() => setProgress(false), 180);
-      }catch(err){
-        setProgress(false);
-        showToast(err.message || "Saving display settings failed");
-      }
-    });
-
-    document.getElementById("displayBrandPrimaryPicker").addEventListener("input", (e) => {
-      document.getElementById("displayBrandPrimary").value = e.target.value;
-      if (displayEditing) previewDisplaySettings();
-    });
-
-    document.getElementById("displayBrandSecondaryPicker").addEventListener("input", (e) => {
-      document.getElementById("displayBrandSecondary").value = e.target.value;
-      if (displayEditing) previewDisplaySettings();
-    });
-
-    document.getElementById("displayBrandPrimary").addEventListener("input", (e) => {
-      const v = e.target.value.trim();
-      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-        document.getElementById("displayBrandPrimaryPicker").value = v;
-      }
-      if (displayEditing) previewDisplaySettings();
-    });
-
-    document.getElementById("displayBrandSecondary").addEventListener("input", (e) => {
-      const v = e.target.value.trim();
-      if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-        document.getElementById("displayBrandSecondaryPicker").value = v;
-      }
-      if (displayEditing) previewDisplaySettings();
-    });
-
-    document.getElementById("displayLogoUploadBtn").addEventListener("click", () => {
-      if (!displayEditing) return;
-      document.getElementById("displayLogoFile").click();
-    });
-
-    document.getElementById("logoDeleteBtn").addEventListener("click", () => {
-  if (!displayEditing) return;
-
-  pendingLogoData = "";
-  pendingLogoFileUrl = "";
-  document.getElementById("displayLogoFile").value = "";
-  document.getElementById("logoThumbWrap").classList.remove("show");
-  document.getElementById("displayLogoMeta").textContent = "No new logo selected";
-
-  previewDisplaySettings();
-});
-
-    document.getElementById("logoThumbLink").addEventListener("click", (e) => {
-      e.preventDefault();
-      const img = document.getElementById("logoThumbImg").src;
-      document.getElementById("logoImageModalImg").src = img;
-      document.getElementById("logoImageModal").classList.add("show");
-    });
-
-    document.getElementById("logoImageModalClose").addEventListener("click", () => {
-      document.getElementById("logoImageModal").classList.remove("show");
-    });
-
-    document.getElementById("logoImageModal").addEventListener("click", (e) => {
-      if (e.target === document.getElementById("logoImageModal")) {
-        document.getElementById("logoImageModal").classList.remove("show");
-      }
-    });
+    document.getElementById("displayLogoUploadBtn").addEventListener("click", () => { if (!displayEditing) return; document.getElementById("displayLogoFile").click(); });
+    document.getElementById("logoDeleteBtn").addEventListener("click", () => { if (!displayEditing) return; pendingLogoData = ""; pendingLogoFileUrl = ""; document.getElementById("displayLogoFile").value = ""; document.getElementById("logoThumbWrap").classList.remove("show"); document.getElementById("displayLogoMeta").textContent = "No new logo selected"; previewDisplaySettings(); });
+    document.getElementById("logoThumbLink").addEventListener("click", (e) => { e.preventDefault(); document.getElementById("logoImageModalImg").src = document.getElementById("logoThumbImg").src; document.getElementById("logoImageModal").classList.add("show"); });
+    document.getElementById("logoImageModalClose").addEventListener("click", () => document.getElementById("logoImageModal").classList.remove("show"));
+    document.getElementById("logoImageModal").addEventListener("click", (e) => { if (e.target === document.getElementById("logoImageModal")) document.getElementById("logoImageModal").classList.remove("show"); });
 
     document.getElementById("displayLogoFile").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  try {
-    document.getElementById("displayLogoMeta").textContent = `Compressing ${file.name}...`;
-
-    const compressedBlob = await compressLogoFile(file);
-    const previewUrl = URL.createObjectURL(compressedBlob);
-
-    const logoThumbImg = document.getElementById("logoThumbImg");
-    logoThumbImg.src = previewUrl;
-
-    document.getElementById("logoThumbWrap").classList.add("show");
-
-    document.getElementById("displayLogoMeta").textContent =
-      `Uploading compressed logo (${Math.round(compressedBlob.size / 1024)} KB)...`;
-
-    const uploadedLogoUrl = await uploadCompressedLogo(compressedBlob);
-    const absoluteLogoUrl = uploadedLogoUrl.startsWith("http")
-      ? uploadedLogoUrl
-      : `${API_ORIGIN}${uploadedLogoUrl}`;
-
-    pendingLogoData = previewUrl;
-    pendingLogoFileUrl = absoluteLogoUrl;
-
-    document.getElementById("logoThumbLink").href = absoluteLogoUrl;
-
-    document.getElementById("displayLogoMeta").textContent =
-      `${file.name} uploaded (${Math.round(compressedBlob.size / 1024)} KB)`;
-
-    previewDisplaySettings();
-  } catch (err) {
-    console.error(err);
-    pendingLogoData = null;
-    pendingLogoFileUrl = null;
-    document.getElementById("displayLogoMeta").textContent = "Failed to upload logo";
-    showToast(err.message || "Failed to upload logo");
-  }
-});
-
-    [
-      "displaySchoolName",
-      "displayHeaderSubtitle",
-      "displayFooterTitle",
-      "displayFooterDescription",
-      "displayFooterAddress",
-      "displayFooterPhone",
-      "displayFooterEmail",
-      "displayFooterWebsite",
-      "displayFooterFacebook",
-      "displayFooterCopyright"
-    ].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener("input", () => {
-        if (displayEditing) previewDisplaySettings();
-      });
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        document.getElementById("displayLogoMeta").textContent = `Compressing ${file.name}...`;
+        const compressedBlob = await compressLogoFile(file);
+        const previewUrl = URL.createObjectURL(compressedBlob);
+        document.getElementById("logoThumbImg").src = previewUrl;
+        document.getElementById("logoThumbWrap").classList.add("show");
+        document.getElementById("displayLogoMeta").textContent = `Uploading compressed logo (${Math.round(compressedBlob.size/1024)} KB)...`;
+        const uploadedLogoUrl = await uploadCompressedLogo(compressedBlob);
+        const absoluteLogoUrl = uploadedLogoUrl.startsWith("http") ? uploadedLogoUrl : `${API_ORIGIN}${uploadedLogoUrl}`;
+        pendingLogoData = previewUrl;
+        pendingLogoFileUrl = absoluteLogoUrl;
+        document.getElementById("logoThumbLink").href = absoluteLogoUrl;
+        document.getElementById("displayLogoMeta").textContent = `${file.name} uploaded (${Math.round(compressedBlob.size/1024)} KB)`;
+        previewDisplaySettings();
+      } catch(err) {
+        console.error(err);
+        pendingLogoData = null; pendingLogoFileUrl = null;
+        document.getElementById("displayLogoMeta").textContent = "Failed to upload logo";
+        showToast(err.message || "Failed to upload logo");
+      }
     });
 
+    ["displaySchoolName","displayHeaderSubtitle","displayFooterTitle","displayFooterDescription","displayFooterAddress","displayFooterPhone","displayFooterEmail","displayFooterWebsite","displayFooterFacebook","displayFooterCopyright"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", () => { if (displayEditing) previewDisplaySettings(); });
+    });
+
+    // ── Init ──
     async function init(){
-      try{
+      try {
         setProgress(true, 15);
-
-        await Promise.allSettled([
-          loadMe(),
-          loadGlobalSettings(),
-          loadGradeRules(),
-          loadStudentOptions(),
-          loadLibrarians(),
-          loadDisplaySettings()
-        ]);
-
+        await Promise.allSettled([loadMe(), loadGlobalSettings(), loadGradeRules(), loadStudentOptions(), loadLibrarians(), loadDisplaySettings()]);
         setProgress(true, 100);
         setTimeout(() => setProgress(false), 200);
-      }catch(err){
+      } catch(err) {
         setProgress(false);
         showToast(err.message || "Initialization failed");
       }

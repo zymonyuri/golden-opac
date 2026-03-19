@@ -6847,3 +6847,85 @@ def export_typed_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+# ─────────────────────────────────────────────────────────────
+# SETTINGS: DELETE OWN LIBRARIAN PROFILE (Librarian Only)
+# ─────────────────────────────────────────────────────────────
+@app.delete("/api/settings/me")
+def delete_my_profile(
+    password: str,
+    current=Depends(get_current_librarian),
+):
+    """
+    Permanently deletes the currently logged-in librarian account.
+
+    Security:
+      - Requires current password confirmation before deletion.
+      - After deletion the token is worthless; client must log out.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # 1) Re-verify password before any destructive action
+        cur.execute(
+            "SELECT password_hash FROM librarian WHERE librarian_id = %s",
+            (current["librarian_id"],),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Account not found")
+
+        if not verify_password(password, row["password_hash"]):
+            raise HTTPException(status_code=400, detail="Incorrect password")
+
+        # 2) Prevent deletion if this is the only active librarian account
+        cur.execute(
+            "SELECT COUNT(*) AS cnt FROM librarian WHERE is_active = TRUE"
+        )
+        cnt = int(cur.fetchone()["cnt"] or 0)
+        if cnt <= 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete the only active librarian account. Create another account first.",
+            )
+
+        # 3) Soft-delete: deactivate + anonymise (safer than hard DELETE)
+        cur.execute(
+            """
+            UPDATE librarian
+            SET is_active = FALSE,
+                username   = 'deleted_' || librarian_id::text,
+                email      = 'deleted_' || librarian_id::text || '@deleted.invalid',
+                password_hash = ''
+            WHERE librarian_id = %s
+            """,
+            (current["librarian_id"],),
+        )
+
+        conn.commit()
+        return {"message": "Account deleted successfully"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete account failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.delete("/api/settings/grade-rules")
+def delete_grade_rule(grade: str, current=Depends(get_current_librarian)):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("DELETE FROM grade_rule WHERE grade = %s", (grade.strip(),))
+        conn.commit()
+        return {"message": f"Grade {grade} rule(s) deleted"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
