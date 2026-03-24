@@ -106,6 +106,35 @@ UPLOADS_DIR = BASE_DIR / "uploads"
 BRANDING_UPLOADS_DIR = UPLOADS_DIR / "branding"
 BRANDING_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
+# ── School Year Helper ──────────────────────────────────────────
+from datetime import date as _date
+
+from datetime import date as _date
+
+def get_active_school_year(conn) -> str:
+    """
+    Returns the active school year string (e.g. '2025-2026').
+    Reads from system_settings.school_year first;
+    falls back to auto-generating from the current date.
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT school_year
+                FROM system_settings
+                ORDER BY settings_id ASC
+                LIMIT 1
+            """)
+            row = cur.fetchone()
+            if row and row.get("school_year") and str(row["school_year"]).strip():
+                return str(row["school_year"]).strip()
+    except Exception:
+        pass
+
+    today = _date.today()
+    y = today.year
+    return f"{y}-{y + 1}" if today.month >= 6 else f"{y - 1}-{y}"
+
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 @app.get("/api/public/display")
@@ -1804,13 +1833,36 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
             )
 
         # --- 5) Create loan with due_at based on grade rule ---
+        # --- 5) Create loan with due_at based on grade rule ---
+        active_school_year = get_active_school_year(conn)
+        # --- 5) Create loan with due_at based on grade rule ---
+        school_year = get_active_school_year(conn)
+
         cur.execute(
             """
-            INSERT INTO loan (student_id, copy_id, processed_by, borrowed_at, due_at, status, renew_count)
-            VALUES (%s, %s, %s, NOW(), NOW() + (%s || ' days')::interval, 'borrowed', 0)
-            RETURNING loan_id, borrowed_at, due_at
+            INSERT INTO loan (
+                student_id,
+                copy_id,
+                processed_by,
+                borrowed_at,
+                due_at,
+                status,
+                renew_count,
+                school_year
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                NOW(),
+                NOW() + (%s || ' days')::interval,
+                'borrowed',
+                0,
+                %s
+            )
+            RETURNING loan_id, borrowed_at, due_at, school_year
             """,
-            (student_id, copy_id, librarian_id, loan_period_days),
+            (student_id, copy_id, librarian_id, loan_period_days, school_year),
         )
         loan_row = cur.fetchone()
 
@@ -1835,6 +1887,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
                 "book_id": book_id,
                 "borrowed_at": str(loan_row["borrowed_at"]),
                 "due_at": str(loan_row["due_at"]),
+                "school_year": loan_row["school_year"],
                 "status": "borrowed",
             },
             "student": {
@@ -2292,30 +2345,67 @@ from datetime import datetime, timedelta
 @app.get("/api/reports/dashboard")
 def reports_dashboard(
     period: str = Query("monthly"),
+    school_year: str | None = Query(default=None),
     current=Depends(get_current_librarian),
 ):
     conn = get_connection()
     cur = conn.cursor()
     try:
         period = (period or "monthly").strip().lower()
+        school_year = (school_year or "").strip() or None
         now = datetime.now()
+
+        trend_params = []
+        trend_where = []
+        loan_scope_where = []
+        loan_scope_params = []
+
+        if school_year:
+            trend_where.append("COALESCE(TRIM(l.school_year), '') = %s")
+            trend_params.append(school_year)
+            loan_scope_where.append("COALESCE(TRIM(l.school_year), '') = %s")
+            loan_scope_params.append(school_year)
 
         if period == "daily":
             range_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            trend_where.append("l.borrowed_at >= %s")
+            trend_params.append(range_start)
+            loan_scope_where.append("l.borrowed_at >= %s")
+            loan_scope_params.append(range_start)
             trend_sql_label = "TO_CHAR(DATE(l.borrowed_at), 'Mon DD')"
             trend_group_sql = "DATE(l.borrowed_at)"
+
         elif period == "weekly":
-            range_start = now - timedelta(days=6)
-            range_start = range_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            range_start = (now - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+            trend_where.append("l.borrowed_at >= %s")
+            trend_params.append(range_start)
+            loan_scope_where.append("l.borrowed_at >= %s")
+            loan_scope_params.append(range_start)
             trend_sql_label = "TO_CHAR(DATE(l.borrowed_at), 'Mon DD')"
             trend_group_sql = "DATE(l.borrowed_at)"
+
+        elif period == "yearly":
+            range_start = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            trend_where.append("l.borrowed_at >= %s")
+            trend_params.append(range_start)
+            loan_scope_where.append("l.borrowed_at >= %s")
+            loan_scope_params.append(range_start)
+            trend_sql_label = "TO_CHAR(DATE_TRUNC('month', l.borrowed_at), 'Mon YYYY')"
+            trend_group_sql = "DATE_TRUNC('month', l.borrowed_at)"
+
         else:
             period = "monthly"
             range_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            trend_sql_label = "TO_CHAR(DATE_TRUNC('week', l.borrowed_at), 'Mon DD')"
-            trend_group_sql = "DATE_TRUNC('week', l.borrowed_at)"
+            trend_where.append("l.borrowed_at >= %s")
+            trend_params.append(range_start)
+            loan_scope_where.append("l.borrowed_at >= %s")
+            loan_scope_params.append(range_start)
+            trend_sql_label = "TO_CHAR(DATE(l.borrowed_at), 'Mon DD')"
+            trend_group_sql = "DATE(l.borrowed_at)"
 
-        # Totals
+        trend_where_sql = " AND ".join(trend_where) if trend_where else "TRUE"
+        loan_scope_sql = " AND ".join(loan_scope_where) if loan_scope_where else "TRUE"
+
         cur.execute("SELECT COUNT(*) AS total_books FROM book")
         total_books = cur.fetchone()["total_books"]
 
@@ -2325,22 +2415,59 @@ def reports_dashboard(
         cur.execute("SELECT COUNT(*) AS total_students FROM student")
         total_students = cur.fetchone()["total_students"]
 
-        cur.execute("SELECT COUNT(*) AS active_loans FROM loan WHERE returned_at IS NULL")
+        active_loans_where = ["returned_at IS NULL"]
+        active_loans_params = []
+        if school_year:
+            active_loans_where.append("COALESCE(TRIM(school_year), '') = %s")
+            active_loans_params.append(school_year)
+
+        cur.execute(
+            f"""
+            SELECT COUNT(*) AS active_loans
+            FROM loan
+            WHERE {" AND ".join(active_loans_where)}
+            """,
+            tuple(active_loans_params),
+        )
         active_loans = cur.fetchone()["active_loans"]
 
-        cur.execute("SELECT COUNT(*) AS overdue_loans FROM loan WHERE returned_at IS NULL AND due_at < NOW()")
+        overdue_where = ["returned_at IS NULL", "due_at < NOW()"]
+        overdue_params = []
+        if school_year:
+            overdue_where.append("COALESCE(TRIM(school_year), '') = %s")
+            overdue_params.append(school_year)
+
+        cur.execute(
+            f"""
+            SELECT COUNT(*) AS overdue_loans
+            FROM loan
+            WHERE {" AND ".join(overdue_where)}
+            """,
+            tuple(overdue_params),
+        )
         overdue_loans = cur.fetchone()["overdue_loans"]
 
-        # Fines
-        cur.execute("""
+        fine_where = []
+        fine_params = []
+        if school_year:
+            fine_where.append("COALESCE(TRIM(l.school_year), '') = %s")
+            fine_params.append(school_year)
+
+        fine_where_sql = ("WHERE " + " AND ".join(fine_where)) if fine_where else ""
+
+        cur.execute(
+            f"""
             SELECT
-                COALESCE(SUM(CASE WHEN status = 'unpaid' THEN amount - amount_paid ELSE 0 END), 0) AS outstanding_total,
-                COUNT(*) FILTER (WHERE status = 'unpaid') AS unpaid_fine_count
-            FROM fine
-        """)
+                COALESCE(SUM(CASE WHEN f.status = 'unpaid' THEN f.amount - f.amount_paid ELSE 0 END), 0) AS outstanding_total,
+                COUNT(*) FILTER (WHERE f.status = 'unpaid') AS unpaid_fine_count
+            FROM fine f
+            LEFT JOIN loan l ON l.loan_id = f.loan_id
+            {fine_where_sql}
+            """,
+            tuple(fine_params),
+        )
         fines = cur.fetchone()
 
-        # Inventory
         cur.execute("""
             SELECT status, COUNT(*) AS count
             FROM book_copy
@@ -2349,20 +2476,22 @@ def reports_dashboard(
         """)
         copy_status_distribution = cur.fetchall()
 
-        # Trend
-        cur.execute(f"""
+        cur.execute(
+            f"""
             SELECT
                 {trend_sql_label} AS label,
                 COUNT(*) AS borrow_count
             FROM loan l
-            WHERE l.borrowed_at >= %s
+            WHERE {trend_where_sql}
             GROUP BY {trend_group_sql}
             ORDER BY {trend_group_sql}
-        """, (range_start,))
+            """,
+            tuple(trend_params),
+        )
         borrow_trend = cur.fetchall()
 
-        # Top books within selected period
-        cur.execute("""
+        cur.execute(
+            f"""
             SELECT
                 b.book_id,
                 b.title,
@@ -2372,15 +2501,17 @@ def reports_dashboard(
             FROM loan l
             JOIN book_copy bc ON bc.copy_id = l.copy_id
             JOIN book b ON b.book_id = bc.book_id
-            WHERE l.borrowed_at >= %s
+            WHERE {loan_scope_sql}
             GROUP BY b.book_id, b.title, b.author, b.cover_url
             ORDER BY borrow_count DESC, b.title ASC
             LIMIT 10
-        """, (range_start,))
+            """,
+            tuple(loan_scope_params),
+        )
         most_borrowed_books = cur.fetchall()
 
-        # Top students within selected period
-        cur.execute("""
+        cur.execute(
+            f"""
             SELECT
                 s.student_id,
                 s.student_code,
@@ -2391,57 +2522,71 @@ def reports_dashboard(
                 COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
-            WHERE l.borrowed_at >= %s
+            WHERE {loan_scope_sql}
             GROUP BY s.student_id, s.student_code, s.last_name, s.first_name, s.grade, s.section
             ORDER BY borrow_count DESC, s.last_name ASC, s.first_name ASC
             LIMIT 10
-        """, (range_start,))
+            """,
+            tuple(loan_scope_params),
+        )
         most_active_students = cur.fetchall()
 
-        # Borrowed by grade within selected period
-        cur.execute("""
+        cur.execute(
+            f"""
             SELECT
                 COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
                 COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
-            WHERE l.borrowed_at >= %s
+            WHERE {loan_scope_sql}
             GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
             ORDER BY grade
-        """, (range_start,))
+            """,
+            tuple(loan_scope_params),
+        )
         borrowed_by_grade = cur.fetchall()
 
-        # Subject / genre distribution within selected period
-        cur.execute("""
+        cur.execute(
+            f"""
             SELECT
                 COALESCE(NULLIF(TRIM(b.genre), ''), 'Unknown') AS genre,
                 COUNT(l.loan_id) AS book_count
             FROM loan l
             JOIN book_copy bc ON bc.copy_id = l.copy_id
             JOIN book b ON b.book_id = bc.book_id
-            WHERE l.borrowed_at >= %s
+            WHERE {loan_scope_sql}
             GROUP BY COALESCE(NULLIF(TRIM(b.genre), ''), 'Unknown')
             ORDER BY book_count DESC, genre ASC
             LIMIT 8
-        """, (range_start,))
+            """,
+            tuple(loan_scope_params),
+        )
         genre_distribution = cur.fetchall()
 
-        # Overdue by grade
-        cur.execute("""
+        overdue_breakdown_where = ["l.returned_at IS NULL", "l.due_at < NOW()"]
+        overdue_breakdown_params = []
+        if school_year:
+            overdue_breakdown_where.append("COALESCE(TRIM(l.school_year), '') = %s")
+            overdue_breakdown_params.append(school_year)
+
+        cur.execute(
+            f"""
             SELECT
                 COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
                 COUNT(*) AS overdue_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
-            WHERE l.returned_at IS NULL
-              AND l.due_at < NOW()
+            WHERE {" AND ".join(overdue_breakdown_where)}
             GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
             ORDER BY grade
-        """)
+            """,
+            tuple(overdue_breakdown_params),
+        )
         overdue_by_grade = cur.fetchall()
 
         return {
             "period": period,
+            "school_year": school_year,
             "range_start": range_start.isoformat(),
             "totals": {
                 "total_books": int(total_books or 0),
@@ -2481,24 +2626,14 @@ def generate_report(
     grade: str | None = None,
     section: str | None = None,
     genre: str | None = None,
-    book_section: str | None = None,  # shelf/location section from book.section
+    book_section: str | None = None,
+    school_year: str | None = None,
     current=Depends(get_current_librarian),
 ):
     """
-    Returns a report preview based on filters (for UI preview before export).
-
-    Filters:
-      - date_from/date_to (YYYY-MM-DD): borrowed_at date range
-      - grade, section (student filters)
-      - genre, book_section (book filters)
-
-    Output includes:
-      - generated metadata (librarian + timestamp)
-      - fine summary
-      - rows of loans (joined with student + book + copy)
+    Returns a report preview based on filters.
     """
 
-    # --- Default date range if not provided: last 30 days ---
     if date_to is None:
         dt_to = date.today()
     else:
@@ -2512,11 +2647,11 @@ def generate_report(
     if dt_from > dt_to:
         raise HTTPException(status_code=400, detail="date_from must be <= date_to")
 
-    # --- Build dynamic WHERE conditions safely ---
+    school_year = (school_year or "").strip() or None
+
     where_clauses = []
     params = []
 
-    # Borrowed_at date range (inclusive)
     where_clauses.append("DATE(l.borrowed_at) >= %s")
     params.append(dt_from.isoformat())
 
@@ -2524,11 +2659,11 @@ def generate_report(
     params.append(dt_to.isoformat())
 
     if grade and grade.strip():
-        where_clauses.append("s.grade = %s")
+        where_clauses.append("TRIM(s.grade) = TRIM(%s)")
         params.append(grade.strip())
 
     if section and section.strip():
-        where_clauses.append("s.section = %s")
+        where_clauses.append("TRIM(s.section) = TRIM(%s)")
         params.append(section.strip())
 
     if genre and genre.strip():
@@ -2539,14 +2674,16 @@ def generate_report(
         where_clauses.append("b.section ILIKE %s")
         params.append(f"%{book_section.strip()}%")
 
+    if school_year:
+        where_clauses.append("COALESCE(TRIM(l.school_year), '') = %s")
+        params.append(school_year)
+
     where_sql = " AND ".join(where_clauses)
 
     conn = get_connection()
     cur = conn.cursor()
 
     try:
-        # --- Main rows: loans with student + book + copy + fine total per loan ---
-        # Fine may have multiple rows per loan (ex: separate assessments) so we SUM it.
         cur.execute(
             f"""
             SELECT
@@ -2556,8 +2693,8 @@ def generate_report(
                 l.returned_at,
                 l.status AS loan_status,
                 l.renew_count,
+                l.school_year,
 
-                -- Student
                 s.student_id,
                 s.student_code,
                 s.last_name,
@@ -2565,7 +2702,6 @@ def generate_report(
                 s.grade,
                 s.section AS student_section,
 
-                -- Book + copy
                 b.book_id,
                 b.title,
                 b.author,
@@ -2575,10 +2711,8 @@ def generate_report(
                 bc.barcode,
                 bc.status AS copy_status,
 
-                -- Overdue flag (only meaningful if not returned)
                 (l.returned_at IS NULL AND l.due_at < NOW()) AS is_overdue,
 
-                -- Fine totals (if any)
                 COALESCE(fsum.total_fine, 0) AS total_fine,
                 COALESCE(fsum.total_paid, 0) AS total_paid,
                 COALESCE(fsum.total_fine - fsum.total_paid, 0) AS outstanding_fine
@@ -2587,7 +2721,6 @@ def generate_report(
             JOIN student s ON s.student_id = l.student_id
             JOIN book_copy bc ON bc.copy_id = l.copy_id
             JOIN book b ON b.book_id = bc.book_id
-
             LEFT JOIN (
                 SELECT
                     loan_id,
@@ -2596,7 +2729,6 @@ def generate_report(
                 FROM fine
                 GROUP BY loan_id
             ) fsum ON fsum.loan_id = l.loan_id
-
             WHERE {where_sql}
             ORDER BY l.borrowed_at DESC
             LIMIT 2000
@@ -2605,8 +2737,6 @@ def generate_report(
         )
         rows = cur.fetchall()
 
-        # --- Fine summary for this report result set ---
-        # We compute summary from returned rows (simple + consistent with filters).
         total_fine = float(sum(r["total_fine"] for r in rows))
         total_paid = float(sum(r["total_paid"] for r in rows))
         outstanding = float(sum(r["outstanding_fine"] for r in rows))
@@ -2625,6 +2755,7 @@ def generate_report(
                 "section": section,
                 "genre": genre,
                 "book_section": book_section,
+                "school_year": school_year,
             },
             "summary": {
                 "row_count": len(rows),
@@ -2638,7 +2769,6 @@ def generate_report(
     finally:
         cur.close()
         conn.close()
-
 # -----------------------------
 # REPORTS: EXPORT CSV (Librarian Only)
 # -----------------------------
@@ -2650,6 +2780,7 @@ def export_report_csv(
     section: str | None = None,
     genre: str | None = None,
     book_section: str | None = None,
+    school_year: str | None = None,
     current=Depends(get_current_librarian),
 ):
     """
@@ -2665,6 +2796,7 @@ def export_report_csv(
         section=section,
         genre=genre,
         book_section=book_section,
+        school_year=school_year,
         current=current,
     )
 
@@ -3037,6 +3169,7 @@ def export_report_pdf(
     section: str | None = None,
     genre: str | None = None,
     book_section: str | None = None,
+    school_year: str | None = None,
     current=Depends(get_current_librarian),
 ):
     """
@@ -3056,6 +3189,7 @@ def export_report_pdf(
         section=section,
         genre=genre,
         book_section=book_section,
+        school_year=school_year,
         current=current,
     )
 
@@ -3917,14 +4051,11 @@ def update_my_profile(
 # -----------------------------
 # SETTINGS: CIRCULATION DEFAULTS (Librarian Only)
 # -----------------------------
-# -----------------------------
-# SETTINGS: CIRCULATION DEFAULTS (Librarian Only)
-# -----------------------------
 @app.get("/api/settings/circulation")
 def get_circulation_settings(current=Depends(get_current_librarian)):
     """
-    Returns global circulation defaults.
-    If system_settings is empty, auto-creates a default row.
+    Returns the single global circulation settings row.
+    Auto-creates a default row if missing.
     """
     conn = get_connection()
     cur = conn.cursor()
@@ -3938,9 +4069,10 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
                 max_borrow_limit,
                 max_renewals,
                 block_renew_if_overdue,
-                COALESCE(damage_fine_minor, 50.00) AS damage_fine_minor,
-                COALESCE(damage_fine_major, 200.00) AS damage_fine_major,
-                COALESCE(lost_book_fine, 500.00) AS lost_book_fine,
+                damage_fine_minor,
+                damage_fine_major,
+                lost_book_fine,
+                school_year,
                 updated_at,
                 updated_by
             FROM system_settings
@@ -3951,6 +4083,96 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
         row = cur.fetchone()
 
         if not row:
+            school_year_default = get_active_school_year(conn)
+            cur.execute(
+                """
+                INSERT INTO system_settings (
+                    loan_period_days,
+                    fine_per_day,
+                    max_borrow_limit,
+                    max_renewals,
+                    block_renew_if_overdue,
+                    damage_fine_minor,
+                    damage_fine_major,
+                    lost_book_fine,
+                    school_year,
+                    updated_at,
+                    updated_by
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                RETURNING
+                    settings_id,
+                    loan_period_days,
+                    fine_per_day,
+                    max_borrow_limit,
+                    max_renewals,
+                    block_renew_if_overdue,
+                    damage_fine_minor,
+                    damage_fine_major,
+                    lost_book_fine,
+                    school_year,
+                    updated_at,
+                    updated_by
+                """,
+                (7, 5.00, 3, 1, True, 50.00, 200.00, 500.00, school_year_default, current["librarian_id"]),
+            )
+            row = cur.fetchone()
+            conn.commit()
+
+        data = dict(row)
+        if not data.get("school_year"):
+            data["school_year"] = get_active_school_year(conn)
+        return data
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to load circulation settings: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+# -----------------------------
+# SETTINGS: CIRCULATION DEFAULTS (Librarian Only)
+# -----------------------------
+@app.put("/api/settings/circulation")
+def update_circulation_settings(
+    loan_period_days: int,
+    fine_per_day: float,
+    max_borrow_limit: int,
+    max_renewals: int,
+    damage_fine_minor: float,
+    damage_fine_major: float,
+    lost_book_fine: float,
+    block_renew_if_overdue: bool,
+    school_year: str | None = None,
+    current=Depends(get_current_librarian),
+):
+    """
+    Updates the single global circulation settings row.
+    """
+    if loan_period_days < 1:
+        raise HTTPException(status_code=400, detail="loan_period_days must be >= 1")
+    if max_borrow_limit < 1:
+        raise HTTPException(status_code=400, detail="max_borrow_limit must be >= 1")
+    if max_renewals < 0:
+        raise HTTPException(status_code=400, detail="max_renewals must be >= 0")
+    if fine_per_day < 0:
+        raise HTTPException(status_code=400, detail="fine_per_day must be >= 0")
+    if damage_fine_minor < 0:
+        raise HTTPException(status_code=400, detail="damage_fine_minor must be >= 0")
+    if damage_fine_major < 0:
+        raise HTTPException(status_code=400, detail="damage_fine_major must be >= 0")
+    if lost_book_fine < 0:
+        raise HTTPException(status_code=400, detail="lost_book_fine must be >= 0")
+
+    school_year_clean = (school_year or "").strip() or None
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT settings_id FROM system_settings ORDER BY settings_id ASC LIMIT 1")
+        existing = cur.fetchone()
+
+        if not existing:
             cur.execute(
                 """
                 INSERT INTO system_settings
@@ -3963,13 +4185,15 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
                         damage_fine_minor,
                         damage_fine_major,
                         lost_book_fine,
+                        school_year,
                         updated_at,
                         updated_by
                     )
                 VALUES
-                    (7, 5.00, 3, 1, TRUE, 50.00, 200.00, 500.00, NOW(), %s)
-                RETURNING
-                    settings_id,
+                    (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                RETURNING settings_id
+                """,
+                (
                     loan_period_days,
                     fine_per_day,
                     max_borrow_limit,
@@ -3978,20 +4202,52 @@ def get_circulation_settings(current=Depends(get_current_librarian)):
                     damage_fine_minor,
                     damage_fine_major,
                     lost_book_fine,
-                    updated_at,
-                    updated_by
-                """,
-                (current["librarian_id"],),
+                    school_year_clean,
+                    current["librarian_id"],
+                ),
             )
-            row = cur.fetchone()
-            conn.commit()
+        else:
+            cur.execute(
+                """
+                UPDATE system_settings
+                SET
+                    loan_period_days = %s,
+                    fine_per_day = %s,
+                    max_borrow_limit = %s,
+                    max_renewals = %s,
+                    block_renew_if_overdue = %s,
+                    damage_fine_minor = %s,
+                    damage_fine_major = %s,
+                    lost_book_fine = %s,
+                    school_year = %s,
+                    updated_at = NOW(),
+                    updated_by = %s
+                WHERE settings_id = %s
+                """,
+                (
+                    loan_period_days,
+                    fine_per_day,
+                    max_borrow_limit,
+                    max_renewals,
+                    block_renew_if_overdue,
+                    damage_fine_minor,
+                    damage_fine_major,
+                    lost_book_fine,
+                    school_year_clean,
+                    current["librarian_id"],
+                    existing["settings_id"],
+                ),
+            )
 
-        return row
+        conn.commit()
+        return {"message": "Circulation settings updated successfully"}
 
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Update failed: {str(e)}")
     finally:
         cur.close()
         conn.close()
-
 
 @app.put("/api/settings/circulation")
 def update_circulation_settings(
@@ -4003,6 +4259,7 @@ def update_circulation_settings(
     damage_fine_major: float,
     lost_book_fine: float,
     block_renew_if_overdue: bool,
+    school_year: str | None = None,
     current=Depends(get_current_librarian),
 ):
     """
@@ -4063,6 +4320,7 @@ def update_circulation_settings(
                 ),
             )
         else:
+            sy = (school_year or "").strip() or None
             cur.execute(
                 """
                 UPDATE system_settings
@@ -4075,6 +4333,7 @@ def update_circulation_settings(
                     damage_fine_minor = %s,
                     damage_fine_major = %s,
                     lost_book_fine = %s,
+                    school_year = %s,
                     updated_at = NOW(),
                     updated_by = %s
                 WHERE settings_id = %s
@@ -4088,11 +4347,11 @@ def update_circulation_settings(
                     damage_fine_minor,
                     damage_fine_major,
                     lost_book_fine,
+                    sy,
                     current["librarian_id"],
                     existing["settings_id"],
                 ),
             )
-
         conn.commit()
         return {"message": "Circulation settings updated successfully"}
 
@@ -6043,7 +6302,8 @@ def reports_filter_options(
             cur.execute("""
                 SELECT DISTINCT TRIM(section) AS section
                 FROM student
-                WHERE section IS NOT NULL AND TRIM(section) <> ''
+                WHERE section IS NOT NULL
+                  AND TRIM(section) <> ''
                   AND TRIM(grade) = TRIM(%s)
                 ORDER BY TRIM(section) ASC
             """, (grade.strip(),))
@@ -6056,7 +6316,33 @@ def reports_filter_options(
             """)
 
         sections = [r["section"] for r in cur.fetchall() if r.get("section")]
-        return {"grades": grades, "sections": sections}
+
+        cur.execute("""
+            SELECT DISTINCT TRIM(school_year) AS school_year
+            FROM loan
+            WHERE school_year IS NOT NULL AND TRIM(school_year) <> ''
+            ORDER BY TRIM(school_year) DESC
+        """)
+        school_years = [r["school_year"] for r in cur.fetchall() if r.get("school_year")]
+
+        cur.execute("""
+            SELECT school_year
+            FROM system_settings
+            ORDER BY settings_id ASC
+            LIMIT 1
+        """)
+        active_row = cur.fetchone()
+        active_school_year = (active_row["school_year"].strip() if active_row and active_row.get("school_year") else None)
+
+        if active_school_year and active_school_year not in school_years:
+            school_years.insert(0, active_school_year)
+
+        return {
+            "grades": grades,
+            "sections": sections,
+            "school_years": school_years,
+            "active_school_year": active_school_year,
+        }
     finally:
         cur.close()
         conn.close()
@@ -6351,6 +6637,7 @@ def report_most_borrowed(
     grade: str | None = None,
     section: str | None = None,
     limit: int = 20,
+    school_year: str | None = None,
     current=Depends(get_current_librarian),
 ):
     if date_to is None:
@@ -6371,6 +6658,10 @@ def report_most_borrowed(
     if section and section.strip():
         where.append("s.section = %s")
         params.append(section.strip())
+
+    if school_year and school_year.strip():
+        where.append("l.school_year = %s")
+        params.append(school_year.strip())
 
     limit_val = max(1, min(int(limit), 100))
 
@@ -6559,8 +6850,9 @@ def report_overdue(
 def report_fines(
     date_from: str | None = None,
     date_to: str | None = None,
-    status: str | None = None,   # unpaid | paid | all
+    status: str | None = None,
     grade: str | None = None,
+    school_year: str | None = None,
     current=Depends(get_current_librarian),
 ):
     if date_to is None:
@@ -6582,6 +6874,10 @@ def report_fines(
     if grade and grade.strip():
         where.append("s.grade = %s")
         params.append(grade.strip())
+
+    if school_year and school_year.strip():
+        where.append("l.school_year = %s")
+        params.append(school_year.strip())
 
     conn = get_connection()
     cur = conn.cursor()
@@ -6756,8 +7052,13 @@ def report_inventory(
         cur.execute(
             f"""
             SELECT
-                b.book_id, b.title, b.author, b.section AS book_section,
-                b.genre, b.pub_year,
+                b.book_id,
+                b.title,
+                b.author,
+                b.subject,
+                b.section AS book_section,
+                b.genre,
+                b.pub_year,
                 COUNT(bc.copy_id) AS total_copies,
                 COUNT(CASE WHEN bc.status = 'available' THEN 1 END) AS available,
                 COUNT(CASE WHEN bc.status = 'borrowed' THEN 1 END) AS borrowed,
@@ -6767,7 +7068,14 @@ def report_inventory(
             FROM book b
             LEFT JOIN book_copy bc ON bc.book_id = b.book_id
             {where_sql}
-            GROUP BY b.book_id, b.title, b.author, b.section, b.genre, b.pub_year
+            GROUP BY
+                b.book_id,
+                b.title,
+                b.author,
+                b.subject,
+                b.section,
+                b.genre,
+                b.pub_year
             ORDER BY b.title ASC
             LIMIT 2000
             """,
@@ -6784,7 +7092,6 @@ def report_inventory(
     finally:
         cur.close()
         conn.close()
-
 
 # ─────────────────────────────────────────────────────────────
 # REPORTS: EXPORT ANY REPORT AS CSV
@@ -6926,6 +7233,33 @@ def delete_grade_rule(grade: str, current=Depends(get_current_librarian)):
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Delete failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/reports/school-years")
+def reports_school_years(current=Depends(get_current_librarian)):
+    """
+    Returns distinct school years found in the loan table,
+    plus the currently configured school year from system_settings.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT DISTINCT school_year
+            FROM loan
+            WHERE school_year IS NOT NULL AND TRIM(school_year) <> ''
+            ORDER BY school_year DESC
+        """)
+        years = [r["school_year"] for r in cur.fetchall() if r.get("school_year")]
+
+        # Also include the current configured school year so it always appears
+        current_sy = get_active_school_year(conn)
+        if current_sy and current_sy not in years:
+            years.insert(0, current_sy)
+
+        return {"school_years": years, "current": current_sy}
     finally:
         cur.close()
         conn.close()

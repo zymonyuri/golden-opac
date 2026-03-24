@@ -7,8 +7,9 @@
   <script>document.documentElement.classList.add("branding-loading");</script>
   <link rel="stylesheet" href="styles.css"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <style>
-    :root{--panelWhite:rgba(255,255,255,0.96);--panelBorder:rgba(0,0,0,0.06);--panelShadow:0 20px 50px rgba(0,0,0,0.25);--ink:#111;--shadow:0 26px 60px rgba(0,0,0,0.32);}
+    :root{--panelWhite:rgba(255,255,255,0.96);--panelBorder:rgba(0,0,0,0.06);--panelShadow:0 20px 50px rgba(0,0,0,0.25);--ink:#111;--shadow:0 26px 60px rgba(0,0,0,0.32);--preview-page-width:210mm;--preview-page-height:297mm;}
     body{font-family:'Poppins',sans-serif;}
     .page{position:relative;min-height:100vh;overflow:hidden;}
     .wrap{position:relative;z-index:2;padding:110px 16px 80px;}
@@ -35,6 +36,8 @@
     .titleRow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,0.62);padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,0.10);backdrop-filter:blur(10px);}
     .titleRow h1{margin:0;font-size:26px;font-weight:1000;letter-spacing:.01em;color:#111;line-height:1.1;}
     .dashboardControls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;}
+    .controlGroup{display:grid;gap:6px;padding:10px 12px;border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.56);min-width:190px;}
+    .groupTitle{font-size:11px;font-weight:1000;letter-spacing:.08em;text-transform:uppercase;color:rgba(0,0,0,0.48);}
     .field{display:grid;gap:8px;min-width:180px;}
     .field.small{min-width:160px;}
     .field label{font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:rgba(0,0,0,0.62);line-height:1.1;margin:0;}
@@ -108,19 +111,24 @@
     .previewCard{border-radius:16px;border:1px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.78);box-shadow:0 14px 30px rgba(0,0,0,0.10);overflow:hidden;display:flex;flex-direction:column;}
     .previewHead{padding:12px 16px;border-bottom:1px solid rgba(0,0,0,0.10);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:rgba(255,255,255,0.65);}
     .previewBody{flex:1 1 auto;height:640px;position:relative;overflow:auto;background:#e8e8e8;}
+    .previewPages{display:flex;flex-direction:column;gap:18px;padding:20px;}
+    .rptPage{width:var(--preview-page-width);height:var(--preview-page-height);min-height:var(--preview-page-height);max-width:calc(100% - 8px);margin:0 auto;background:#fff;border:1px solid rgba(0,0,0,0.10);box-shadow:0 18px 40px rgba(0,0,0,0.14);display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;}
+    .rptPage .rptBody{flex:1 1 auto;}
+    .rptPageBreak{page-break-after:always;}
+    .rptContNote{font-size:11px;font-weight:800;color:rgba(0,0,0,0.45);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
     .previewLoading{position:absolute;inset:0;display:none;place-items:center;background:rgba(255,255,255,0.80);backdrop-filter:blur(4px);z-index:5;}
     /* ── Report Document ── */
     .rptDoc{background:#fff;max-width:900px;margin:16px auto;border-radius:8px;box-shadow:0 2px 20px rgba(0,0,0,0.15);overflow:hidden;font-family:'Poppins',Arial,sans-serif;color:#111;}
-    .rptHeader{background:#1a2e0d;padding:18px 26px 16px;display:flex;align-items:center;gap:16px;}
+    .rptHeader{background:#f2f2f2;padding:18px 26px 16px;display:flex;align-items:center;gap:16px;color:#222;border-bottom:1px solid #d6d6d6;}
     .rptLogo{width:52px;height:52px;object-fit:contain;border-radius:6px;flex-shrink:0;}
     .rptLogoFb{width:52px;height:52px;border-radius:6px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
     .rptHdrText{flex:1;}
-    .rptSchoolName{color:#f4e32f;font-size:18px;font-weight:900;letter-spacing:.02em;line-height:1.1;}
-    .rptSchoolSub{color:rgba(255,255,255,0.70);font-size:12px;font-weight:600;margin-top:2px;}
+    .rptSchoolName{color:var(--brand-yellow);font-size:18px;font-weight:900;letter-spacing:.02em;line-height:1.1;}
+    .rptSchoolSub{color:var(--brand-green);font-size:12px;font-weight:700;margin-top:2px;}
     .rptHdrMeta{text-align:right;flex-shrink:0;}
-    .rptTypeLbl{color:#8dd959;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}
-    .rptTimestamp{color:rgba(255,255,255,0.55);font-size:11px;margin-top:4px;}
-    .rptBody{padding:22px 26px;}
+    .rptTypeLbl{color:#444;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}
+    .rptTimestamp{color:#666;font-size:11px;margin-top:4px;}
+    .rptBody{padding:16px 18px;}
     .rptSumGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:18px;}
     .rsc{background:#f4faf0;border:1px solid #d4edca;border-radius:8px;padding:11px;text-align:center;}
     .rsc .rv{font-size:20px;font-weight:900;color:#1a4d0f;line-height:1;}
@@ -129,25 +137,91 @@
     .rsc.danger{background:#fff5f5;border-color:#fecaca;}.rsc.danger .rv{color:#991b1b;}.rsc.danger .rl{color:#dc2626;}
     .rptFilters{background:#f7f7f7;border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;font-weight:700;color:#666;}
     .rptFilters span b{color:#111;}
-    .rptTable{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
-    .rptTable thead tr{background:#1a2e0d;color:#fff;}
-    .rptTable thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
+    .rptTable{width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;table-layout:fixed;}
+    .rptTable thead tr{background:#f2f2f2;color:#222;}
+    .rptTable thead th{padding:8px 8px;text-align:left;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:normal;line-height:1.2;word-break:normal;overflow-wrap:normal;hyphens:none;}
     .rptTable tbody tr{border-bottom:1px solid #f0f0f0;}
-    .rptTable tbody tr:nth-child(even){background:#fafafa;}
-    .rptTable tbody tr:hover{background:#edfae4;}
-    .rptTable td{padding:9px 12px;vertical-align:middle;line-height:1.35;}
-    .ct{font-weight:800;font-size:12px;color:#111;}.cs{font-size:11px;color:#777;margin-top:1px;}
-    .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;}
+    .rptTable tbody tr:nth-child(even){background:#f8f8f8;}
+    .rptTable tbody tr:hover{background:#f2f2f2;}
+    .rptTable td{padding:8px 8px;vertical-align:top;line-height:1.3;word-break:break-word;overflow-wrap:anywhere;}
+    .ct{font-weight:800;font-size:11px;color:#111;line-height:1.25;}.cs{font-size:10px;color:#777;margin-top:1px;line-height:1.2;}
+    .pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;max-width:100%;}
     .pill.green{background:#dcfce7;color:#166534;}.pill.red{background:#fee2e2;color:#991b1b;}
     .pill.yellow{background:#fef9c3;color:#854d0e;}.pill.blue{background:#dbeafe;color:#1e40af;}
     .pill.gray{background:#f3f4f6;color:#374151;}.pill.orange{background:#ffedd5;color:#9a3412;}
     .rptEmpty{text-align:center;padding:52px;color:#bbb;font-size:13px;font-weight:700;}
+    .rptTable.compact{font-size:9.2px;table-layout:auto;}
+    .rptTable.compact thead th{font-size:8.4px;padding:6px 5px;word-break:keep-all;overflow-wrap:normal;white-space:normal;line-height:1.15;}
+    .rptTable.compact td{padding:6px 5px;vertical-align:top;}
+    .rptTable.compact .ct{font-size:9.8px;line-height:1.2;}
+    .rptTable.compact .cs{font-size:8.8px;line-height:1.15;}
+    .rptFilters.compact{gap:10px;padding:9px 10px;font-size:11px;}
+    .rptBody.compactBody{padding:12px 12px;}
+    .rptSumGrid.compactCards{gap:8px;margin-bottom:12px;}
+    .rptFilters.compact{gap:8px;padding:8px 10px;font-size:10.5px;margin-bottom:12px;}
+    .rptTable.inventoryTable col.num{width:4%;}
+    .rptTable.inventoryTable col.title{width:23%;}
+    .rptTable.inventoryTable col.author{width:14%;}
+    .rptTable.inventoryTable col.subject{width:12%;}
+    .rptTable.inventoryTable col.location{width:10%;}
+    .rptTable.inventoryTable col.total{width:7%;}
+    .rptTable.inventoryTable col.available{width:8%;}
+    .rptTable.inventoryTable col.borrowed{width:8%;}
+    .rptTable.inventoryTable col.damaged{width:7%;}
+    .rptTable.inventoryTable col.lost{width:5%;}
+    .rptTable.inventoryTable col.printed{width:4%;}
+    .rptTable.inventoryTable td,.rptTable.inventoryTable th,.rptTable.finesTable td,.rptTable.finesTable th{overflow-wrap:normal;word-break:normal;}
+    .rptTable.inventoryTable td{line-height:1.18;}
+    .rptTable.inventoryTable .pill,.rptTable.finesTable .pill{padding:2px 6px;font-size:9px;}
+    .rptTable.finesTable col.num{width:4%;}
+    .rptTable.finesTable col.student{width:15%;}
+    .rptTable.finesTable col.grade{width:13%;}
+    .rptTable.finesTable col.book{width:15%;}
+    .rptTable.finesTable col.reason{width:14%;}
+    .rptTable.finesTable col.assessed{width:10%;}
+    .rptTable.finesTable col.amount{width:9%;}
+    .rptTable.finesTable col.paid{width:8%;}
+    .rptTable.finesTable col.outstanding{width:12%;}
+    .rptTable.finesTable col.status{width:10%;}
+    .rptTable.circulationTable col.num{width:5%;}
+    .rptTable.circulationTable col.student{width:14%;}
+    .rptTable.circulationTable col.grade{width:9%;}
+    .rptTable.circulationTable col.book{width:17%;}
+    .rptTable.circulationTable col.borrowed{width:10%;}
+    .rptTable.circulationTable col.due{width:10%;}
+    .rptTable.circulationTable col.returned{width:10%;}
+    .rptTable.circulationTable col.status{width:11%;}
+    .rptTable.circulationTable col.fine{width:14%;}
+    .rptTable.circulationTable td:nth-child(9),.rptTable.circulationTable th:nth-child(9){white-space:normal;overflow-wrap:anywhere;word-break:break-word;text-align:left;}
+    .rptTable.circulationTable td:nth-child(8),.rptTable.circulationTable th:nth-child(8){white-space:normal;overflow-wrap:break-word;}
+    .rptFineCell{display:grid;gap:2px;min-width:0;}
+    .rptFineMain{font-size:10px;font-weight:900;color:#111;line-height:1.15;}
+    .rptFineSub{font-size:9px;font-weight:800;color:#666;line-height:1.15;}
+    .rptTable.studentsTable col.num{width:6%;}
+    .rptTable.studentsTable col.student{width:24%;}
+    .rptTable.studentsTable col.grade{width:14%;}
+    .rptTable.studentsTable col.total{width:10%;}
+    .rptTable.studentsTable col.active{width:10%;}
+    .rptTable.studentsTable col.overdue{width:9%;}
+    .rptTable.studentsTable col.fines{width:13%;}
+    .rptTable.studentsTable col.last{width:14%;}
+    .rptTable.borrowedTable col.rank{width:8%;}
+    .rptTable.borrowedTable col.title{width:28%;}
+    .rptTable.borrowedTable col.author{width:18%;}
+    .rptTable.borrowedTable col.subject{width:14%;}
+    .rptTable.borrowedTable col.location{width:13%;}
+    .rptTable.borrowedTable col.borrowCount{width:10%;}
+    .rptTable.borrowedTable col.readers{width:9%;}
+    .rptTable.circulationTable td,.rptTable.circulationTable th,.rptTable.studentsTable td,.rptTable.studentsTable th,.rptTable.borrowedTable td,.rptTable.borrowedTable th{overflow-wrap:break-word;word-break:normal;}
+    .rptTable .ct{font-weight:800;line-height:1.16;}
+    .rptTable .cs{font-size:10px;line-height:1.15;color:#666;margin-top:2px;}
+
     /* On-screen footer */
-    .rptFoot{padding:11px 26px;background:#f7f7f7;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;}
-    .rptFoot span{font-size:11px;color:#bbb;font-weight:700;}
+    .rptFoot{padding:10px 18px;background:#f7f7f7;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+    .rptFoot span{font-size:10px;color:#888;font-weight:700;line-height:1.25;}
 
     /* ══════════════════════════════════════════════
-       UNIFIED NEUTRAL DROPDOWN — applies to ALL select/custom dropdowns
+       UNIFIED NEUTRAL DROPDOWN
     ══════════════════════════════════════════════ */
     select{
       appearance:none;
@@ -164,78 +238,34 @@
       box-shadow:0 0 0 3px rgba(0,0,0,0.07);
     }
 
-    /* ── Grade & Section multi-select wrapper (shared styles) ── */
-    .gradeMultiWrap{
-      position:relative;
-      min-width:190px;
-    }
-    .gradeMultiTrigger{
-      width:100%;
-      min-height:44px;
-      padding:11px 36px 11px 12px;
-      border-radius:12px;
-      border:1px solid rgba(0,0,0,0.12);
-      background:rgba(255,255,255,0.70);
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-repeat:no-repeat;
-      background-position:right 12px center;
-      background-size:12px 8px;
-      color:#111;
-      outline:none;
-      font-size:14px;
-      font-weight:800;
-      font-family:inherit;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      gap:5px;
-      flex-wrap:wrap;
-      position:relative;
-      transition:border-color 160ms ease,box-shadow 160ms ease,background-color 160ms ease;
-      user-select:none;
-      overflow:hidden;
-    }
+    /* ── Grade & Section multi-select wrapper ── */
+    .gradeMultiWrap{position:relative;min-width:190px;}
+    .gradeMultiTrigger{width:100%;min-height:44px;padding:11px 36px 11px 12px;border-radius:12px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.70);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;color:#111;outline:none;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px;flex-wrap:wrap;position:relative;transition:border-color 160ms ease,box-shadow 160ms ease,background-color 160ms ease;user-select:none;overflow:hidden;}
     .gradeMultiTrigger:hover{background-color:rgba(255,255,255,0.85);}
     .gradeMultiTrigger.is-open,.gradeMultiTrigger:focus{border-color:rgba(0,0,0,0.30);box-shadow:0 0 0 3px rgba(0,0,0,0.07);background-color:rgba(255,255,255,0.85);}
     .gradeMultiTrigger.is-open{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 7l5-5 5 5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
     .gradeMultiPlaceholder{color:#111;font-weight:800;font-size:14px;pointer-events:none;}
-
-    /* Disabled state for section when no grade selected */
     .gradeMultiTrigger.is-disabled{opacity:0.45;cursor:not-allowed;pointer-events:none;}
-
-    .gradeChip{
-      display:inline-flex;align-items:center;gap:3px;
-      padding:2px 7px 2px 8px;border-radius:6px;
-      background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.10);
-      font-size:11px;font-weight:900;color:#111;white-space:nowrap;flex-shrink:0;
-    }
+    .gradeChip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px 2px 8px;border-radius:6px;background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.10);font-size:11px;font-weight:900;color:#111;white-space:nowrap;flex-shrink:0;}
     .gradeChip .rmChip{width:13px;height:13px;border-radius:4px;border:none;background:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:rgba(0,0,0,0.45);padding:0;line-height:1;transition:background 120ms ease,color 120ms ease;}
     .gradeChip .rmChip:hover{background:rgba(0,0,0,0.10);color:#111;}
-
     .gradeMultiDropdown{position:absolute;top:calc(100% + 4px);left:0;min-width:200px;width:200px;background:#fff;border:1px solid rgba(0,0,0,0.12);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.14);z-index:600;overflow:hidden;display:none;flex-direction:column;}
     .gradeMultiDropdown.is-open{display:flex;}
-
     .gradeDropHead{padding:9px 12px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid rgba(0,0,0,0.07);background:#fafafa;}
     .gradeDropHeadBtn{font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:rgba(0,0,0,0.50);background:none;border:none;cursor:pointer;padding:2px 0;font-family:inherit;transition:color 120ms ease;}
     .gradeDropHeadBtn:hover{color:#111;}
-
     .gradeDropList{padding:5px 6px 6px;display:flex;flex-direction:column;gap:3px;max-height:250px;overflow-y:auto;overflow-x:hidden;}
     .gradeDropList::-webkit-scrollbar{width:4px;}
     .gradeDropList::-webkit-scrollbar-track{background:transparent;}
     .gradeDropList::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:999px;}
-
-    /* Empty state inside dropdown */
     .gradeDropEmpty{padding:16px 12px;text-align:center;font-size:12px;font-weight:700;color:rgba(0,0,0,0.35);}
-
     .gradeDropItem{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#f5f5f5;cursor:pointer;transition:background 120ms ease;user-select:none;}
     .gradeDropItem:hover{background:#ececec;}
     .gradeDropItem.is-checked{background:rgba(0,0,0,0.06);}
-
     .gradeCheckbox{width:16px;height:16px;border-radius:4px;border:1.5px solid #bbb;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:border-color 120ms ease,background 120ms ease;}
     .gradeDropItem.is-checked .gradeCheckbox{border-color:#555;background:#555;}
     .gradeCheckbox::after{content:"";width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translateY(-1px);opacity:0;transition:opacity 120ms ease;}
     .gradeDropItem.is-checked .gradeCheckbox::after{opacity:1;}
-
     .gradeDropLabel{font-size:13px;font-weight:800;color:#111;line-height:1;}
 
     .topbar{position:fixed;top:0;left:0;right:0;z-index:999;border-bottom:1px solid rgba(0,0,0,0.08);backdrop-filter:none;transition:background 200ms ease,border-color 200ms ease,box-shadow 200ms ease,backdrop-filter 200ms ease;}
@@ -250,16 +280,51 @@
     @media(max-width:760px){.twoCharts{grid-template-columns:1fr;}}
     @media(max-width:640px){.wrap{padding:104px 12px 80px;}.content{padding:14px 14px 18px;}.titleRow h1{font-size:24px;}.statsGrid{grid-template-columns:1fr;}.reportTypeGrid{grid-template-columns:1fr;}.insightRow{grid-template-columns:1fr;}.gradeDropList{grid-template-columns:repeat(3,1fr);}}
     @media(max-width:980px){.shell{grid-template-columns:74px 1fr;}}
+  
+    /* Simplified printable report layout */
+    .previewBody{background:#dcdcdc;}
+    .previewPages{padding:16px;gap:16px;}
+    .rptPage{background:#fff;border:1px solid #d7d7d7;box-shadow:0 10px 22px rgba(0,0,0,0.08);}
+    .rptHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:18px 20px 14px;border-bottom:1px solid #dcdcdc;background:#fff;}
+    .rptHeaderLeft{display:flex;align-items:flex-start;gap:14px;min-width:0;flex:1 1 auto;}
+    .rptLogo{width:60px;height:60px;object-fit:contain;display:block;flex:0 0 60px;background:#fff;}
+    .rptLogoFallback{width:60px;height:60px;display:flex;align-items:center;justify-content:center;border:1px solid #d7d7d7;font-size:11px;font-weight:800;color:#666;background:#fafafa;flex:0 0 60px;}
+    .rptHdrText{min-width:0;}
+    .rptSchoolName{margin:0;font-size:20px;line-height:1.1;font-weight:900;color:var(--brand-yellow,#f4e32f);letter-spacing:.04em;text-transform:uppercase;}
+    .rptSchoolSub{margin-top:4px;font-size:12px;line-height:1.25;font-weight:700;color:var(--brand-green,#8dd959);}
+    .rptHdrMeta{text-align:right;min-width:220px;}
+    .rptTypeLbl{font-size:18px;line-height:1.15;font-weight:900;color:#222;letter-spacing:.06em;text-transform:uppercase;}
+    .rptTimestamp{margin-top:4px;font-size:11px;font-weight:600;color:#666;}
+    .rptBody{padding:14px 20px 18px;background:#fff;}
+    .rptContNote{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#666;}
+    .rptFilters{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 12px;padding:8px 0;border-bottom:1px solid #ececec;font-size:11px;color:#444;}
+    .rptSumGrid,.rsc{display:none !important;}
+    .rptTable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10.5px;color:#222;}
+    .rptTable thead th{padding:8px 7px;border:1px solid #d9d9d9;background:#efefef;font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;text-align:left;color:#222;}
+    .rptTable td{padding:7px;border:1px solid #e3e3e3;vertical-align:top;line-height:1.22;word-break:normal;overflow-wrap:break-word;hyphens:none;}
+    .rptTable tbody tr:nth-child(even){background:#fafafa;}
+    .ct{font-size:10.6px;font-weight:800;color:#111;line-height:1.2;}
+    .cs{margin-top:2px;font-size:9.4px;line-height:1.15;color:#666;}
+    .pill{padding:2px 6px;font-size:9px;font-weight:800;border-radius:999px;}
+    .rptFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 20px;border-top:1px solid #dcdcdc;background:#fff;font-size:10px;color:#666;font-weight:700;}
+
   </style>
 </head>
 <body>
+  <script src="branding.js"></script>
+  <script>
+  const API_ORIGIN =
+  window.location.protocol === "file:"
+    ? "http://127.0.0.1:8000"
+    : window.location.origin;
+  </script>
 
   <div class="topbar" id="siteHeader">
     <div class="brand">
       <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" data-brand-logo/>
       <div class="brand__text">
         <div class="brand__name"><span class="brand__school" data-brand-school-name>Your School Name</span></div>
-        <div class="brand__sub"><span class="brand__subtitle" data-brand-role="portal">Librarian Portal</span></div>
+        <div class="brand__sub"><span class="brand__subtitle" data-brand-header-subtitle>Librarian Portal</span></div>
       </div>
     </div>
     <nav class="nav" aria-label="Primary">
@@ -297,13 +362,24 @@
               <div class="titleRow">
                 <h1>REPORTS</h1>
                 <div class="dashboardControls">
-                  <div class="field small">
-                    <label for="dashboardPeriod">View Range</label>
-                    <select id="dashboardPeriod">
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly" selected>Monthly</option>
-                    </select>
+                  <div class="controlGroup">
+                    <div class="field small">
+                      <label for="dashboardSchoolYear">School Year</label>
+                      <select id="dashboardSchoolYear">
+                        <option value="">All School Years</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="controlGroup">
+                    <div class="field small">
+                      <label for="dashboardPeriod">View Range</label>
+                      <select id="dashboardPeriod">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly" selected>Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
                   </div>
                   <button class="btn ghost" id="btnRefreshDashboard" type="button">Refresh</button>
                 </div>
@@ -408,14 +484,22 @@
               </div>
 
               <div style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
-                <div style="font-size:13px;font-weight:800;color:rgba(0,0,0,0.55);">
-                  Preview: <span id="reportTypeLabel" style="color:#111;">Circulation Report</span>
-                  <span id="reportRowCount" style="margin-left:8px;padding:3px 10px;background:rgba(0,0,0,0.07);border-radius:999px;font-size:12px;display:none;"></span>
+                <div style="font-size:13px;font-weight:800;color:rgba(0,0,0,0.55);display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <span>Preview: <span id="reportTypeLabel" style="color:#111;">Circulation Report</span></span>
+                  <span id="reportRowCount" style="padding:3px 10px;background:rgba(0,0,0,0.07);border-radius:999px;font-size:12px;display:none;"></span>
                 </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:8px;min-width:180px;">
+                    <span style="font-size:13px;font-weight:800;color:#111;white-space:nowrap;">Size</span>
+                    <select id="reportPaperSize" style="min-width:120px;">
+                      <option value="A4">A4</option>
+                      <option value="LETTER">Letter</option>
+                      <option value="LEGAL">Legal</option>
+                    </select>
+                  </div>
                   <button class="btn ghost" id="btnApply" type="button">Apply Filters</button>
                   <button class="btn ghost" id="btnClear" type="button">Clear</button>
-                  <button class="btn green" id="btnPrint" type="button">Print / Save PDF</button>
+                  <button class="btn green" id="btnPrint" type="button">Download PDF</button>
                   <button class="btn green" id="btnCsv" type="button">Export CSV</button>
                 </div>
               </div>
@@ -423,7 +507,7 @@
               <div class="previewCard">
                 <div class="previewHead">
                   <div style="font-size:13px;font-weight:800;">Report Preview</div>
-                  <div style="font-size:12px;color:rgba(0,0,0,0.50);">Print / Save PDF for a formatted printout with school header</div>
+                  <div id="previewPaperMeta" style="font-size:12px;color:rgba(0,0,0,0.50);">Preview: A4 · download matches this layout</div>
                 </div>
                 <div class="previewBody" id="previewBody">
                   <div class="previewLoading" id="previewLoading">
@@ -462,7 +546,7 @@
   // ─────────────────────────────────────────────
   // BOOTSTRAP
   // ─────────────────────────────────────────────
-  const BASE_URL="http://127.0.0.1:8000";
+  const BASE_URL = API_ORIGIN;
   const APP_TIMEZONE="Asia/Manila";
 
   function getToken(){return(sessionStorage.getItem("gk_token")||localStorage.getItem("gk_token")||localStorage.getItem("token")||localStorage.getItem("access_token")||sessionStorage.getItem("token")||sessionStorage.getItem("access_token")||"").replace(/^Bearer\s+/i,"").trim();}
@@ -504,25 +588,15 @@
 
   // ─────────────────────────────────────────────
   // SHARED MULTI-SELECT COMPONENT
-  // Used for BOTH grade and section pickers.
   // ─────────────────────────────────────────────
-  // Registry keyed by container element id.
   const _gradeInstances={};
 
   function createGradeMultiSelect(containerId, items, placeholder="All"){
     const container=document.getElementById(containerId);
     if(!container)return;
-
-    // Destroy previous instance if any
-    if(_gradeInstances[containerId]){
-      // close any open dropdown, remove observers etc — simplest: just re-render
-      delete _gradeInstances[containerId];
-    }
-
+    if(_gradeInstances[containerId]){delete _gradeInstances[containerId];}
     let selected=new Set();
-
     const isEmpty = !items || !items.length;
-
     container.innerHTML=`
       <div class="gradeMultiTrigger${isEmpty?" is-disabled":""}" id="${containerId}_trigger" tabindex="${isEmpty?-1:0}" role="combobox" aria-expanded="false" aria-haspopup="listbox">
         <span id="${containerId}_chips"><span class="gradeMultiPlaceholder">${isEmpty?"No sections yet":placeholder}</span></span>
@@ -544,76 +618,30 @@
         </div>
       </div>
     `;
-
     if(isEmpty){
-      // Store a no-op instance
       _gradeInstances[containerId]={getSelected:()=>[],reset:()=>{}};
       return;
     }
-
     const trigger=document.getElementById(`${containerId}_trigger`);
     const dropdown=document.getElementById(`${containerId}_dropdown`);
     const list=document.getElementById(`${containerId}_list`);
     const chipsEl=document.getElementById(`${containerId}_chips`);
-
     function renderChips(){
-      if(!selected.size){
-        chipsEl.innerHTML=`<span class="gradeMultiPlaceholder">${placeholder}</span>`;
-      } else {
-        const sortedSel=[...selected].sort((a,b)=>a.localeCompare(b));
-        if(sortedSel.length>=4){
-          chipsEl.innerHTML=`<span class="gradeMultiPlaceholder" style="color:#111;font-weight:900;">${sortedSel.length} selected</span>`;
-        } else {
-          chipsEl.innerHTML=sortedSel.map(g=>
-            `<span class="gradeChip">${esc(g)}<button class="rmChip" data-g="${esc(g)}" type="button" title="Remove ${esc(g)}">✕</button></span>`
-          ).join("");
-        }
-      }
+      if(!selected.size){chipsEl.innerHTML=`<span class="gradeMultiPlaceholder">${placeholder}</span>`;}
+      else{const sortedSel=[...selected].sort((a,b)=>a.localeCompare(b));if(sortedSel.length>=4){chipsEl.innerHTML=`<span class="gradeMultiPlaceholder" style="color:#111;font-weight:900;">${sortedSel.length} selected</span>`;}else{chipsEl.innerHTML=sortedSel.map(g=>`<span class="gradeChip">${esc(g)}<button class="rmChip" data-g="${esc(g)}" type="button" title="Remove ${esc(g)}">✕</button></span>`).join("");}}
     }
-
-    function syncItems(){
-      list.querySelectorAll(".gradeDropItem").forEach(item=>{
-        const g=item.dataset.val;
-        const on=selected.has(g);
-        item.classList.toggle("is-checked",on);
-        item.setAttribute("aria-selected",String(on));
-      });
-    }
-
+    function syncItems(){list.querySelectorAll(".gradeDropItem").forEach(item=>{const g=item.dataset.val;const on=selected.has(g);item.classList.toggle("is-checked",on);item.setAttribute("aria-selected",String(on));});}
     function openDropdown(){trigger.classList.add("is-open");trigger.setAttribute("aria-expanded","true");dropdown.classList.add("is-open");}
     function closeDropdown(){trigger.classList.remove("is-open");trigger.setAttribute("aria-expanded","false");dropdown.classList.remove("is-open");}
     function toggleDropdown(){if(dropdown.classList.contains("is-open"))closeDropdown();else openDropdown();}
-
     trigger.addEventListener("click",e=>{if(e.target.closest(".rmChip"))return;toggleDropdown();});
     trigger.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleDropdown();}if(e.key==="Escape")closeDropdown();});
-
-    list.addEventListener("click",e=>{
-      const item=e.target.closest(".gradeDropItem");
-      if(!item)return;
-      const g=item.dataset.val;
-      if(selected.has(g))selected.delete(g);else selected.add(g);
-      syncItems();renderChips();
-    });
-
-    chipsEl.addEventListener("click",e=>{
-      const btn=e.target.closest(".rmChip");
-      if(!btn)return;
-      e.stopPropagation();
-      selected.delete(btn.dataset.g);
-      syncItems();renderChips();
-    });
-
-    document.getElementById(`${containerId}_all`).addEventListener("click",e=>{
-      e.stopPropagation();items.forEach(g=>selected.add(g));syncItems();renderChips();
-    });
-    document.getElementById(`${containerId}_none`).addEventListener("click",e=>{
-      e.stopPropagation();selected.clear();syncItems();renderChips();
-    });
-
-    // Close on outside click — use a named handler so we can remove it
+    list.addEventListener("click",e=>{const item=e.target.closest(".gradeDropItem");if(!item)return;const g=item.dataset.val;if(selected.has(g))selected.delete(g);else selected.add(g);syncItems();renderChips();});
+    chipsEl.addEventListener("click",e=>{const btn=e.target.closest(".rmChip");if(!btn)return;e.stopPropagation();selected.delete(btn.dataset.g);syncItems();renderChips();});
+    document.getElementById(`${containerId}_all`).addEventListener("click",e=>{e.stopPropagation();items.forEach(g=>selected.add(g));syncItems();renderChips();});
+    document.getElementById(`${containerId}_none`).addEventListener("click",e=>{e.stopPropagation();selected.clear();syncItems();renderChips();});
     const outsideHandler=e=>{if(!container.contains(e.target))closeDropdown();};
     document.addEventListener("click",outsideHandler);
-
     _gradeInstances[containerId]={
       getSelected:()=>[...selected].sort((a,b)=>a.localeCompare(b)),
       reset:()=>{selected.clear();syncItems();renderChips();},
@@ -699,14 +727,19 @@
 
   async function loadDashboard(){
     const period=(document.getElementById("dashboardPeriod").value||"monthly").toLowerCase();
-    const pLbl=period==="daily"?"Daily":period==="weekly"?"Weekly":"Monthly";
-    const aLbl=period==="daily"?"Today":period==="weekly"?"This Week":"This Month";
-    document.getElementById("trendTitle").textContent=`Borrowing Trend (${pLbl})`;
-    document.getElementById("topBooksTitle").textContent=`Most Borrowed Books (${aLbl})`;
-    document.getElementById("topStudentsTitle").textContent=`Top Borrowers (${aLbl})`;
+    const schoolYear=(document.getElementById("dashboardSchoolYear")?.value||"").trim();
+    const pLbl=period==="daily"?"Daily":period==="weekly"?"Weekly":period==="yearly"?"Yearly":"Monthly";
+    const aLbl=period==="daily"?"Today":period==="weekly"?"This Week":period==="yearly"?"This Year":"This Month";
+    const scopeLbl=schoolYear?` · ${schoolYear}`:"";
+    document.getElementById("trendTitle").textContent=`Borrowing Trend (${pLbl}${scopeLbl})`;
+    document.getElementById("topBooksTitle").textContent=`Most Borrowed Books (${aLbl}${scopeLbl})`;
+    document.getElementById("topStudentsTitle").textContent=`Top Borrowers (${aLbl}${scopeLbl})`;
     setDots(true);showProg();
     try{
-      const res=await fetch(`${BASE_URL}/api/reports/dashboard?period=${encodeURIComponent(period)}`,{headers:authHdr()});
+      const qs=new URLSearchParams();
+      if(period)qs.set("period",period);
+      if(schoolYear)qs.set("school_year",schoolYear);
+      const res=await fetch(`${BASE_URL}/api/reports/dashboard?${qs.toString()}`,{headers:authHdr()});
       const data=await res.json().catch(()=>({}));
       hideProg(true);setDots(false);
       if(!res.ok){destroyCharts();return;}
@@ -754,53 +787,106 @@
     }catch(err){hideProg(false);setDots(false);destroyCharts();console.error(err);}
   }
   document.getElementById("dashboardPeriod").addEventListener("change",loadDashboard);
+  document.getElementById("dashboardSchoolYear").addEventListener("change",loadDashboard);
   document.getElementById("btnRefreshDashboard").addEventListener("click",loadDashboard);
 
   // ─────────────────────────────────────────────
   // GENERATE REPORTS ENGINE
   // ─────────────────────────────────────────────
-  let _rptLoaded=false,_grades=[],_secByGrade={},_allSections=[],_brandCache=null;
+  let _rptLoaded=false,_grades=[],_secByGrade={},_allSections=[],_schoolYears=[],_activeSchoolYear="",_inventorySubjects=[],_brandCache=null;
   let curRType="circulation";
+
+  async function fetchAsDataUrl(url){
+    try{
+      if(!url) return "";
+      const abs = new URL(url, BASE_URL).href;
+      const res = await fetch(abs, { mode: "cors", credentials: "omit", cache: "no-store" });
+      if(!res.ok) throw new Error("logo fetch failed");
+      const blob = await res.blob();
+      return await new Promise((resolve,reject)=>{
+        const fr = new FileReader();
+        fr.onload = ()=> resolve(fr.result || "");
+        fr.onerror = ()=> reject(new Error("logo read failed"));
+        fr.readAsDataURL(blob);
+      });
+    }catch(err){
+      console.warn("Could not inline logo for report PDF", err);
+      return "";
+    }
+  }
 
   async function getBrand(){
     if(_brandCache)return _brandCache;
-    try{const r=await fetch(`${BASE_URL}/api/public/display`);_brandCache=await r.json().catch(()=>({}));}catch{_brandCache={};}
+    try{
+      const r=await fetch(`${BASE_URL}/api/public/display`);
+      _brandCache=await r.json().catch(()=>({}));
+    }catch{
+      _brandCache={};
+    }
+    if(_brandCache && !_brandCache.inline_logo_data){
+      const rawLogo = _brandCache.logo_url || document.querySelector("[data-brand-logo]")?.getAttribute("src") || "";
+      _brandCache.inline_logo_data = await fetchAsDataUrl(rawLogo);
+    }
     return _brandCache||{};
   }
 
   function gfv(id){return(document.getElementById(id)||{}).value||"";}
   function today(){return getMDS();}
   function ago30(){return addDays(today(),-30);}
+  function schoolYearFieldHtml(selected=""){
+    const options=['<option value="">All School Years</option>'].concat((_schoolYears||[]).map(sy=>`<option value="${esc(sy)}"${selected===sy?' selected':''}>${esc(sy)}</option>`));
+    return `<div class="field small"><label>School Year</label><select id="f_sy">${options.join("")}</select></div>`;
+  }
+  function getSchoolYear(){return gfv("f_sy")||"";}
+  function inventorySubjectFieldHtml(selected="") {
+    const options=['<option value="">All Subjects</option>'].concat((_inventorySubjects||[]).map(sub=>`<option value="${esc(sub)}"${selected===sub?' selected':''}>${esc(sub)}</option>`));
+    return `<div class="field small"><label>Subject</label><select id="f_isub">${options.join("")}</select></div>`;
+  }
+  function getInventorySubject(){return gfv("f_isub")||"";}
+  function syncInventorySubjectOptions(selected=""){
+    const el=document.getElementById("f_isub");
+    if(!el)return;
+    const current=selected || el.value || "";
+    const opts=['<option value="">All Subjects</option>'].concat((_inventorySubjects||[]).map(sub=>`<option value="${esc(sub)}"${current===sub?' selected':''}>${esc(sub)}</option>`));
+    el.innerHTML=opts.join("");
+    el.value=current && (_inventorySubjects||[]).includes(current) ? current : "";
+  }
+  async function preloadInventorySubjects(){
+    try{
+      const r=await fetch(`${BASE_URL}/api/reports/inventory`,{headers:authHdr()});
+      if(!r.ok)throw new Error("fetch failed");
+      const d=await r.json();
+      const rows=Array.isArray(d.rows)?d.rows:[];
+      _inventorySubjects=[...new Set(rows.map(r=>String(r.subject||r.genre||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+      syncInventorySubjectOptions();
+    }catch{}
+  }
+  function syncDashboardSchoolYearOptions(){
+    const el=document.getElementById("dashboardSchoolYear");
+    if(!el)return;
+    const current=el.value||_activeSchoolYear||"";
+    const opts=['<option value="">All School Years</option>'].concat((_schoolYears||[]).map(sy=>`<option value="${esc(sy)}"${current===sy?' selected':''}>${esc(sy)}</option>`));
+    el.innerHTML=opts.join("");
+    if(current && (_schoolYears||[]).includes(current)) el.value=current;
+    else if(_activeSchoolYear && (_schoolYears||[]).includes(_activeSchoolYear)) el.value=_activeSchoolYear;
+    else el.value="";
+  }
 
-  // Get selected items from any multi-select instance
   function getSelected(id){return _gradeInstances[id]?.getSelected()||[];}
   function getGrades(){return getSelected("f_grade_wrap");}
   function getSections(){return getSelected("f_section_wrap");}
 
-  // ── Grade multi-select field HTML ──
   function gradeMultiFieldHtml(){
     return`<div class="field" style="min-width:200px;"><label>Grade</label><div class="gradeMultiWrap" id="f_grade_wrap"></div></div>`;
   }
-
-  // ── Section multi-select field HTML ──
   function sectionMultiFieldHtml(){
     return`<div class="field" style="min-width:200px;"><label>Section</label><div class="gradeMultiWrap" id="f_section_wrap"></div></div>`;
   }
+  function initGradeMulti(){createGradeMultiSelect("f_grade_wrap", _grades, "All Grades");}
+  function initSectionMulti(sections){createGradeMultiSelect("f_section_wrap", sections, "All Sections");}
 
-  function initGradeMulti(){
-    createGradeMultiSelect("f_grade_wrap", _grades, "All Grades");
-  }
-
-  function initSectionMulti(sections){
-    createGradeMultiSelect("f_section_wrap", sections, "All Sections");
-  }
-
-  // ── Fetch sections for a list of grades, merge unique results ──
   async function fetchSectionsForGrades(grades){
-    if(!grades.length){
-      // Return all known sections
-      return _allSections;
-    }
+    if(!grades.length){return _allSections;}
     const fetches=grades.map(async g=>{
       if(!_secByGrade[g]){
         try{
@@ -812,11 +898,9 @@
       return _secByGrade[g]||[];
     });
     const results=await Promise.all(fetches);
-    // Merge unique, sorted alphabetically
     return [...new Set(results.flat())].sort((a,b)=>a.localeCompare(b));
   }
 
-  // ── Watch grade multi-select; rebuild section multi-select when grades change ──
   function attachGradeToSectionSync(){
     const chipsEl=document.getElementById("f_grade_wrap_chips");
     if(!chipsEl)return;
@@ -826,14 +910,11 @@
       const key=grades.join(",");
       if(key===_lastKey)return;
       _lastKey=key;
-      // Preserve current section selection
       const prevSections=getSections();
       const sections=await fetchSectionsForGrades(grades);
       initSectionMulti(sections);
-      // Re-check previously selected sections that still exist
       const valid=new Set(sections);
       prevSections.filter(s=>valid.has(s)).forEach(s=>{
-        // Re-select by simulating a click on the item
         const item=document.querySelector(`#f_section_wrap_list [data-val="${CSS.escape(s)}"]`);
         if(item)item.click();
       });
@@ -841,150 +922,77 @@
     obs.observe(chipsEl,{childList:true,subtree:true,characterData:true});
   }
 
-  // ── Filter HTML builders ──
   const FILTERS={
     circulation(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
-        gradeMultiFieldHtml()+sectionMultiFieldHtml();
-      initGradeMulti();
-      initSectionMulti(_allSections);
-      attachGradeToSectionSync();
+        gradeMultiFieldHtml()+sectionMultiFieldHtml()+schoolYearFieldHtml(_activeSchoolYear);
+      initGradeMulti();initSectionMulti(_allSections);attachGradeToSectionSync();
     },
     students(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">–</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
-        gradeMultiFieldHtml()+sectionMultiFieldHtml()+
+        gradeMultiFieldHtml()+sectionMultiFieldHtml()+schoolYearFieldHtml(_activeSchoolYear)+
         `<div class="field small"><label>Sort By</label><select id="f_ssort"><option value="borrow_count_desc">Most Borrowed</option><option value="overdue_desc">Most Overdue</option><option value="fines_desc">Highest Fines</option><option value="active_desc">Most Active Loans</option><option value="recent_desc">Most Recent Borrower</option><option value="name_asc">Name A–Z</option></select></div>`;
-      initGradeMulti();
-      initSectionMulti(_allSections);
-      attachGradeToSectionSync();
+      initGradeMulti();initSectionMulti(_allSections);attachGradeToSectionSync();
     },
     fines(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
-        gradeMultiFieldHtml()+sectionMultiFieldHtml()+
+        gradeMultiFieldHtml()+sectionMultiFieldHtml()+schoolYearFieldHtml(_activeSchoolYear)+
         `<div class="field small"><label>Status</label><select id="f_fst"><option value="all">All</option><option value="unpaid">Unpaid Only</option><option value="paid">Paid Only</option></select></div>`;
-      initGradeMulti();
-      initSectionMulti(_allSections);
-      attachGradeToSectionSync();
+      initGradeMulti();initSectionMulti(_allSections);attachGradeToSectionSync();
     },
     most_borrowed(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
-        gradeMultiFieldHtml()+sectionMultiFieldHtml();
-      initGradeMulti();
-      initSectionMulti(_allSections);
-      attachGradeToSectionSync();
+        gradeMultiFieldHtml()+sectionMultiFieldHtml()+schoolYearFieldHtml(_activeSchoolYear);
+      initGradeMulti();initSectionMulti(_allSections);attachGradeToSectionSync();
     },
     grade_summary(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
-        gradeMultiFieldHtml()+
+        gradeMultiFieldHtml()+schoolYearFieldHtml(_activeSchoolYear)+
         `<div class="field small"><label>Sort By</label><select id="f_gsort"><option value="grade">Grade Level</option><option value="borrows_desc">Most Borrows</option><option value="overdue_desc">Most Overdue</option><option value="fines_desc">Highest Fines</option></select></div>`;
       initGradeMulti();
-      // grade_summary has no section filter
     },
     inventory(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field small"><label>Copy Status</label><select id="f_ist"><option value="">All Statuses</option><option value="available">Available Only</option><option value="borrowed">Borrowed Only</option><option value="damaged">Damaged Only</option><option value="lost">Lost Only</option></select></div>`+
-        `<div class="field small"><label>Location</label><input id="f_bsec" type="text" placeholder="e.g. Fiction, Science\u2026" style="padding:11px 12px;"></div>`+
+        `<div class="field small"><label>Subject</label><select id="f_isub"><option value="">Any Subject</option></select></div>`+
         `<div class="field small"><label>Sort By</label><select id="f_isort"><option value="title">Title A\u2013Z</option><option value="total_desc">Most Copies</option><option value="avail_asc">Least Available</option><option value="damaged_desc">Most Damaged</option></select></div>`;
-      // inventory has no grade/section filter
     }
   };
 
-  // ── Build section param for API calls ──
-  // When multiple sections selected: we filter client-side on merged results.
-  // When one section: pass directly to API.
-  // When none: no section filter.
-  function sectionApiParam(){
-    const s=getSections();
-    return s.length===1?s[0]:"";
-  }
-
-  // ── Filter rows by selected sections (client-side for multi-section) ──
+  function sectionApiParam(){const s=getSections();return s.length===1?s[0]:"";}
   function filterRowsBySections(rows, sectionField="student_section"){
-    const secs=getSections();
-    if(!secs.length)return rows;
-    const secSet=new Set(secs);
-    return rows.filter(r=>secSet.has(String(r[sectionField]||"")));
+    const secs=getSections();if(!secs.length)return rows;const secSet=new Set(secs);return rows.filter(r=>secSet.has(String(r[sectionField]||"")));
   }
 
-  // ── Helper: build URLSearchParams with multi-grade support ──
   async function fetchWithMultiGrades(baseUrl, paramsFn){
     const grades=getGrades();
-    if(!grades.length){
-      const p=paramsFn(null);
-      const r=await fetch(`${BASE_URL}${baseUrl}?${p}`,{headers:authHdr()});
-      if(!r.ok)throw new Error("fetch failed");
-      return r.json();
-    }
-    if(grades.length===1){
-      const p=paramsFn(grades[0]);
-      const r=await fetch(`${BASE_URL}${baseUrl}?${p}`,{headers:authHdr()});
-      if(!r.ok)throw new Error("fetch failed");
-      return r.json();
-    }
-    const results=await Promise.all(grades.map(async g=>{
-      const p=paramsFn(g);
-      const r=await fetch(`${BASE_URL}${baseUrl}?${p}`,{headers:authHdr()});
-      if(!r.ok)throw new Error("fetch failed");
-      return r.json();
-    }));
+    if(!grades.length){const p=paramsFn(null);const r=await fetch(`${BASE_URL}${baseUrl}?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();}
+    if(grades.length===1){const p=paramsFn(grades[0]);const r=await fetch(`${BASE_URL}${baseUrl}?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();}
+    const results=await Promise.all(grades.map(async g=>{const p=paramsFn(g);const r=await fetch(`${BASE_URL}${baseUrl}?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();}));
     const merged={...results[0]};
     merged.rows=results.flatMap(d=>d.rows||[]);
-    if(merged.summary){
-      merged.summary.row_count=merged.rows.length;
-      merged.summary.fine_total=merged.rows.reduce((s,r)=>s+Number(r.total_fine||0),0);
-      merged.summary.fine_paid_total=merged.rows.reduce((s,r)=>s+Number(r.total_paid||0),0);
-      merged.summary.fine_outstanding_total=merged.rows.reduce((s,r)=>s+Number(r.outstanding_fine||0),0);
-    }
+    if(merged.summary){merged.summary.row_count=merged.rows.length;merged.summary.fine_total=merged.rows.reduce((s,r)=>s+Number(r.total_fine||0),0);merged.summary.fine_paid_total=merged.rows.reduce((s,r)=>s+Number(r.total_paid||0),0);merged.summary.fine_outstanding_total=merged.rows.reduce((s,r)=>s+Number(r.outstanding_fine||0),0);}
     const gradeLabel=grades.join(", ");
     if(merged.filters)merged.filters.grade=`Grades ${gradeLabel}`;
     return merged;
   }
 
-  // ── Data fetchers ──
   const FETCHERS={
     async circulation(){
-      const data=await fetchWithMultiGrades("/api/reports/generate",(g)=>{
-        const p=new URLSearchParams();
-        const df=gfv("f_df"),dt=gfv("f_dt"),s=sectionApiParam();
-        if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);
-        if(g)p.set("grade",g);if(s)p.set("section",s);
-        return p;
-      });
-      // Client-side section filter for multi-section
-      data.rows=filterRowsBySections(data.rows||[]);
-      return data;
+      const data=await fetchWithMultiGrades("/api/reports/generate",(g)=>{const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),s=sectionApiParam();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);const sy=getSchoolYear();if(sy)p.set("school_year",sy);return p;});
+      data.rows=filterRowsBySections(data.rows||[]);return data;
     },
     async students(){
-      const raw=await fetchWithMultiGrades("/api/reports/generate",(g)=>{
-        const p=new URLSearchParams();
-        const df=gfv("f_df"),dt=gfv("f_dt"),s=sectionApiParam();
-        if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);
-        if(g)p.set("grade",g);if(s)p.set("section",s);
-        return p;
-      });
-      // Client-side section filter for multi-section
+      const raw=await fetchWithMultiGrades("/api/reports/generate",(g)=>{const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),s=sectionApiParam();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);const sy=getSchoolYear();if(sy)p.set("school_year",sy);return p;});
       const filteredRows=filterRowsBySections(raw.rows||[]);
-      const grades=getGrades();
-      const secs=getSections();
-      const df=gfv("f_df"),dt=gfv("f_dt");
+      const grades=getGrades();const secs=getSections();const df=gfv("f_df"),dt=gfv("f_dt");
       const grouped=new Map();
-      filteredRows.forEach(row=>{
-        const key=row.student_id||row.student_code||`${row.last_name||""}|${row.first_name||""}|${row.grade||""}|${row.student_section||""}`;
-        if(!grouped.has(key)){grouped.set(key,{student_id:row.student_id||null,student_code:row.student_code||"",first_name:row.first_name||"",last_name:row.last_name||"",grade:row.grade||"",student_section:row.student_section||"",borrow_count:0,active_loans:0,overdue_count:0,outstanding_fines:0,total_fines:0,last_borrowed_at:null,last_due_at:null});}
-        const item=grouped.get(key);
-        item.borrow_count+=1;
-        if(!row.returned_at)item.active_loans+=1;
-        if(row.is_overdue&&!row.returned_at)item.overdue_count+=1;
-        item.outstanding_fines+=Number(row.outstanding_fine||0);
-        item.total_fines+=Number(row.total_fine||0);
-        if(row.borrowed_at&&(!item.last_borrowed_at||new Date(row.borrowed_at)>new Date(item.last_borrowed_at)))item.last_borrowed_at=row.borrowed_at;
-        if(row.due_at&&(!item.last_due_at||new Date(row.due_at)>new Date(item.last_due_at)))item.last_due_at=row.due_at;
-      });
+      filteredRows.forEach(row=>{const key=row.student_id||row.student_code||`${row.last_name||""}|${row.first_name||""}|${row.grade||""}|${row.student_section||""}`;if(!grouped.has(key)){grouped.set(key,{student_id:row.student_id||null,student_code:row.student_code||"",first_name:row.first_name||"",last_name:row.last_name||"",grade:row.grade||"",student_section:row.student_section||"",borrow_count:0,active_loans:0,overdue_count:0,outstanding_fines:0,total_fines:0,last_borrowed_at:null,last_due_at:null});}const item=grouped.get(key);item.borrow_count+=1;if(!row.returned_at)item.active_loans+=1;if(row.is_overdue&&!row.returned_at)item.overdue_count+=1;item.outstanding_fines+=Number(row.outstanding_fine||0);item.total_fines+=Number(row.total_fine||0);if(row.borrowed_at&&(!item.last_borrowed_at||new Date(row.borrowed_at)>new Date(item.last_borrowed_at)))item.last_borrowed_at=row.borrowed_at;if(row.due_at&&(!item.last_due_at||new Date(row.due_at)>new Date(item.last_due_at)))item.last_due_at=row.due_at;});
       const rows=[...grouped.values()];
       const srt=gfv("f_ssort")||"borrow_count_desc";
       if(srt==="overdue_desc")rows.sort((a,b)=>Number(b.overdue_count||0)-Number(a.overdue_count||0)||Number(b.borrow_count||0)-Number(a.borrow_count||0));
@@ -993,266 +1001,382 @@
       else if(srt==="recent_desc")rows.sort((a,b)=>new Date(b.last_borrowed_at||0)-new Date(a.last_borrowed_at||0));
       else if(srt==="name_asc")rows.sort((a,b)=>`${a.last_name||""}, ${a.first_name||""}`.localeCompare(`${b.last_name||""}, ${b.first_name||""}`));
       else rows.sort((a,b)=>Number(b.borrow_count||0)-Number(a.borrow_count||0)||Number(b.active_loans||0)-Number(a.active_loans||0));
-      return{
-        date_from:raw.filters?.date_from||df||"",
-        date_to:raw.filters?.date_to||dt||"",
-        grade:grades.length?`Grades ${grades.join(", ")}`:"All",
-        section:secs.length?secs.join(", "):"All",
-        rows,
-        summary:{total_students:rows.length,total_loans:rows.reduce((sum,r)=>sum+Number(r.borrow_count||0),0),active_loans:rows.reduce((sum,r)=>sum+Number(r.active_loans||0),0),overdue_count:rows.reduce((sum,r)=>sum+Number(r.overdue_count||0),0),outstanding_fines:rows.reduce((sum,r)=>sum+Number(r.outstanding_fines||0),0)}
-      };
+      return{date_from:raw.filters?.date_from||df||"",date_to:raw.filters?.date_to||dt||"",grade:grades.length?`Grades ${grades.join(", ")}`:"All",section:secs.length?secs.join(", "):"All",rows,summary:{total_students:rows.length,total_loans:rows.reduce((sum,r)=>sum+Number(r.borrow_count||0),0),active_loans:rows.reduce((sum,r)=>sum+Number(r.active_loans||0),0),overdue_count:rows.reduce((sum,r)=>sum+Number(r.overdue_count||0),0),outstanding_fines:rows.reduce((sum,r)=>sum+Number(r.outstanding_fines||0),0)}};
     },
     async fines(){
-      const data=await fetchWithMultiGrades("/api/reports/fines",(g)=>{
-        const p=new URLSearchParams();
-        const df=gfv("f_df"),dt=gfv("f_dt"),fs=gfv("f_fst"),s=sectionApiParam();
-        if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);
-        if(g)p.set("grade",g);if(s)p.set("section",s);
-        if(fs&&fs!=="all")p.set("status",fs);
-        return p;
-      });
-      data.rows=filterRowsBySections(data.rows||[]);
-      return data;
+      const data=await fetchWithMultiGrades("/api/reports/fines",(g)=>{const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),fs=gfv("f_fst"),s=sectionApiParam();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);const sy=getSchoolYear();if(sy)p.set("school_year",sy);if(fs&&fs!=="all")p.set("status",fs);return p;});
+      data.rows=filterRowsBySections(data.rows||[]);return data;
     },
     async most_borrowed(){
-      const data=await fetchWithMultiGrades("/api/reports/most-borrowed",(g)=>{
-        const p=new URLSearchParams();
-        const df=gfv("f_df"),dt=gfv("f_dt"),s=sectionApiParam();
-        if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);
-        if(g)p.set("grade",g);if(s)p.set("section",s);
-        p.set("limit","50");
-        return p;
-      });
-      // most_borrowed doesn't have student_section on rows; section filter applied by API
+      const data=await fetchWithMultiGrades("/api/reports/most-borrowed",(g)=>{const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt"),s=sectionApiParam();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);const sy=getSchoolYear();if(sy)p.set("school_year",sy);p.set("limit","50");return p;});
       return data;
     },
     async grade_summary(){
-      const grades=getGrades();
-      const df=gfv("f_df"),dt=gfv("f_dt");
-      const p=new URLSearchParams();
-      if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);
-      const r=await fetch(`${BASE_URL}/api/reports/grade-summary?${p}`,{headers:authHdr()});
-      if(!r.ok)throw new Error("fetch failed");
-      const data=await r.json();
-      if(grades.length&&data.rows){
-        data.rows=data.rows.filter(row=>grades.includes(String(row.grade||"").trim()));
-      }
-      return data;
+      const grades=getGrades();const df=gfv("f_df"),dt=gfv("f_dt");const p=new URLSearchParams();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);const sy=getSchoolYear();if(sy)p.set("school_year",sy);
+      const r=await fetch(`${BASE_URL}/api/reports/grade-summary?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");const data=await r.json();
+      if(grades.length&&data.rows){data.rows=data.rows.filter(row=>grades.includes(String(row.grade||"").trim()));}return data;
     },
     async inventory(){
-      const p=new URLSearchParams();const bs=gfv("f_bsec");if(bs)p.set("book_section",bs);
-      const r=await fetch(`${BASE_URL}/api/reports/inventory?${p}`,{headers:authHdr()});
-      if(!r.ok)throw new Error("fetch failed");let d=await r.json();
-      const st=gfv("f_ist"),srt=gfv("f_isort")||"title";
+      const p=new URLSearchParams();const r=await fetch(`${BASE_URL}/api/reports/inventory?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");let d=await r.json();
+      const st=gfv("f_ist"),sub=getInventorySubject(),srt=gfv("f_isort")||"title";
+      if(Array.isArray(d.rows)){_inventorySubjects=[...new Set(d.rows.map(r=>String(r.subject||r.genre||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));syncInventorySubjectOptions(sub);}
       if(st&&d.rows)d.rows=d.rows.filter(r=>{if(st==="available")return Number(r.available??0)>0;if(st==="borrowed")return Number(r.borrowed??0)>0;if(st==="damaged")return Number(r.damaged??0)>0;if(st==="lost")return Number(r.lost??0)>0;return true;});
+      if(sub&&d.rows)d.rows=d.rows.filter(r=>String(r.subject||r.genre||"").trim()===sub);
       if(d.rows){if(srt==="total_desc")d.rows.sort((a,b)=>Number(b.total_copies??0)-Number(a.total_copies??0));else if(srt==="avail_asc")d.rows.sort((a,b)=>Number(a.available??0)-Number(b.available??0));else if(srt==="damaged_desc")d.rows.sort((a,b)=>Number(b.damaged??0)-Number(a.damaged??0));else d.rows.sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));}
       return d;
     }
   };
 
-  // ── Section label helper ──
   function sectionLabel(){const s=getSections();return s.length?s.join(", "):"All";}
   function gradeLabel(){const g=getGrades();return g.length?`Grade${g.length>1?"s":""} ${g.join(", ")}`:"All";}
+  function schoolYearLabel(){const sy=getSchoolYear();return sy||"All School Years";}
 
-  // ── Shared report header & footer builders ──
+  function getReportBrandTitle(brand){const headerName=document.querySelector("[data-brand-school-name]")?.textContent?.trim();if(headerName)return headerName;return (brand.school_name||"Your School Name").trim();}
+  function getReportBrandSubtitle(brand){const headerSubtitle=document.querySelector("[data-brand-header-subtitle]")?.textContent?.trim();if(headerSubtitle) return headerSubtitle;const subtitle=(brand.header_subtitle||"").trim();if(subtitle) return subtitle;const sys=(brand.system_name||"").trim();if(sys && !/^library management system$/i.test(sys)) return sys;return "Librarian Portal";}
   function buildHdr(brand,rptTitle){
-    const sn=brand.school_name||"Your School Name",sys=brand.system_name||"Library Management System";
-    const logo=brand.logo_url||"";
+    const sn=getReportBrandTitle(brand),sys=getReportBrandSubtitle(brand);
+    const rawLogo=brand.inline_logo_data||brand.logo_url||document.querySelector("[data-brand-logo]")?.getAttribute("src")||"";
+    const logo=rawLogo?new URL(rawLogo, BASE_URL).href:"";
     const now=new Date();
     const ds=now.toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
     const ts=now.toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"});
-    const logoHtml=logo
-      ?`<img class="rptLogo" src="${esc(logo)}" alt="School Logo" onerror="this.style.display='none'">`
-      :`<div class="rptLogoFb">\ud83d\udcda</div>`;
-    return`<div class="rptHeader">${logoHtml}<div class="rptHdrText"><div class="rptSchoolName">${esc(sn)}</div><div class="rptSchoolSub">${esc(sys)}</div></div><div class="rptHdrMeta"><div class="rptTypeLbl">${esc(rptTitle)}</div><div class="rptTimestamp">${esc(ds)} \u00b7 ${esc(ts)}</div></div></div>`;
-  }
-  function buildFiltBar(parts){if(!parts.length)return"";return`<div class="rptFilters">${parts.map(p=>`<span>${esc(p.k)}: <b>${esc(p.v)}</b></span>`).join("")}</div>`;}
-  function buildSum(cards){return`<div class="rptSumGrid">${cards.map(c=>`<div class="rsc ${c.cls||""}"><div class="rv">${esc(String(c.val))}</div><div class="rl">${esc(c.lbl)}</div></div>`).join("")}</div>`;}
-  function buildFoot(cnt,rtype){
-    const ts=new Date().toLocaleString("en-PH");
-    return`<div class="rptFoot">
-      <span class="rptFootLeft">${esc(rtype)} \u2014 ${fmtNum(cnt)} record${cnt!==1?"s":""}</span>
-      <span class="rptFootRight">Generated ${esc(ts)} \u00b7 For official use only</span>
+    const logoHtml=logo?`<img class="rptLogo" src="${esc(logo)}" alt="School Logo" crossorigin="anonymous">`:`<div class="rptLogoFallback">LOGO</div>`;
+    return`<div class="rptHeader">
+      <div class="rptHeaderLeft">
+        ${logoHtml}
+        <div class="rptHdrText">
+          <div class="rptSchoolName">${esc(sn)}</div>
+          <div class="rptSchoolSub">${esc(sys)}</div>
+        </div>
+      </div>
+      <div class="rptHdrMeta">
+        <div class="rptTypeLbl">${esc(rptTitle)}</div>
+        <div class="rptTimestamp">${esc(ds)} · ${esc(ts)}</div>
+      </div>
     </div>`;
   }
+  function buildFiltBar(parts){
+    const clean=(parts||[]).filter(p=>p&&String(p.v||"").trim()&&String(p.v).trim()!=="—"&&String(p.v).trim()!=="All");
+    if(!clean.length)return"";
+    return`<div class="rptFilters">${clean.map(p=>`<span><b>${esc(p.k)}:</b> ${esc(p.v)}</span>`).join("")}</div>`;
+  }
+  function buildSum(cards){ return ""; }
+  function buildFoot(cnt,rtype,page=1,totalPages=1){
+    const ts=new Date().toLocaleString("en-PH");
+    return`<div class="rptFoot">
+      <span>${esc(rtype)} · ${fmtNum(cnt)} record${cnt!==1?"s":""}</span>
+      <span>Generated ${esc(ts)} · Page ${page} of ${totalPages}</span>
+    </div>`;
+  }
+  const PAPER_SIZES={
+    A4:{label:"A4",w:210,h:297,rowAdjustFirst:0,rowAdjustNext:0},
+    LETTER:{label:"Letter",w:215.9,h:279.4,rowAdjustFirst:-1,rowAdjustNext:-1},
+    LEGAL:{label:"Legal",w:215.9,h:355.6,rowAdjustFirst:3,rowAdjustNext:4}
+  };
+  let currentPaper="A4";
+  function getPaperCfg(){return PAPER_SIZES[currentPaper]||PAPER_SIZES.A4;}
+  function applyPaperSizeToPreview(){
+    const p=getPaperCfg();
+    document.documentElement.style.setProperty("--preview-page-width", `${p.w}mm`);
+    document.documentElement.style.setProperty("--preview-page-height", `${p.h}mm`);
+    const meta=document.getElementById("previewPaperMeta");
+    if(meta) meta.textContent=`${p.label} preview · download matches this layout`;
+  }
+  function previewPageSizes(type){
+    const p=getPaperCfg();
+    let base={first:12,next:16};
+    if(type==="students") base={first:14,next:18};
+    else if(type==="grade_summary") base={first:17,next:22};
+    else if(type==="inventory") base={first:14,next:18};
+    return {first:Math.max(6, base.first + (p.rowAdjustFirst||0)),next:Math.max(8, base.next + (p.rowAdjustNext||0))};
+  }
+  function paginateCurrentPreview(){
+    const doc=document.querySelector("#reportOutput .rptDoc");if(!doc)return;
+    const table=doc.querySelector(".rptTable");const header=doc.querySelector(".rptHeader");const body=doc.querySelector(".rptBody");const foot=doc.querySelector(".rptFoot");
+    if(!table||!header||!body||!foot)return;
+    const filters=body.querySelector(".rptFilters");const sum=body.querySelector(".rptSumGrid");
+    const thead=table.querySelector("thead")?.outerHTML||"";
+    const colgroup=table.querySelector("colgroup")?.outerHTML||"";
+    const rowHTMLs=[...table.querySelectorAll("tbody tr")].map(tr=>tr.outerHTML);
+    if(!rowHTMLs.length)return;
+    const infoParts=[...foot.querySelectorAll("span")].map(el=>el.textContent?.trim()||"").filter(Boolean);
+    const infoLeft=infoParts[0]||"";
+    const infoMeta=(infoParts[1]||"").replace(/\s*·\s*Page\s+\d+\s+of\s+\d+$/i,"");
+    const filterHTML=filters?filters.outerHTML:"";
+    const sumHTML=sum?sum.outerHTML:"";
+    const tableClass=table.className;
+    const bodyClass=body.className;
 
-  // ── Per-report-type HTML renderers ──
+    const host=document.createElement("div");
+    host.style.cssText="position:fixed;left:-10000px;top:0;visibility:hidden;pointer-events:none;z-index:-1;";
+    const page=document.createElement("section");
+    page.className="rptPage";
+    host.appendChild(page);
+    document.body.appendChild(host);
+
+    function makeSkeleton(isFirst){
+      page.innerHTML=`${header.outerHTML}<div class="${bodyClass}">${isFirst?filterHTML:""}${isFirst?sumHTML:'<div class="rptContNote">Continued report</div>'}<table class="${tableClass}">${colgroup}${thead}<tbody></tbody></table></div><div class="rptFoot"><span>${esc(infoLeft)}</span><span>${esc(infoMeta)} · Page 1 of 1</span></div>`;
+      return page.querySelector("tbody");
+    }
+
+    const pages=[];
+    let current=[];
+    let tbody=makeSkeleton(true);
+
+    for(const rowHTML of rowHTMLs){
+      tbody.insertAdjacentHTML("beforeend", rowHTML);
+      const overflow=page.scrollHeight > page.clientHeight + 1;
+      if(!overflow){
+        current.push(rowHTML);
+        continue;
+      }
+      tbody.lastElementChild?.remove();
+      if(current.length===0){
+        tbody.insertAdjacentHTML("beforeend", rowHTML);
+        current.push(rowHTML);
+        pages.push(current.slice());
+        current=[];
+        tbody=makeSkeleton(false);
+      }else{
+        pages.push(current.slice());
+        current=[rowHTML];
+        tbody=makeSkeleton(false);
+        tbody.insertAdjacentHTML("beforeend", rowHTML);
+        if(page.scrollHeight > page.clientHeight + 1){
+          pages.push(current.slice());
+          current=[];
+          tbody=makeSkeleton(false);
+        }
+      }
+    }
+    if(current.length) pages.push(current.slice());
+    host.remove();
+
+    const totalPages=pages.length||1;
+    doc.innerHTML=`<div class="previewPages">${pages.map((slice,pageIdx)=>`<section class="rptPage rptPageBreak">      ${header.outerHTML}      <div class="${bodyClass}">        ${pageIdx===0?filterHTML:'<div class="rptContNote">Continued report</div>'}        ${pageIdx===0?sumHTML:''}        <table class="${tableClass}">${colgroup}${thead}<tbody>${slice.join("")}</tbody></table>      </div>      <div class="rptFoot">        <span>${esc(infoLeft)}</span>        <span>${esc(infoMeta)} · Page ${pageIdx+1} of ${totalPages}</span>      </div>    </section>`).join("")}</div>`;
+  }
+
   const RENDERERS={
     circulation(data,brand){
       const rows=data.rows||[],filt=data.filters||{},summ=data.summary||{};
-      const fp=[{k:"Date",v:`${filt.date_from||"\u2014"} to ${filt.date_to||"\u2014"}`},{k:"Grade",v:filt.grade||gradeLabel()},{k:"Section",v:filt.section||sectionLabel()}];
-      const sc=[{val:fmtNum(summ.row_count||rows.length),lbl:"Total Loans"},{val:fmtNum(rows.filter(r=>!r.returned_at&&r.is_overdue).length),lbl:"Currently Overdue",cls:"warn"},{val:peso(summ.fine_total),lbl:"Fines Assessed",cls:"warn"},{val:peso(summ.fine_outstanding_total),lbl:"Outstanding",cls:"danger"}];
-      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Book</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th><th>Fine</th></tr>`;
+      const fp=[{k:"Date",v:`${filt.date_from||"—"} to ${filt.date_to||"—"}`},{k:"School Year",v:filt.school_year||schoolYearLabel()},{k:"Grade",v:filt.grade||gradeLabel()},{k:"Section",v:filt.section||sectionLabel()}];
+      const lostCount=rows.filter(r=>String(r.loan_status||"").toLowerCase()==="lost"||String(r.copy_status||"").toLowerCase()==="lost").length;
+      const damagedCount=rows.filter(r=>String(r.copy_status||"").toLowerCase()==="damaged"||String(r.loan_status||"").toLowerCase().includes("damage")).length;
+      const sc=[{val:fmtNum(summ.row_count||rows.length),lbl:"Total Loans"},{val:fmtNum(rows.filter(r=>!r.returned_at&&r.is_overdue&&String(r.loan_status||"").toLowerCase()!=="lost").length),lbl:"Currently Overdue",cls:"warn"},{val:fmtNum(lostCount),lbl:"Lost Records",cls:lostCount?"danger":""},{val:fmtNum(damagedCount),lbl:"Damaged Records",cls:damagedCount?"warn":""},{val:peso(summ.fine_total),lbl:"Fines Assessed",cls:"warn"},{val:peso(summ.fine_outstanding_total),lbl:"Outstanding",cls:"danger"}];
+      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Book</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th><th>Fines</th></tr>`;
+      const cg=`<colgroup><col class="num"><col class="student"><col class="grade"><col class="book"><col class="borrowed"><col class="due"><col class="returned"><col class="status"><col class="fine"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>{
-        const ov=r.is_overdue&&!r.returned_at;
-        const st=r.returned_at?`<span class="pill green">Returned</span>`:ov?`<span class="pill red">Overdue</span>`:`<span class="pill blue">Active</span>`;
-        return`<tr><td>${i+1}</td><td><div class="ct">${esc(r.last_name||"")}, ${esc(r.first_name||"")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.student_section||"\u2014")}</td><td><div class="ct">${esc(r.title||"")}</div><div class="cs">${esc(r.author||"")}</div></td><td>${fmtDate(r.borrowed_at)}</td><td>${fmtDate(r.due_at)}</td><td>${r.returned_at?fmtDate(r.returned_at):"\u2014"}</td><td>${st}</td><td>${Number(r.outstanding_fine||0)>0?`<span class="pill red">${peso(r.outstanding_fine)}</span>`:"\u2014"}</td></tr>`;
+        const loanStatus=String(r.loan_status||"").toLowerCase();
+        const copyStatus=String(r.copy_status||"").toLowerCase();
+        const ov=!!(r.is_overdue&&!r.returned_at&&loanStatus!=="lost");
+        let st=`<span class="pill blue">Active</span>`;
+        if(loanStatus==="lost"||copyStatus==="lost") st=`<span class="pill red">Lost</span>`;
+        else if(copyStatus==="damaged"||loanStatus.includes("damage")) st=`<span class="pill orange">Damaged</span>`;
+        else if(ov) st=`<span class="pill red">Overdue</span>`;
+        else if(r.returned_at) st=`<span class="pill green">Returned</span>`;
+        const totalFine=Number(r.total_fine||0);
+        const totalPaid=Number(r.total_paid||0);
+        const outstandingFine=Number(r.outstanding_fine||0);
+        const fineCell=totalFine>0
+          ? `<div class="rptFineCell"><div class="rptFineMain">${outstandingFine>0?`Balance: ${peso(outstandingFine)}`:`Paid: ${peso(totalPaid||totalFine)}`}</div><div class="rptFineSub">Total: ${peso(totalFine)}</div>${totalPaid>0?`<div class="rptFineSub">Paid: ${peso(totalPaid)}</div>`:""}</div>`
+          : "—";
+        return`<tr><td>${i+1}</td><td><div class="ct">${esc(r.last_name||"")}, ${esc(r.first_name||"")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"—")} / ${esc(r.student_section||"—")}</td><td><div class="ct">${esc(r.title||"")}</div><div class="cs">${esc(r.author||"")}</div></td><td>${fmtDate(r.borrowed_at)}</td><td>${fmtDate(r.due_at)}</td><td>${r.returned_at?fmtDate(r.returned_at):"—"}</td><td>${st}</td><td>${fineCell}</td></tr>`;
       }).join(""):`<tr><td colspan="9" class="rptEmpty">No circulation records found for these filters.</td></tr>`;
-      return buildHdr(brand,"Circulation Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Circulation Report");
+      return buildHdr(brand,"Circulation Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable circulationTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Circulation Report");
     },
     students(data,brand){
-      const rows=data.rows||[],summ=data.summary||{};
-      const srt=gfv("f_ssort")||"borrow_count_desc";
+      const rows=data.rows||[],summ=data.summary||{};const srt=gfv("f_ssort")||"borrow_count_desc";const topBorrower=rows[0]||null;
       const fp=[{k:"Date",v:`${data.date_from||"—"} to ${data.date_to||"—"}`},{k:"Grade",v:data.grade||gradeLabel()},{k:"Section",v:data.section||sectionLabel()},{k:"Sort",v:srt.replace(/_/g," ")}];
-      const topBorrower=rows[0]||null;
       const sc=[{val:fmtNum(summ.total_students||rows.length),lbl:"Students Included"},{val:fmtNum(summ.total_loans||0),lbl:"Total Borrows"},{val:fmtNum(summ.active_loans||0),lbl:"Active Loans",cls:Number(summ.active_loans||0)>0?"warn":""},{val:fmtNum(summ.overdue_count||0),lbl:"Overdue Loans",cls:Number(summ.overdue_count||0)>0?"danger":""},{val:peso(summ.outstanding_fines||0),lbl:"Outstanding Fines",cls:Number(summ.outstanding_fines||0)>0?"danger":""}];
       const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Total Borrows</th><th>Active Loans</th><th>Overdue</th><th>Outstanding Fines</th><th>Last Borrowed</th></tr>`;
+      const cg=`<colgroup><col class="num"><col class="student"><col class="grade"><col class="total"><col class="active"><col class="overdue"><col class="fines"><col class="last"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>{const studentName=`${r.last_name||""}, ${r.first_name||""}`.replace(/^,\s*/,"").trim()||r.student_code||"Student";return`<tr><td>${i+1}</td><td><div class="ct">${esc(studentName)}</div><div class="cs">${esc(r.student_code||"—")}</div></td><td>${esc(r.grade||"—")} / ${esc(r.student_section||"—")}</td><td><span class="pill blue">${fmtNum(r.borrow_count||0)}</span></td><td>${Number(r.active_loans||0)>0?`<span class="pill yellow">${fmtNum(r.active_loans)}</span>`:"—"}</td><td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td><td>${Number(r.outstanding_fines||0)>0?`<span class="pill orange">${peso(r.outstanding_fines)}</span>`:"—"}</td><td>${r.last_borrowed_at?fmtDate(r.last_borrowed_at):"—"}</td></tr>`;}).join(""):`<tr><td colspan="8" class="rptEmpty">No student borrowing records found for these filters.</td></tr>`;
       const insightHtml=rows.length?`<div class="rptFilters" style="margin-bottom:14px;"><span><b>Top Borrower:</b> ${esc(`${topBorrower?.last_name||""}, ${topBorrower?.first_name||""}`.replace(/^,\s*/,"").trim()||topBorrower?.student_code||"—")}</span><span><b>Borrow Count:</b> ${fmtNum(topBorrower?.borrow_count||0)}</span><span><b>Active Loans:</b> ${fmtNum(topBorrower?.active_loans||0)}</span><span><b>Overdue:</b> ${fmtNum(topBorrower?.overdue_count||0)}</span></div>`:"";
-      return buildHdr(brand,"Students Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}${insightHtml}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Students Report");
+      return buildHdr(brand,"Students Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}${insightHtml}<table class="rptTable studentsTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Students Report");
     },
     fines(data,brand){
-      const rows=data.rows||[],summ=data.summary||{};
-      const fs=gfv("f_fst")||"all";
-      const fp=[{k:"Date",v:`${gfv("f_df")||"\u2014"} to ${gfv("f_dt")||"\u2014"}`},{k:"Grade",v:gradeLabel()},{k:"Section",v:sectionLabel()},{k:"Status",v:fs==="all"?"All":fs==="unpaid"?"Unpaid Only":"Paid Only"}];
+      const rows=data.rows||[],summ=data.summary||{};const fs=gfv("f_fst")||"all";
+      const fp=[{k:"Date",v:`${gfv("f_df")||"\u2014"} to ${gfv("f_dt")||"\u2014"}`},{k:"School Year",v:schoolYearLabel()},{k:"Grade",v:gradeLabel()},{k:"Section",v:sectionLabel()},{k:"Status",v:fs==="all"?"All":fs==="unpaid"?"Unpaid Only":"Paid Only"}];
       const sc=[{val:fmtNum(rows.length),lbl:"Fine Records"},{val:peso(summ.total_amount),lbl:"Total Assessed",cls:"warn"},{val:peso(summ.total_paid),lbl:"Total Collected"},{val:peso(summ.total_outstanding),lbl:"Still Outstanding",cls:"danger"}];
       const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Book</th><th>Reason</th><th>Assessed</th><th>Amount</th><th>Paid</th><th>Outstanding</th><th>Status</th></tr>`;
+      const cg=`<colgroup><col class="num"><col class="student"><col class="grade"><col class="book"><col class="reason"><col class="assessed"><col class="amount"><col class="paid"><col class="outstanding"><col class="status"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.last_name||"")}, ${esc(r.first_name||"")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.student_section||"\u2014")}</td><td>${r.title?`<div class="ct">${esc(r.title)}</div>`:"\u2014"}</td><td>${esc(r.reason||"\u2014")}</td><td>${fmtDate(r.assessed_at)}</td><td>${peso(r.amount)}</td><td>${Number(r.amount_paid||0)>0?peso(r.amount_paid):"\u2014"}</td><td>${Number(r.outstanding||0)>0?`<b style="color:#b91c1c">${peso(r.outstanding)}</b>`:`<span style="color:#16a34a">\u2713 Settled</span>`}</td><td>${r.status==="paid"?`<span class="pill green">Paid</span>`:`<span class="pill red">Unpaid</span>`}</td></tr>`).join(""):`<tr><td colspan="10" class="rptEmpty">No fine records found.</td></tr>`;
       return buildHdr(brand,"Fines Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Fines Report");
     },
     most_borrowed(data,brand){
-      const rows=data.rows||[];
-      const totB=rows.reduce((s,r)=>s+Number(r.borrow_count||0),0);
-      const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"Grade",v:gradeLabel()},{k:"Section",v:sectionLabel()}];
+      const rows=data.rows||[];const totB=rows.reduce((s,r)=>s+Number(r.borrow_count||0),0);
+      const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()},{k:"Grade",v:gradeLabel()},{k:"Section",v:sectionLabel()}];
       const sc=[{val:fmtNum(rows.length),lbl:"Books Ranked"},{val:fmtNum(totB),lbl:"Total Borrows"},{val:fmtNum(new Set(rows.map(r=>r.book_section)).size),lbl:"Sections"},{val:rows.length?fmtNum(rows[0].borrow_count):"\u2014",lbl:"Top Borrow Count"}];
       const th=`<tr><th>Rank</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Borrow Count</th><th>Unique Readers</th></tr>`;
+      const cg=`<colgroup><col class="rank"><col class="title"><col class="author"><col class="subject"><col class="location"><col class="borrowCount"><col class="readers"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>`<tr><td><b>#${i+1}</b></td><td><div class="ct">${esc(r.title||"")}</div></td><td>${esc(r.author||"\u2014")}</td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><span class="pill ${i===0?"yellow":i<3?"green":"gray"}">${fmtNum(r.borrow_count)}</span></td><td>${fmtNum(r.unique_borrowers)}</td></tr>`).join(""):`<tr><td colspan="7" class="rptEmpty">No borrowing data for this period.</td></tr>`;
-      return buildHdr(brand,"Most Borrowed Books")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Most Borrowed Books");
+      return buildHdr(brand,"Most Borrowed Books")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable borrowedTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Most Borrowed Books");
     },
     grade_summary(data,brand){
-      let rows=[...(data.rows||[])];
-      const srt=gfv("f_gsort")||"grade";
+      let rows=[...(data.rows||[])];const srt=gfv("f_gsort")||"grade";
       if(srt==="borrows_desc") rows.sort((a,b)=>Number(b.total_borrows||0)-Number(a.total_borrows||0));
       else if(srt==="overdue_desc") rows.sort((a,b)=>Number(b.overdue_count||0)-Number(a.overdue_count||0));
       else if(srt==="fines_desc") rows.sort((a,b)=>Number(b.outstanding_fines||0)-Number(a.outstanding_fines||0));
       else rows.sort((a,b)=>{const na=Number(a.grade),nb=Number(b.grade);if(isFinite(na)&&isFinite(nb))return na-nb;return String(a.grade||"").localeCompare(String(b.grade||""));});
       const tB=rows.reduce((s,r)=>s+Number(r.total_borrows||0),0),tO=rows.reduce((s,r)=>s+Number(r.overdue_count||0),0),tF=rows.reduce((s,r)=>s+Number(r.outstanding_fines||0),0),tA=rows.reduce((s,r)=>s+Number(r.active_students||0),0);
-      const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"Grade",v:gradeLabel()},{k:"Sort",v:srt.replace("_"," ")}];
+      const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()},{k:"Grade",v:gradeLabel()},{k:"Sort",v:srt.replace("_"," ")}];
       const sc=[{val:fmtNum(rows.length),lbl:"Grade Levels"},{val:fmtNum(tA),lbl:"Active Students"},{val:fmtNum(tB),lbl:"Total Borrows"},{val:fmtNum(tO),lbl:"Total Overdue",cls:"warn"},{val:peso(tF),lbl:"Outstanding Fines",cls:"danger"}];
       const th=`<tr><th style="width:70px">Grade</th><th style="width:80px">Active Stud</th><th style="width:120px">No of Borrowers</th><th style="width:80px">Borrows</th><th style="width:80px">Overdue</th><th style="width:110px">Fines Due</th><th style="width:70px">Avg/Stud</th></tr>`;
-      const tb=rows.length?rows.map(r=>{
-        const active=Number(r.active_students||0);
-        const avg=active>0?(Number(r.total_borrows||0)/active).toFixed(2):"\u2014";
-        const pctBorrowed=active>0?Math.round(Number(r.students_who_borrowed||0)/active*100)+"%":"\u2014";
-        return`<tr>
-          <td><b>Gr. ${esc(r.grade||"?")}</b></td>
-          <td><b>${fmtNum(active)}</b></td>
-          <td>${fmtNum(r.students_who_borrowed)} <span style="color:#999;font-size:11px;">(${pctBorrowed})</span></td>
-          <td>${fmtNum(r.total_borrows)}</td>
-          <td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td>
-          <td>${Number(r.outstanding_fines||0)>0?`<span class="pill yellow">${peso(r.outstanding_fines)}</span>`:`<span class="pill green">\u2014</span>`}</td>
-          <td>${avg}</td>
-        </tr>`;
-      }).join(""):`<tr><td colspan="7" class="rptEmpty">No grade summary data for this period.</td></tr>`;
+      const tb=rows.length?rows.map(r=>{const active=Number(r.active_students||0);const avg=active>0?(Number(r.total_borrows||0)/active).toFixed(2):"\u2014";const pctBorrowed=active>0?Math.round(Number(r.students_who_borrowed||0)/active*100)+"%":"\u2014";return`<tr><td><b>Gr. ${esc(r.grade||"?")}</b></td><td><b>${fmtNum(active)}</b></td><td>${fmtNum(r.students_who_borrowed)} <span style="color:#999;font-size:11px;">(${pctBorrowed})</span></td><td>${fmtNum(r.total_borrows)}</td><td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td><td>${Number(r.outstanding_fines||0)>0?`<span class="pill yellow">${peso(r.outstanding_fines)}</span>`:`<span class="pill green">\u2014</span>`}</td><td>${avg}</td></tr>`;}).join(""):`<tr><td colspan="7" class="rptEmpty">No grade summary data for this period.</td></tr>`;
       return buildHdr(brand,"Grade Summary Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable" style="table-layout:fixed;width:100%;"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Grade Summary");
     },
     inventory(data,brand){
-      const rows=data.rows||[];
-      const tC=rows.reduce((s,r)=>s+Number(r.total_copies||0),0),tA=rows.reduce((s,r)=>s+Number(r.available||0),0),tD=rows.reduce((s,r)=>s+Number(r.damaged||0),0),tL=rows.reduce((s,r)=>s+Number(r.lost||0),0);
+      const rows=data.rows||[];const tC=rows.reduce((s,r)=>s+Number(r.total_copies||0),0),tA=rows.reduce((s,r)=>s+Number(r.available||0),0),tD=rows.reduce((s,r)=>s+Number(r.damaged||0),0),tL=rows.reduce((s,r)=>s+Number(r.lost||0),0);
       const st=gfv("f_ist"),bs=gfv("f_bsec"),srt=gfv("f_isort")||"title";
-      const fp=[];if(st)fp.push({k:"Status",v:st});if(bs)fp.push({k:"Location",v:bs});fp.push({k:"Sort",v:srt.replace("_"," ")});
+      const fp=[];if(st)fp.push({k:"Status",v:st});if(bs)fp.push({k:"Subject",v:bs});fp.push({k:"Sort",v:srt.replace("_"," ")});
       const sc=[{val:fmtNum(rows.length),lbl:"Book Titles"},{val:fmtNum(tC),lbl:"Total Copies"},{val:fmtNum(tA),lbl:"Available"},{val:fmtNum(tD+tL),lbl:"Damaged / Lost",cls:tD+tL>0?"danger":""}];
-      const th=`<tr><th>#</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Total</th><th>Available</th><th>Borrowed</th><th>Damaged</th><th>Lost</th><th>Printed</th></tr>`;
+      const th=`<tr><th>#</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Total</th><th>Avail.</th><th>Borrowed</th><th>Damaged</th><th>Lost</th><th>Printed</th></tr>`;
+      const cg=`<colgroup><col class="num"><col class="title"><col class="author"><col class="subject"><col class="location"><col class="total"><col class="available"><col class="borrowed"><col class="damaged"><col class="lost"><col class="printed"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.title||"")}</div></td><td><div class="cs">${esc(r.author||"\u2014")}</div></td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><b>${fmtNum(r.total_copies)}</b></td><td><span class="pill ${Number(r.available||0)>0?"green":"gray"}">${fmtNum(r.available)}</span></td><td>${Number(r.borrowed||0)>0?`<span class="pill blue">${fmtNum(r.borrowed)}</span>`:"\u2014"}</td><td>${Number(r.damaged||0)>0?`<span class="pill yellow">${fmtNum(r.damaged)}</span>`:"\u2014"}</td><td>${Number(r.lost||0)>0?`<span class="pill red">${fmtNum(r.lost)}</span>`:"\u2014"}</td><td>${fmtNum(r.printed)}</td></tr>`).join(""):`<tr><td colspan="11" class="rptEmpty">No inventory records found.</td></tr>`;
-      return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody">${fp.length?buildFiltBar(fp):""}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
+      return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody compactBody">${fp.length?buildFiltBar(fp).replace('class="rptFilters"','class="rptFilters compact"'):""}${buildSum(sc).replace('class="rptSumGrid"','class="rptSumGrid compactCards"')}<table class="rptTable compact inventoryTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
     }
   };
 
   const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot"};
 
-  // ── Main runner ──
   async function generateReport(){
-    const fetchFn=FETCHERS[curRType],render=RENDERERS[curRType];
-    if(!fetchFn||!render)return;
-    document.getElementById("reportError").style.display="none";
-    document.getElementById("reportOutput").innerHTML="";
-    document.getElementById("previewLoading").style.display="grid";
-    showProg();
+    const fetchFn=FETCHERS[curRType],render=RENDERERS[curRType];if(!fetchFn||!render)return;
+    document.getElementById("reportError").style.display="none";document.getElementById("reportOutput").innerHTML="";document.getElementById("previewLoading").style.display="grid";showProg();
     try{
       const[data,brand]=await Promise.all([fetchFn(),getBrand()]);
       document.getElementById("reportOutput").innerHTML=`<div class="rptDoc">${render(data,brand)}</div>`;
-      const cnt=data.rows?.length??data.total_records??0;
-      const rcEl=document.getElementById("reportRowCount");
-      rcEl.textContent=cnt>0?`${fmtNum(cnt)} records`:"";
-      rcEl.style.display=cnt>0?"inline":"none";
+      paginateCurrentPreview();
+      const cnt=data.rows?.length??data.total_records??0;const rcEl=document.getElementById("reportRowCount");rcEl.textContent=cnt>0?`${fmtNum(cnt)} records`:"";rcEl.style.display=cnt>0?"inline":"none";
       _rptLoaded=true;hideProg(true);
     }catch(err){hideProg(false);document.getElementById("reportError").style.display="block";console.error("Report error",err);}
     finally{document.getElementById("previewLoading").style.display="none";}
   }
 
-  // ── Report type cards ──
   document.getElementById("reportTypeGrid").querySelectorAll(".reportTypeCard").forEach(card=>{
     card.addEventListener("click",()=>{
-      document.querySelectorAll(".reportTypeCard").forEach(c=>c.classList.remove("is-active"));
-      card.classList.add("is-active");
-      curRType=card.dataset.rtype;
-      document.getElementById("reportTypeLabel").textContent=LABELS[curRType]||"";
-      document.getElementById("reportRowCount").style.display="none";
-      FILTERS[curRType]?.();
-      generateReport();
+      document.querySelectorAll(".reportTypeCard").forEach(c=>c.classList.remove("is-active"));card.classList.add("is-active");curRType=card.dataset.rtype;
+      document.getElementById("reportTypeLabel").textContent=LABELS[curRType]||"";document.getElementById("reportRowCount").style.display="none";
+      FILTERS[curRType]?.();generateReport();
     });
   });
 
   document.getElementById("btnApply").addEventListener("click",generateReport);
-  document.getElementById("btnClear").addEventListener("click",()=>{
-    FILTERS[curRType]?.();
-    generateReport();
+  document.getElementById("reportPaperSize").addEventListener("change",()=>{
+    currentPaper=document.getElementById("reportPaperSize").value||"A4";applyPaperSizeToPreview();if(_rptLoaded) generateReport();
   });
+  applyPaperSizeToPreview();
+  document.getElementById("btnClear").addEventListener("click",()=>{FILTERS[curRType]?.();generateReport();});
 
-  // ─────────────────────────────────────────────
-  // PRINT CSS
-  // ─────────────────────────────────────────────
-  const PRINT_CSS=`
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'Poppins',Arial,sans-serif;background:#fff;color:#111;counter-reset:page-counter;}
-    .rptDoc{max-width:100%;margin:0;}
-    .rptHeader{background:#1a2e0d;padding:16px 22px 13px;display:flex;align-items:center;gap:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rptLogo{width:46px;height:46px;object-fit:contain;border-radius:5px;flex-shrink:0;}
-    .rptLogoFb{width:46px;height:46px;border-radius:5px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
-    .rptHdrText{flex:1;}
-    .rptSchoolName{color:#f4e32f;font-size:16px;font-weight:900;letter-spacing:.02em;line-height:1.1;}
-    .rptSchoolSub{color:rgba(255,255,255,.7);font-size:11px;font-weight:600;margin-top:2px;}
-    .rptHdrMeta{text-align:right;flex-shrink:0;}
-    .rptTypeLbl{color:#8dd959;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}
-    .rptTimestamp{color:rgba(255,255,255,.55);font-size:10px;margin-top:3px;}
-    .rptBody{padding:16px 22px 56px;}
-    .rptSumGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:14px;}
-    .rsc{background:#f4faf0;border:1px solid #d4edca;border-radius:7px;padding:9px;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rsc .rv{font-size:17px;font-weight:900;color:#1a4d0f;line-height:1;}
-    .rsc .rl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#4a7c3f;margin-top:3px;}
-    .rsc.warn{background:#fffbf0;border-color:#fde68a;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rsc.warn .rv{color:#92400e;}.rsc.warn .rl{color:#b45309;}
-    .rsc.danger{background:#fff5f5;border-color:#fecaca;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rsc.danger .rv{color:#991b1b;}.rsc.danger .rl{color:#dc2626;}
-    .rptFilters{background:#f7f7f7;border:1px solid #e5e5e5;border-radius:6px;padding:8px 12px;margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;font-weight:700;color:#666;}
-    .rptFilters span b{color:#111;}
-    .rptTable{width:100%;border-collapse:collapse;font-size:11px;}
-    .rptTable thead tr{background:#1a2e0d;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rptTable thead th{padding:8px 10px;text-align:left;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;}
-    .rptTable tbody tr{border-bottom:1px solid #f0f0f0;}
-    .rptTable tbody tr:nth-child(even){background:#fafafa;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .rptTable td{padding:7px 10px;vertical-align:middle;line-height:1.3;}
-    .ct{font-weight:800;font-size:11px;color:#111;}.cs{font-size:10px;color:#777;margin-top:1px;}
-    .pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .pill.green{background:#dcfce7;color:#166534;}.pill.red{background:#fee2e2;color:#991b1b;}
-    .pill.yellow{background:#fef9c3;color:#854d0e;}.pill.blue{background:#dbeafe;color:#1e40af;}
-    .pill.gray{background:#f3f4f6;color:#374151;}.pill.orange{background:#ffedd5;color:#9a3412;}
-    .rptEmpty{text-align:center;padding:40px;color:#bbb;font-size:12px;font-weight:700;}
-    .rptFoot{position:fixed;bottom:0;left:0;right:0;padding:7px 22px;background:#f7f7f7;border-top:2px solid #e5e5e5;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;z-index:9999;}
-    .rptFootLeft{font-size:10px;color:#555;font-weight:800;}
-    .rptFootRight{font-size:10px;color:#888;font-weight:700;display:flex;align-items:center;gap:10px;}
-    @page{margin:12mm 10mm 22mm;}
-  `;
+  function sanitizeFilePart(v){return String(v||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,40);}
+  function makeReportFilename(){
+    const parts=[sanitizeFilePart(LABELS[curRType]||"report")];const paper=sanitizeFilePart(getPaperCfg().label);if(paper) parts.push(paper);
+    const sy=sanitizeFilePart(getSchoolYear());if(sy) parts.push(`sy_${sy}`);
+    const grades=getGrades();if(grades.length===1) parts.push(`grade_${sanitizeFilePart(grades[0])}`);else if(grades.length>1) parts.push(`grades_${grades.length}`);
+    const secs=getSections();if(secs.length===1) parts.push(`section_${sanitizeFilePart(secs[0])}`);else if(secs.length>1) parts.push(`sections_${secs.length}`);
+    const md=getMDS();if(md) parts.push(md.replace(/-/g,""));
+    return `${parts.filter(Boolean).join("_")||"report"}.pdf`;
+  }
 
-  // ── Print / Save PDF ──
-  document.getElementById("btnPrint").addEventListener("click",()=>{
-    const doc=document.getElementById("reportOutput").innerHTML;
-    if(!doc.trim()){alert("No report loaded yet. Apply filters first.");return;}
-    const w=window.open("","_blank","width=1060,height=820");
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(LABELS[curRType]||"Report")}</title><style>${PRINT_CSS}</style></head><body>${doc}</body></html>`);
-    w.document.close();
-    setTimeout(()=>w.print(),700);
-  });
+  // ═══════════════════════════════════════════════════════════════
+  // PDF EXPORT — html2canvas + jsPDF (pixel-perfect, immediate download)
+  // No popups. Captures exactly what the preview renders — logos,
+  // brand colours, pills, fonts — everything.
+  // ═══════════════════════════════════════════════════════════════
+  async function downloadReportPdf() {
+    const srcPages = [...document.querySelectorAll('#reportOutput .rptPage')];
+    if (!srcPages.length) {
+      alert('No report loaded yet. Apply filters first.');
+      return;
+    }
+
+    const paper = getPaperCfg();
+    const filename = makeReportFilename();
+    const loading = document.getElementById('previewLoading');
+    loading.style.display = 'grid';
+
+    async function ensureLib(globalName, src) {
+      if (window[globalName]) return;
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = res;
+        s.onerror = () => rej(new Error('Could not load ' + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    try {
+      await ensureLib('html2canvas', 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      await ensureLib('jspdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [paper.w, paper.h],
+        compress: true
+      });
+
+      const PX_PER_MM = 96 / 25.4;
+      const pageWPx = Math.round(paper.w * PX_PER_MM);
+      const pageHPx = Math.round(paper.h * PX_PER_MM);
+      const scale = 2;
+
+      const offscreen = document.createElement('div');
+      offscreen.style.cssText = 'position:fixed;left:-100000px;top:0;width:0;height:0;overflow:hidden;pointer-events:none;opacity:0;';
+      document.body.appendChild(offscreen);
+
+      for (let i = 0; i < srcPages.length; i++) {
+        const clone = srcPages[i].cloneNode(true);
+        clone.style.width = pageWPx + 'px';
+        clone.style.maxWidth = pageWPx + 'px';
+        clone.style.minHeight = pageHPx + 'px';
+        clone.style.height = pageHPx + 'px';
+        clone.style.margin = '0';
+        clone.style.border = 'none';
+        clone.style.borderRadius = '0';
+        clone.style.boxShadow = 'none';
+        clone.style.background = '#ffffff';
+        offscreen.appendChild(clone);
+
+        const canvas = await html2canvas(clone, {
+          scale,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 30000,
+          width: pageWPx,
+          height: pageHPx,
+          windowWidth: pageWPx,
+          windowHeight: pageHPx,
+          onclone: (cloneDoc) => {
+            cloneDoc.documentElement.style.setProperty('--brand-yellow', getComputedStyle(document.documentElement).getPropertyValue('--brand-yellow').trim() || '#f4e32f');
+            cloneDoc.documentElement.style.setProperty('--brand-green', getComputedStyle(document.documentElement).getPropertyValue('--brand-green').trim() || '#8dd959');
+            cloneDoc.querySelectorAll('img').forEach(img => { if (img.src) img.src = img.src; });
+          }
+        });
+
+        offscreen.innerHTML = '';
+
+        const imgData = canvas.toDataURL('image/png');
+        if (i > 0) pdf.addPage([paper.w, paper.h], 'portrait');
+        pdf.addImage(imgData, 'PNG', 0, 0, paper.w, paper.h, undefined, 'FAST');
+      }
+
+      offscreen.remove();
+      pdf.save(filename);
+    } catch (err) {
+      console.error('PDF export failed', err);
+      alert('PDF export failed: ' + (err.message || String(err)));
+    } finally {
+      const node = document.querySelector('body > div[style*="-100000px"]');
+      if (node) node.remove();
+      loading.style.display = 'none';
+    }
+  }
+
+  document.getElementById("btnPrint").addEventListener("click",downloadReportPdf);
 
   // ── CSV export ──
   const CSV_URLS={
@@ -1267,54 +1391,33 @@
     if(curRType==="students"){
       showProg();
       try{
-        const data=await FETCHERS.students();
-        const rows=data.rows||[];
+        const data=await FETCHERS.students();const rows=data.rows||[];
         const headers=["student_code","last_name","first_name","grade","section","borrow_count","active_loans","overdue_count","outstanding_fines","total_fines","last_borrowed_at"];
         const csv=[headers.join(",")].concat(rows.map(r=>headers.map(h=>{const key=h==="section"?"student_section":h;const val=r[key]??"";const str=String(val).replace(/"/g,'""');return /[",\n]/.test(str)?`"${str}"`:str;}).join(",")));
-        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");a.href=url;a.download=`students_report_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`students_report_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
         hideProg(true);
       }catch{hideProg(false);alert("CSV export failed.");}
       return;
     }
-    const grades=getGrades();
-    const secs=getSections();
-    // For multi-grade or multi-section, merge client-side
+    const grades=getGrades();const secs=getSections();
     if(grades.length>1||(secs.length>1&&curRType!=="inventory"&&curRType!=="grade_summary")){
       showProg();
       try{
-        const data=await FETCHERS[curRType]();
-        const rows=data.rows||[];
-        const colMap={
-          circulation:["loan_id","borrowed_at","due_at","returned_at","loan_status","renew_count","student_code","last_name","first_name","grade","student_section","title","author","genre","book_section","barcode","copy_status","is_overdue","total_fine","total_paid","outstanding_fine"],
-          fines:["fine_id","assessed_at","student_code","last_name","first_name","grade","student_section","title","barcode","reason","amount","amount_paid","outstanding","status"],
-          most_borrowed:["book_id","title","author","book_section","genre","borrow_count","unique_borrowers"],
-        };
+        const data=await FETCHERS[curRType]();const rows=data.rows||[];
+        const colMap={circulation:["loan_id","borrowed_at","due_at","returned_at","loan_status","renew_count","student_code","last_name","first_name","grade","student_section","title","author","genre","book_section","barcode","copy_status","is_overdue","total_fine","total_paid","outstanding_fine"],fines:["fine_id","assessed_at","student_code","last_name","first_name","grade","student_section","title","barcode","reason","amount","amount_paid","outstanding","status"],most_borrowed:["book_id","title","author","book_section","genre","borrow_count","unique_borrowers"]};
         const columns=colMap[curRType]||Object.keys(rows[0]||{});
         const csv=[columns.join(",")].concat(rows.map(r=>columns.map(c=>{const val=r[c]??"";const str=String(val).replace(/"/g,'""');return /[",\n]/.test(str)?`"${str}"`:str;}).join(",")));
-        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");a.href=url;a.download=`${curRType}_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${curRType}_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
         hideProg(true);
       }catch{hideProg(false);alert("CSV export failed.");}
       return;
     }
-    const base=CSV_URLS[curRType]||CSV_URLS.circulation;
-    const p=new URLSearchParams();
-    const df=gfv("f_df"),dt=gfv("f_dt"),fs=gfv("f_fst"),bs=gfv("f_bsec");
-    const s=secs.length===1?secs[0]:"";
-    if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);
-    if(grades.length===1)p.set("grade",grades[0]);
-    if(s)p.set("section",s);if(fs&&fs!=="all")p.set("status",fs);if(bs)p.set("book_section",bs);
-    const sep=base.includes("?")?"&":"?";
-    showProg();
+    const base=CSV_URLS[curRType]||CSV_URLS.circulation;const p=new URLSearchParams();
+    const df=gfv("f_df"),dt=gfv("f_dt"),fs=gfv("f_fst"),bs=gfv("f_bsec");const s=secs.length===1?secs[0]:"";
+    if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(grades.length===1)p.set("grade",grades[0]);if(s)p.set("section",s);if(fs&&fs!=="all")p.set("status",fs);if(bs)p.set("book_section",bs);const sy=getSchoolYear();if(sy)p.set("school_year",sy);
+    const sep=base.includes("?")?"&":"?";showProg();
     try{
-      const r=await fetch(`${BASE_URL}${base}${sep}${p}`,{headers:authHdr()});
-      if(!r.ok)throw new Error();
-      const blob=await r.blob();
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");a.href=url;a.download=`${curRType}_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+      const r=await fetch(`${BASE_URL}${base}${sep}${p}`,{headers:authHdr()});if(!r.ok)throw new Error();const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${curRType}_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
       hideProg(true);
     }catch{hideProg(false);alert("CSV export failed.");}
   });
@@ -1324,28 +1427,19 @@
   // ─────────────────────────────────────────────
   async function loadFilterMeta(){
     try{
-      const r=await fetch(`${BASE_URL}/api/reports/filters`,{headers:authHdr()});
-      const d=await r.json().catch(()=>({}));
+      const r=await fetch(`${BASE_URL}/api/reports/filters`,{headers:authHdr()});const d=await r.json().catch(()=>({}));
       _grades=sortGradesNumeric(Array.isArray(d.grades)?d.grades:[]);
       _allSections=Array.isArray(d.sections)?[...new Set(d.sections)].sort((a,b)=>a.localeCompare(b)):[];
+      _schoolYears=Array.isArray(d.school_years)?[...new Set(d.school_years.filter(Boolean))]:[];
+      _activeSchoolYear=(d.active_school_year||"").trim();
+      syncDashboardSchoolYearOptions();
     }catch{}
   }
 
   window.addEventListener("load",async()=>{
-    await loadFilterMeta();
-    FILTERS["circulation"]();
-    loadDashboard();
+    await loadFilterMeta();FILTERS["circulation"]();loadDashboard();
   });
-
-  // Safety re-render in case API was slow
-  setTimeout(async()=>{
-    if(!_grades.length){
-      await loadFilterMeta();
-      FILTERS[curRType]?.();
-    }
-    loadDashboard();
-  },1200);
+  setTimeout(async()=>{if(!_grades.length){await loadFilterMeta();FILTERS[curRType]?.();}loadDashboard();},1200);
   </script>
-  <script src="branding.js"></script>
 </body>
-</html>  
+</html>
