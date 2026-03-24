@@ -1,4 +1,4 @@
-const DISPLAY_BASE_URL = "http://127.0.0.1:8000";
+const DISPLAY_BASE_URL = window.CONFIG.API_BASE;
 const DISPLAY_CACHE_KEY = "displaySettings";
 
 function escapeHtml(value) {

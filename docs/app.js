@@ -1,5 +1,4 @@
-const BASE_URL = "http://127.0.0.1:8000";
-
+const BASE_URL = window.CONFIG.API_BASE;
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const resultsDiv = document.getElementById("results");

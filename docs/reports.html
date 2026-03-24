@@ -311,12 +311,10 @@
   </style>
 </head>
 <body>
+  <script src="config.js"></script>
   <script src="branding.js"></script>
   <script>
-  const API_ORIGIN =
-  window.location.protocol === "file:"
-    ? "http://127.0.0.1:8000"
-    : window.location.origin;
+  const API_ORIGIN = window.CONFIG.API_BASE;
   </script>
 
   <div class="topbar" id="siteHeader">
