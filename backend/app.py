@@ -698,14 +698,6 @@ def isbn_lookup(isbn: str):
 # -----------------------------
 # CATALOGING PREVIEW (UX helper)
 # -----------------------------
-@app.get("/api/cataloging/preview/{isbn}")
-def cataloging_preview(isbn: str):
-    """
-    UX helper:
-    Librarian types ISBN -> frontend calls this -> gets autofill + missing fields.
-    Frontend then allows librarian to edit missing values before final submit.
-    """
-    return lookup_isbn(isbn)
 
 
 @app.get("/api/students/lookup")
