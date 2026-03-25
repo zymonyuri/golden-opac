@@ -9,3 +9,4 @@ python-jose
 python-multipart
 reportlab
 pydantic
+supabase

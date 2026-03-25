@@ -105,7 +105,16 @@ BASE_DIR = Path(__file__).resolve().parent
 UPLOADS_DIR = BASE_DIR / "uploads"
 BRANDING_UPLOADS_DIR = UPLOADS_DIR / "branding"
 BRANDING_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+import os
+import uuid
+import mimetypes
+from supabase import create_client
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "branding")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 # ── School Year Helper ──────────────────────────────────────────
 from datetime import date as _date
 
@@ -224,6 +233,9 @@ async def upload_display_logo(
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file selected")
 
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Supabase is not configured")
+
         allowed_types = {
             "image/png": ".png",
             "image/jpeg": ".jpg",
@@ -242,9 +254,6 @@ async def upload_display_logo(
                 detail="Only PNG, JPG, JPEG, WEBP, GIF, and SVG files are allowed"
             )
 
-        filename = f"logo_{uuid4().hex}{ext}"
-        save_path = BRANDING_UPLOADS_DIR / filename
-
         contents = await file.read()
         if not contents:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
@@ -253,10 +262,23 @@ async def upload_display_logo(
         if len(contents) > 3 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="Logo file is too large (max 3 MB)")
 
-        with open(save_path, "wb") as f:
-            f.write(contents)
+        filename = f"logo_{uuid.uuid4().hex}{ext}"
 
-        logo_url = f"/uploads/branding/{filename}"
+        upload_res = supabase.storage.from_(SUPABASE_BUCKET).upload(
+            path=filename,
+            file=contents,
+            file_options={
+                "content-type": content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream",
+                "upsert": "false",
+            },
+        )
+
+        # Some client versions may return an error payload instead of raising
+        if isinstance(upload_res, dict) and upload_res.get("error"):
+            raise HTTPException(status_code=500, detail=f"Supabase upload failed: {upload_res['error']}")
+
+        logo_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
+
         return {
             "message": "Logo uploaded successfully",
             "logo_url": logo_url
@@ -266,7 +288,6 @@ async def upload_display_logo(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload logo: {str(e)}")
-
 def generate_barcode(prefix: str = "GK") -> str:
     """
     Generates a reasonably unique barcode string.
