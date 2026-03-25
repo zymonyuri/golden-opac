@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <script>
+ <script>
 (function () {
   try {
     document.documentElement.classList.add("branding-loading");
@@ -24,6 +24,16 @@
       root.style.setProperty("--brand-green", data.brand_secondary);
       root.style.setProperty("--brand-secondary", data.brand_secondary);
     }
+
+    // Preload the logo image immediately from cache
+    if (data.logo_url) {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = data.logo_url;
+      document.head.appendChild(link);
+    }
+
   } catch (e) {
     console.warn("Brand preload failed:", e);
   }

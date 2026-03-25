@@ -18,9 +18,11 @@ function setText(selector, value) {
 
 function setImage(selector, src, alt) {
   document.querySelectorAll(selector).forEach((el) => {
+    // Skip if src hasn't changed — avoids reload flash
+    if (el.src === src) return;
+
     el.onload = null;
     el.onerror = null;
-
     el.classList.remove("is-loaded");
 
     if (alt) el.alt = alt;
@@ -30,18 +32,11 @@ function setImage(selector, src, alt) {
       return;
     }
 
-    el.onload = () => {
-      el.classList.add("is-loaded");
-    };
-
-    el.onerror = () => {
-      el.classList.remove("is-loaded");
-    };
-
+    el.onload = () => el.classList.add("is-loaded");
+    el.onerror = () => el.classList.remove("is-loaded");
     el.src = src;
   });
 }
-
 function setAnchorLink(elementId, rawValue) {
   const el = document.getElementById(elementId);
   if (!el) return;
