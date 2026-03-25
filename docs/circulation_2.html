@@ -28,8 +28,6 @@ document.documentElement.classList.add("branding-loading");
 
     * { box-sizing: border-box; }
 
-  
-
     .page{
       position:relative;
       min-height:100vh;
@@ -372,7 +370,7 @@ document.documentElement.classList.add("branding-loading");
 
     .item{
       display:grid;
-      grid-template-columns: 180px 1fr 120px;
+      grid-template-columns: 180px 1fr 160px 48px;
       gap: 12px;
       padding: 12px 12px;
       border-top: 1px solid rgba(0,0,0,0.08);
@@ -411,6 +409,7 @@ document.documentElement.classList.add("branding-loading");
       background: rgba(141,217,89,0.20);
       border: 1px solid rgba(141,217,89,0.55);
       color: rgba(0,0,0,0.78);
+      white-space: nowrap;
     }
 
     .badge.err{
@@ -423,6 +422,37 @@ document.documentElement.classList.add("branding-loading");
       background: rgba(244,227,47,0.22);
       border-color: rgba(244,227,47,0.55);
       color: rgba(0,0,0,0.72);
+    }
+
+    .item-remove{
+      justify-self:end;
+      width:38px;
+      height:38px;
+      border:1px solid rgba(176,0,0,0.18);
+      border-radius:12px;
+      background: rgba(176,0,0,0.08);
+      color:#b00000;
+      font-size:18px;
+      font-weight:1000;
+      line-height:1;
+      cursor:pointer;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+    }
+
+    .item-remove:hover{
+      transform: translateY(-1px);
+      background: rgba(176,0,0,0.14);
+      border-color: rgba(176,0,0,0.28);
+    }
+
+    .item-remove:active{
+      transform: translateY(0);
+    }
+
+    .item-remove[disabled]{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none !important;
     }
 
     .topbar{
@@ -466,7 +496,6 @@ document.documentElement.classList.add("branding-loading");
     .site-footer{
       position:relative;
       z-index:2;
-      
     }
 
     @media (max-width: 980px){
@@ -474,6 +503,7 @@ document.documentElement.classList.add("branding-loading");
       .grid{ grid-template-columns: 1fr; }
       .item{ grid-template-columns: 1fr; }
       .badge{ justify-self:start; }
+      .item-remove{ justify-self:start; }
     }
   </style>
 </head>
@@ -648,6 +678,10 @@ document.documentElement.classList.add("branding-loading");
     const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
     if (!token) window.location.href = "login.html";
 
+    const CHECKOUT_ITEMS_KEY = "gk_checkout_items";
+    const CHECKOUT_STUDENT_KEY = "gk_checkout_items_student";
+    const CHECKOUT_DONE_KEY = "gk_checkout_session_done";
+
     document.getElementById("footerYear").textContent = String(new Date().getFullYear());
     document.getElementById("logoutLink")?.addEventListener("click", (e) => {
       e.preventDefault();
@@ -667,6 +701,11 @@ document.documentElement.classList.add("branding-loading");
       return `${m}/${d}/${y}`;
     }
 
+    function safeJSON(s){
+      try{ return s ? JSON.parse(s) : null; }
+      catch{ return null; }
+    }
+
     const studentCode = sessionStorage.getItem("gk_student_code");
     const studentLookup = safeJSON(sessionStorage.getItem("gk_student_lookup"));
     const precheck = safeJSON(sessionStorage.getItem("gk_precheck"));
@@ -675,9 +714,19 @@ document.documentElement.classList.add("branding-loading");
       window.location.href = "circulation.html";
     }
 
-    if (!sessionStorage.getItem("gk_checkout_items")){
-      sessionStorage.setItem("gk_checkout_items", JSON.stringify([]));
+    const lastSessionStudent = sessionStorage.getItem(CHECKOUT_STUDENT_KEY);
+    const lastSessionDone = sessionStorage.getItem(CHECKOUT_DONE_KEY) === "1";
+
+    if (lastSessionDone || (lastSessionStudent && lastSessionStudent !== studentCode)){
+      sessionStorage.removeItem(CHECKOUT_ITEMS_KEY);
+      sessionStorage.removeItem("gk_book_lookup");
+      sessionStorage.removeItem(CHECKOUT_DONE_KEY);
     }
+
+    if (!sessionStorage.getItem(CHECKOUT_ITEMS_KEY)){
+      sessionStorage.setItem(CHECKOUT_ITEMS_KEY, JSON.stringify([]));
+    }
+    sessionStorage.setItem(CHECKOUT_STUDENT_KEY, studentCode);
 
     const chipCode = document.getElementById("chipCode");
     const chipName = document.getElementById("chipName");
@@ -710,8 +759,6 @@ document.documentElement.classList.add("branding-loading");
     let progressTimer = null;
     let lastLookup = "";
     let currentBook = null;
-
-    function safeJSON(s){ try{ return s ? JSON.parse(s) : null; }catch{ return null; } }
 
     function setHint(text, isError=false){
       hintEl.textContent = text;
@@ -748,12 +795,27 @@ document.documentElement.classList.add("branding-loading");
     }
 
     function getItems(){
-      return safeJSON(sessionStorage.getItem("gk_checkout_items")) || [];
+      return safeJSON(sessionStorage.getItem(CHECKOUT_ITEMS_KEY)) || [];
     }
 
     function setItems(arr){
-      sessionStorage.setItem("gk_checkout_items", JSON.stringify(arr));
+      sessionStorage.setItem(CHECKOUT_ITEMS_KEY, JSON.stringify(arr));
       renderItems();
+    }
+
+    function removeItem(index){
+      const arr = getItems();
+      if (index < 0 || index >= arr.length) return;
+      arr.splice(index, 1);
+      setItems(arr);
+      setHint(arr.length ? "Book removed from this session." : "Session list cleared. Scan a book barcode to begin.");
+      bookCodeEl.focus();
+    }
+
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
     }
 
     function renderItems(){
@@ -770,16 +832,18 @@ document.documentElement.classList.add("branding-loading");
             </div>
             <div></div>
             <div class="badge">Waiting</div>
+            <div></div>
           </div>
         `;
         return;
       }
 
-      for (const it of arr){
+      arr.forEach((it, index) => {
         const ok = it.ok === true;
         const pending = it.ok === null || typeof it.ok === "undefined";
         const badgeText = ok ? "✓ Ready" : (pending ? "⏳ Pending" : ("⚠ " + escapeHtml(it.error || "Failed")));
         const badgeClass = ok ? "" : (pending ? "warn" : "err");
+        const disableRemove = it.ok === true;
 
         itemsEl.insertAdjacentHTML("beforeend", `
           <div class="item">
@@ -792,15 +856,24 @@ document.documentElement.classList.add("branding-loading");
               <div class="i-sub">${escapeHtml(it.author || "")}</div>
             </div>
             <div class="badge ${badgeClass}">${badgeText}</div>
+            <button
+              class="item-remove"
+              type="button"
+              title="Remove from session"
+              aria-label="Remove ${escapeHtml(it.title || it.barcode || "book")} from session"
+              data-remove-index="${index}"
+              ${disableRemove ? "disabled" : ""}
+            >×</button>
           </div>
         `);
-      }
-    }
+      });
 
-    function escapeHtml(s){
-      return String(s ?? "").replace(/[&<>"']/g, m => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-      }[m]));
+      itemsEl.querySelectorAll("[data-remove-index]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const index = Number(btn.getAttribute("data-remove-index"));
+          if (Number.isFinite(index)) removeItem(index);
+        });
+      });
     }
 
     function normalizeDetailToString(data){
@@ -866,6 +939,7 @@ document.documentElement.classList.add("branding-loading");
       }
 
       setItems(updated);
+      sessionStorage.setItem(CHECKOUT_DONE_KEY, "1");
       hideProgressAfterComplete();
       window.location.href = "circulation_3.html";
     }
@@ -986,7 +1060,9 @@ document.documentElement.classList.add("branding-loading");
       sessionStorage.removeItem("gk_student_code");
       sessionStorage.removeItem("gk_student_lookup");
       sessionStorage.removeItem("gk_precheck");
-      sessionStorage.removeItem("gk_checkout_items");
+      sessionStorage.removeItem(CHECKOUT_ITEMS_KEY);
+      sessionStorage.removeItem(CHECKOUT_STUDENT_KEY);
+      sessionStorage.removeItem(CHECKOUT_DONE_KEY);
       sessionStorage.removeItem("gk_book_lookup");
       window.location.href = "circulation.html";
     });
@@ -1007,7 +1083,5 @@ document.documentElement.classList.add("branding-loading");
   </script>
   <script src="config.js"></script>
   <script src="branding.js"></script>
-
-
 </body>
 </html>
