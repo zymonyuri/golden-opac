@@ -1808,11 +1808,14 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
         if outstanding > 0:
             raise HTTPException(
                 status_code=400,
-                detail={"message": "Student has unpaid fines", "outstanding": outstanding},
+                detail={
+                    "type": "unpaid_fines",
+                    "message": f"Checkout failed: the student still has unpaid fines of ₱{outstanding:.2f}.",
+                    "outstanding": outstanding,
+                },
             )
 
         # --- 4B) Block if student has overdue loans ---
-        # Exclude lost loans — they are closed debts tracked via fines, not active borrows.
         cur.execute(
             """
             SELECT COUNT(*) AS overdue_count
@@ -1825,8 +1828,16 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
             (student_id,),
         )
         overdue_row = cur.fetchone()
-        if int(overdue_row["overdue_count"]) > 0:
-            raise HTTPException(status_code=400, detail="Student has overdue books")
+        overdue_count = int(overdue_row["overdue_count"] or 0)
+        if overdue_count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "type": "overdue_books",
+                    "message": f"Checkout failed: the student has {overdue_count} overdue book{'s' if overdue_count != 1 else ''}.",
+                    "overdue_count": overdue_count,
+                },
+            )
 
         # --- 4C) Block if reached max borrow limit ---
         cur.execute(
@@ -1838,12 +1849,25 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
             (student_id,),
         )
         active_row = cur.fetchone()
-        active_loans = int(active_row["active_loans"])
-        if active_loans >= int(max_borrow_limit):
+        active_loans = int(active_row["active_loans"] or 0)
+        remaining_slots = max(0, int(max_borrow_limit) - active_loans)
+
+        if remaining_slots <= 0:
             raise HTTPException(
                 status_code=400,
-                detail={"message": "Max borrow limit reached", "active_loans": active_loans, "limit": max_borrow_limit},
+                detail={
+                    "type": "borrow_limit",
+                    "message": (
+                        f"Checkout failed: this student already has {active_loans} active "
+                        f"book{'s' if active_loans != 1 else ''}, which is the maximum allowed "
+                        f"({max_borrow_limit})."
+                    ),
+                    "active_loans": active_loans,
+                    "limit": int(max_borrow_limit),
+                    "remaining_slots": 0,
+                },
             )
+
 
         # --- 5) Create loan with due_at based on grade rule ---
         # --- 5) Create loan with due_at based on grade rule ---
@@ -4698,6 +4722,8 @@ def circulation_precheck(student_code: str, current=Depends(get_current_libraria
         )
         borrowed_count = int(cur.fetchone()["borrowed_count"] or 0)
 
+        remaining_slots = max(0, borrow_limit - borrowed_count)
+
         # 6) Damage history (optional: treat as warning)
         cur.execute(
             """
@@ -4776,6 +4802,7 @@ def circulation_precheck(student_code: str, current=Depends(get_current_libraria
             },
             "stats": {
                 "borrowed_count": borrowed_count,
+                "remaining_slots": remaining_slots,
                 "overdue_count": overdue_count,
                 "fine_balance": fine_balance,
                 "damage_count": damage_count,

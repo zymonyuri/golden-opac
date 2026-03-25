@@ -223,6 +223,43 @@ document.documentElement.classList.add("branding-loading");
       color: rgba(0,0,0,0.85);
     }
 
+    .status-grid{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap:10px;
+    }
+
+    .status-card{
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.76);
+      padding:12px;
+    }
+
+    .status-card__label{
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.60);
+    }
+
+    .status-card__value{
+      margin-top:6px;
+      font-size:22px;
+      line-height:1;
+      font-weight:1000;
+      color:#111;
+    }
+
+    .status-card__sub{
+      margin-top:6px;
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.52);
+    }
+
     .mono{
       font-feature-settings:"tnum" 1;
       font-variant-numeric: tabular-nums;
@@ -331,6 +368,11 @@ document.documentElement.classList.add("branding-loading");
       .row{ grid-template-columns:1fr; }
       .item{ grid-template-columns:1fr; }
       .badge{ justify-self:start; }
+      .status-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+
+    @media (max-width: 640px){
+      .status-grid{ grid-template-columns: 1fr; }
     }
 
     .modal{
@@ -513,6 +555,28 @@ document.documentElement.classList.add("branding-loading");
 
             <div class="box">
               <div class="rows" id="studentRows"></div>
+              <div class="status-grid">
+                <div class="status-card">
+                  <div class="status-card__label">Borrow Limit</div>
+                  <div class="status-card__value" id="sumLimit">0</div>
+                  <div class="status-card__sub">Maximum active books</div>
+                </div>
+                <div class="status-card">
+                  <div class="status-card__label">Already Borrowed</div>
+                  <div class="status-card__value" id="sumBorrowed">0</div>
+                  <div class="status-card__sub">Before this checkout</div>
+                </div>
+                <div class="status-card">
+                  <div class="status-card__label">Checked Out Now</div>
+                  <div class="status-card__value" id="sumSession">0</div>
+                  <div class="status-card__sub">Successful books this session</div>
+                </div>
+                <div class="status-card">
+                  <div class="status-card__label">Slots Left After</div>
+                  <div class="status-card__value" id="sumRemaining">0</div>
+                  <div class="status-card__sub">Still available after this checkout</div>
+                </div>
+              </div>
             </div>
 
             <div class="list">
@@ -647,6 +711,16 @@ document.documentElement.classList.add("branding-loading");
       <div class="row"><div class="k">Due Date</div><div class="v mono">${escapeHtml(fmtISOToMDY(p.due_date))}</div></div>
     `;
 
+    const limit = Number(p?.rules?.max_borrow_limit ?? 0) || 0;
+    const borrowedBefore = Number(p?.stats?.borrowed_count ?? 0) || 0;
+    const checkedOutNow = items.filter(it => it?.ok === true).length;
+    const remainingAfter = Math.max(0, limit - borrowedBefore - checkedOutNow);
+
+    document.getElementById("sumLimit").textContent = String(limit);
+    document.getElementById("sumBorrowed").textContent = String(borrowedBefore);
+    document.getElementById("sumSession").textContent = String(checkedOutNow);
+    document.getElementById("sumRemaining").textContent = String(remainingAfter);
+
     document.getElementById("count").textContent = `${items.length} item(s)`;
 
     const itemsEl = document.getElementById("items");
@@ -675,7 +749,7 @@ document.documentElement.classList.add("branding-loading");
               <div class="v">${escapeHtml(it.title || "—")}</div>
               <div class="k">${escapeHtml(it.author || "")}</div>
             </div>
-            <div class="badge ${ok ? "" : "err"}">${ok ? "✓ Added" : "⚠ Failed"}</div>
+            <div class="badge ${ok ? "" : "err"}">${ok ? "✓ Added" : `⚠ ${escapeHtml(it.error || "Failed")}`}</div>
           </div>
         `);
       }

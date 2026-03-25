@@ -236,6 +236,100 @@ document.documentElement.classList.add("branding-loading");
       color: rgba(0,0,0,0.55);
     }
 
+    .limit-card{
+      margin: 10px 0 16px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(0,0,0,0.02));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+    }
+
+    .limit-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+
+    .limit-title{
+      font-size:13px;
+      font-weight:1000;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.68);
+    }
+
+    .limit-note{
+      margin-top:4px;
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.58);
+    }
+
+    .slot-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:1000;
+      border:1px solid rgba(141,217,89,0.55);
+      background: rgba(141,217,89,0.16);
+      color: rgba(0,0,0,0.82);
+      white-space:nowrap;
+    }
+
+    .slot-pill.warn{
+      border-color: rgba(244,227,47,0.60);
+      background: rgba(244,227,47,0.22);
+    }
+
+    .slot-pill.err{
+      border-color: rgba(176,0,0,0.22);
+      background: rgba(176,0,0,0.10);
+      color: rgba(176,0,0,0.82);
+    }
+
+    .limit-grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap:10px;
+    }
+
+    .limit-stat{
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.72);
+      padding:12px;
+    }
+
+    .limit-stat__label{
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.60);
+    }
+
+    .limit-stat__value{
+      margin-top:6px;
+      font-size:22px;
+      line-height:1;
+      font-weight:1000;
+      color:#111;
+    }
+
+    .limit-stat__sub{
+      margin-top:6px;
+      font-size:12px;
+      font-weight:900;
+      color: rgba(0,0,0,0.52);
+    }
+
     .grid{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -500,6 +594,7 @@ document.documentElement.classList.add("branding-loading");
 
     @media (max-width: 980px){
       .shell{ grid-template-columns: 74px 1fr; }
+      .limit-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
       .grid{ grid-template-columns: 1fr; }
       .item{ grid-template-columns: 1fr; }
       .badge{ justify-self:start; }
@@ -754,11 +849,94 @@ document.documentElement.classList.add("branding-loading");
 
     const itemsEl = document.getElementById("items");
     const countEl = document.getElementById("count");
+    const limitMaxEl = document.getElementById("limitMax");
+    const limitBorrowedEl = document.getElementById("limitBorrowed");
+    const limitSessionEl = document.getElementById("limitSession");
+    const limitRemainingEl = document.getElementById("limitRemaining");
+    const limitNoteEl = document.getElementById("limitNote");
+    const slotPillEl = document.getElementById("slotPill");
 
     let debounceTimer = null;
     let progressTimer = null;
     let lastLookup = "";
     let currentBook = null;
+
+    function getBorrowLimit(){
+      return Number(precheck?.rules?.max_borrow_limit ?? 0) || 0;
+    }
+
+    function getAlreadyBorrowed(){
+      return Number(precheck?.stats?.borrowed_count ?? 0) || 0;
+    }
+
+    function getSessionPendingCount(){
+      return getItems().filter(it => it && it.ok !== true).length;
+    }
+
+    function getRemainingSlots(){
+      return Math.max(0, getBorrowLimit() - getAlreadyBorrowed() - getSessionPendingCount());
+    }
+
+    function buildBorrowLimitMessage(detail){
+      const active = Number(detail?.active_loans ?? detail?.current ?? getAlreadyBorrowed()) || 0;
+      const limit = Number(detail?.limit ?? getBorrowLimit()) || 0;
+      const remaining = Math.max(0, limit - active);
+      if (remaining <= 0){
+        return `Checkout failed: this student already has ${active} active book${active === 1 ? "" : "s"}, which is the maximum allowed (${limit}).`;
+      }
+      return `Checkout failed: this student can only borrow ${remaining} more book${remaining === 1 ? "" : "s"}.`;
+    }
+
+    function formatCheckoutError(data){
+      if (!data) return "Checkout failed.";
+      const detail = data.detail;
+      if (typeof detail === "string") return detail;
+      if (detail && typeof detail === "object") {
+        if (detail.message === "Max borrow limit reached" || detail.type === "borrow_limit") return buildBorrowLimitMessage(detail);
+        if (detail.message === "Student has unpaid fines") {
+          const amount = Number(detail.outstanding || 0) || 0;
+          return `Checkout failed: the student still has unpaid fines of ₱${amount.toFixed(2)}.`;
+        }
+        if (detail.message) return detail.message;
+        if (detail.error) return detail.error;
+      }
+      if (typeof data.message === "string") return data.message;
+      return "Checkout failed.";
+    }
+
+    function refreshBorrowingStatus(){
+      const limit = getBorrowLimit();
+      const borrowed = getAlreadyBorrowed();
+      const sessionCount = getSessionPendingCount();
+      const remaining = Math.max(0, limit - borrowed - sessionCount);
+
+      limitMaxEl.textContent = String(limit);
+      limitBorrowedEl.textContent = String(borrowed);
+      limitSessionEl.textContent = String(sessionCount);
+      limitRemainingEl.textContent = String(remaining);
+
+      slotPillEl.className = "slot-pill";
+      if (remaining <= 0){
+        slotPillEl.classList.add("err");
+        slotPillEl.textContent = "No slots left";
+        limitNoteEl.textContent = limit > 0
+          ? `This student already used all ${limit} available borrowing slot${limit === 1 ? "" : "s"} for now.`
+          : "No borrowing slots are available for this student right now.";
+      } else if (remaining === 1){
+        slotPillEl.classList.add("warn");
+        slotPillEl.textContent = "1 slot left";
+        limitNoteEl.textContent = "Only 1 more book can be added in this session.";
+      } else {
+        slotPillEl.textContent = `${remaining} slots left`;
+        limitNoteEl.textContent = `${remaining} more books can still be added in this checkout session.`;
+      }
+
+      if (remaining <= 0){
+        checkoutBtn.disabled = true;
+      }
+
+      return remaining;
+    }
 
     function setHint(text, isError=false){
       hintEl.textContent = text;
@@ -801,6 +979,7 @@ document.documentElement.classList.add("branding-loading");
     function setItems(arr){
       sessionStorage.setItem(CHECKOUT_ITEMS_KEY, JSON.stringify(arr));
       renderItems();
+      refreshBorrowingStatus();
     }
 
     function removeItem(index){
@@ -808,7 +987,9 @@ document.documentElement.classList.add("branding-loading");
       if (index < 0 || index >= arr.length) return;
       arr.splice(index, 1);
       setItems(arr);
+      const remaining = refreshBorrowingStatus();
       setHint(arr.length ? "Book removed from this session." : "Session list cleared. Scan a book barcode to begin.");
+      if (remaining > 0) clearBookFields();
       bookCodeEl.focus();
     }
 
@@ -820,7 +1001,7 @@ document.documentElement.classList.add("branding-loading");
 
     function renderItems(){
       const arr = getItems();
-      countEl.textContent = String(arr.length);
+      countEl.textContent = `${arr.length} in session`;
       itemsEl.innerHTML = "";
 
       if (!arr.length){
@@ -893,6 +1074,12 @@ document.documentElement.classList.add("branding-loading");
         return;
       }
 
+      const remainingBeforeFinalize = getBorrowLimit() - getAlreadyBorrowed();
+      if (items.length > remainingBeforeFinalize){
+        setHint(`Only ${Math.max(0, remainingBeforeFinalize)} book${Math.max(0, remainingBeforeFinalize) === 1 ? "" : "s"} can be checked out for this student right now. Remove extra books first.`, true);
+        return;
+      }
+
       checkoutBtn.disabled = true;
       finishBtn.disabled = true;
       changeStudentBtn.disabled = true;
@@ -924,7 +1111,7 @@ document.documentElement.classList.add("branding-loading");
             updated.push({
               ...it,
               ok: false,
-              error: normalizeDetailToString(data) || "Checkout failed"
+              error: formatCheckoutError(data)
             });
           } else {
             updated.push({ ...it, ok: true });
@@ -983,9 +1170,14 @@ document.documentElement.classList.add("branding-loading");
         isbnEl.value = b.isbn || "";
         availableEl.value = String(b.available_copies);
 
-        if (b.available_copies > 0){
+        const remaining = refreshBorrowingStatus();
+
+        if (remaining <= 0){
+          checkoutBtn.disabled = true;
+          setHint("This student has no borrowing slots left. Remove a session book or use another student.", true);
+        } else if (b.available_copies > 0){
           checkoutBtn.disabled = false;
-          setHint("Book found. Click Checkout This Book.");
+          setHint(`Book found. ${remaining} borrowing slot${remaining === 1 ? "" : "s"} left for this session.`);
         } else {
           checkoutBtn.disabled = true;
           setHint("No available copies for this book.", true);
@@ -1032,6 +1224,13 @@ document.documentElement.classList.add("branding-loading");
       const barcode = bookCodeEl.value.trim();
       if (!barcode) return;
 
+      const remainingBeforeAdd = refreshBorrowingStatus();
+      if (remainingBeforeAdd <= 0){
+        setHint("This student already reached the allowed borrow limit for this session.", true);
+        checkoutBtn.disabled = true;
+        return;
+      }
+
       const existing = getItems().some(x => x.barcode === barcode);
       if (existing){
         setHint("Book already scanned. Scan another book.", true);
@@ -1049,7 +1248,10 @@ document.documentElement.classList.add("branding-loading");
       });
       setItems(items);
 
-      setHint("Added to this session. Scan next book.");
+      const remainingAfterAdd = refreshBorrowingStatus();
+      setHint(remainingAfterAdd > 0
+        ? `Added to this session. ${remainingAfterAdd} slot${remainingAfterAdd === 1 ? "" : "s"} left.`
+        : "Added to this session. Borrowing limit reached for this student.");
       bookCodeEl.value = "";
       clearBookFields();
       progressWrap.style.display = "none";
@@ -1072,6 +1274,10 @@ document.documentElement.classList.add("branding-loading");
     });
 
     renderItems();
+    const startingRemaining = refreshBorrowingStatus();
+    setHint(startingRemaining > 0
+      ? `Scan a book barcode. ${startingRemaining} borrowing slot${startingRemaining === 1 ? "" : "s"} left for this student.`
+      : "This student has already reached the borrow limit. Change student or finish removing session books.", startingRemaining <= 0);
 
     const header = document.getElementById("siteHeader");
     function syncHeader(){
