@@ -1,4 +1,4 @@
-const DISPLAY_BASE_URL = window.CONFIG.API_BASE;
+const DISPLAY_BASE_URL = 'https://golden-opac-backend.onrender.com';
 const DISPLAY_CACHE_KEY = "displaySettings";
 
 function escapeHtml(value) {

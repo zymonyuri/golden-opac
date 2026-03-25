@@ -1,4 +1,4 @@
-const BASE_URL = window.CONFIG.API_BASE;
+const BASE_URL = 'https://golden-opac-backend.onrender.com';
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const resultsDiv = document.getElementById("results");

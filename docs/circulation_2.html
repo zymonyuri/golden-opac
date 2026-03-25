@@ -644,7 +644,7 @@ document.documentElement.classList.add("branding-loading");
   </footer>
   
   <script>
-    const BASE_URL = window.CONFIG.API_BASE;
+    const BASE_URL = 'https://golden-opac-backend.onrender.com';
     const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
     if (!token) window.location.href = "login.html";
 
