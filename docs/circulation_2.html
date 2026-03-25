@@ -3,15 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Circulation -  Check Out</title>
+  <title>Circulation - Check Out</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
   <script>
-document.documentElement.classList.add("branding-loading");
-</script>
-  
+    (function () {
+      try {
+        document.documentElement.classList.add("branding-loading");
+
+        const raw = localStorage.getItem("displaySettings");
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+        const root = document.documentElement;
+
+        if (data.brand_primary) {
+          root.style.setProperty("--brand-yellow", data.brand_primary);
+          root.style.setProperty("--brand-primary", data.brand_primary);
+        }
+
+        if (data.brand_secondary) {
+          root.style.setProperty("--brand-green", data.brand_secondary);
+          root.style.setProperty("--brand-secondary", data.brand_secondary);
+        }
+      } catch (e) {
+        console.warn("Brand preload failed:", e);
+      }
+    })();
+  </script>
+
   <link rel="stylesheet" href="styles.css" />
 
   <style>
@@ -24,6 +47,10 @@ document.documentElement.classList.add("branding-loading");
       --mutedInk: rgba(0,0,0,0.65);
       --softInk: rgba(0,0,0,0.55);
       --line: rgba(0,0,0,0.10);
+      --brand-primary: #2563eb;
+      --brand-secondary: #94a3b8;
+      --brand-yellow: #2563eb;
+      --brand-green: #94a3b8;
     }
 
     * { box-sizing: border-box; }
@@ -236,98 +263,56 @@ document.documentElement.classList.add("branding-loading");
       color: rgba(0,0,0,0.55);
     }
 
-    .limit-card{
+    .borrow-strip{
       margin: 10px 0 16px;
-      padding: 14px;
+      padding: 14px 16px;
       border-radius: 16px;
       border: 1px solid rgba(0,0,0,0.10);
       background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(0,0,0,0.02));
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    .limit-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-bottom:10px;
+    .borrow-strip__label{
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(0,0,0,0.62);
     }
 
-    .limit-title{
-      font-size:13px;
-      font-weight:1000;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.68);
-    }
-
-    .limit-note{
-      margin-top:4px;
-      font-size:13px;
-      font-weight:900;
-      color: rgba(0,0,0,0.58);
-    }
-
-    .slot-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:10px 14px;
-      border-radius:999px;
-      font-size:13px;
-      font-weight:1000;
-      border:1px solid rgba(141,217,89,0.55);
+    .borrow-strip__value{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 1000;
+      border: 1px solid rgba(141,217,89,0.55);
       background: rgba(141,217,89,0.16);
       color: rgba(0,0,0,0.82);
-      white-space:nowrap;
+      white-space: nowrap;
     }
 
-    .slot-pill.warn{
+    .borrow-strip__value.warn{
       border-color: rgba(244,227,47,0.60);
       background: rgba(244,227,47,0.22);
     }
 
-    .slot-pill.err{
+    .borrow-strip__value.err{
       border-color: rgba(176,0,0,0.22);
       background: rgba(176,0,0,0.10);
       color: rgba(176,0,0,0.82);
     }
 
-    .limit-grid{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0,1fr));
-      gap:10px;
-    }
-
-    .limit-stat{
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.08);
-      background: rgba(255,255,255,0.72);
-      padding:12px;
-    }
-
-    .limit-stat__label{
-      font-size:11px;
-      font-weight:1000;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.60);
-    }
-
-    .limit-stat__value{
-      margin-top:6px;
-      font-size:22px;
-      line-height:1;
-      font-weight:1000;
-      color:#111;
-    }
-
-    .limit-stat__sub{
-      margin-top:6px;
-      font-size:12px;
-      font-weight:900;
-      color: rgba(0,0,0,0.52);
+    .borrow-strip__note{
+      font-size: 13px;
+      font-weight: 900;
+      color: rgba(0,0,0,0.58);
     }
 
     .grid{
@@ -594,7 +579,6 @@ document.documentElement.classList.add("branding-loading");
 
     @media (max-width: 980px){
       .shell{ grid-template-columns: 74px 1fr; }
-      .limit-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
       .grid{ grid-template-columns: 1fr; }
       .item{ grid-template-columns: 1fr; }
       .badge{ justify-self:start; }
@@ -663,6 +647,12 @@ document.documentElement.classList.add("branding-loading");
               </div>
             </div>
 
+            <div class="borrow-strip" id="borrowStrip">
+              <div class="borrow-strip__label">Borrowing Status</div>
+              <div class="borrow-strip__value" id="borrowStripValue">Checking...</div>
+              <div class="borrow-strip__note" id="borrowStripNote">Please wait...</div>
+            </div>
+
             <div class="grid">
               <div class="field field--full">
                 <div class="label">Book Code</div>
@@ -708,10 +698,8 @@ document.documentElement.classList.add("branding-loading");
               </div>
               <div class="items" id="items"></div>
             </div>
-
           </div>
         </section>
-
       </div>
     </section>
   </main>
@@ -761,30 +749,53 @@ document.documentElement.classList.add("branding-loading");
 
         <div class="site-footer__row" style="margin-top:14px;">
           <a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a>
-          <span class="site-footer__dot">•</span>
+          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
           <a class="site-footer__social" id="footerBrandWebsite" href="#" target="_blank" rel="noopener" style="display:none;">Official Website</a>
         </div>
       </section>
     </div>
   </footer>
-  
+
   <script>
-    const BASE_URL = 'https://golden-opac-backend.onrender.com';
-    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
-    if (!token) window.location.href = "login.html";
+    const BASE_URL = (window.CONFIG && window.CONFIG.API_BASE)
+      ? window.CONFIG.API_BASE
+      : "https://golden-opac-backend.onrender.com";
+
+    const DEFAULT_LOGO = "assets/default-school-logo.png";
+
+    const token =
+      sessionStorage.getItem("gk_token") ||
+      sessionStorage.getItem("access_token") ||
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("gk_token") ||
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("token");
+
+    if (!token) {
+      window.location.href = "login.html";
+    }
 
     const CHECKOUT_ITEMS_KEY = "gk_checkout_items";
     const CHECKOUT_STUDENT_KEY = "gk_checkout_items_student";
     const CHECKOUT_DONE_KEY = "gk_checkout_session_done";
 
     const byId = (id) => document.getElementById(id);
-    const setText = (id, value) => { const el = byId(id); if (el) el.textContent = String(value ?? ""); return el; };
+    const setText = (id, value) => {
+      const el = byId(id);
+      if (el) el.textContent = String(value ?? "");
+      return el;
+    };
 
     setText("footerYear", new Date().getFullYear());
+
     document.getElementById("logoutLink")?.addEventListener("click", (e) => {
       e.preventDefault();
       sessionStorage.removeItem("gk_token");
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("token");
       localStorage.removeItem("gk_token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("token");
       window.location.href = "login.html";
     });
 
@@ -794,14 +805,21 @@ document.documentElement.classList.add("branding-loading");
 
     function fmtISOToMDY(iso){
       if (!iso) return "—";
-      const [y,m,d] = String(iso).split("-");
+      const date = new Date(iso);
+      if (!Number.isNaN(date.getTime())) {
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const yyyy = date.getFullYear();
+        return `${mm}/${dd}/${yyyy}`;
+      }
+      const [y,m,d] = String(iso).split("T")[0].split("-");
       if (!y || !m || !d) return String(iso);
       return `${m}/${d}/${y}`;
     }
 
     function safeJSON(s){
-      try{ return s ? JSON.parse(s) : null; }
-      catch{ return null; }
+      try { return s ? JSON.parse(s) : null; }
+      catch { return null; }
     }
 
     const studentCode = sessionStorage.getItem("gk_student_code");
@@ -828,11 +846,11 @@ document.documentElement.classList.add("branding-loading");
 
     const chipCode = document.getElementById("chipCode");
     const chipName = document.getElementById("chipName");
-    const chipDue  = document.getElementById("chipDue");
-    const chipGrade= document.getElementById("chipGrade");
+    const chipDue = document.getElementById("chipDue");
+    const chipGrade = document.getElementById("chipGrade");
 
     if (chipCode) chipCode.textContent = studentCode;
-    if (chipName) chipName.textContent = `${studentLookup.last_name || ""}, ${studentLookup.first_name || ""}`.replace(/^,\s*/,"—");
+    if (chipName) chipName.textContent = `${studentLookup.last_name || ""}, ${studentLookup.first_name || ""}`.replace(/^,\s*/, "") || "—";
     if (chipDue) chipDue.textContent = fmtISOToMDY(precheck.due_date);
     if (chipGrade) chipGrade.textContent = studentLookup.grade_section || `${studentLookup.grade || ""}${studentLookup.section ? (" - " + studentLookup.section) : ""}`.trim() || "—";
 
@@ -852,12 +870,8 @@ document.documentElement.classList.add("branding-loading");
 
     const itemsEl = document.getElementById("items");
     const countEl = document.getElementById("count");
-    const limitMaxEl = document.getElementById("limitMax");
-    const limitBorrowedEl = document.getElementById("limitBorrowed");
-    const limitSessionEl = document.getElementById("limitSession");
-    const limitRemainingEl = document.getElementById("limitRemaining");
-    const limitNoteEl = document.getElementById("limitNote");
-    const slotPillEl = document.getElementById("slotPill");
+    const borrowStripValueEl = document.getElementById("borrowStripValue");
+    const borrowStripNoteEl = document.getElementById("borrowStripNote");
 
     let debounceTimer = null;
     let progressTimer = null;
@@ -907,34 +921,45 @@ document.documentElement.classList.add("branding-loading");
       return "Checkout failed.";
     }
 
-    function refreshBorrowingStatus(){
+    function refreshBorrowingStatus() {
       const limit = getBorrowLimit();
       const borrowed = getAlreadyBorrowed();
       const sessionCount = getSessionPendingCount();
       const remaining = Math.max(0, limit - borrowed - sessionCount);
 
-      if (limitMaxEl) limitMaxEl.textContent = String(limit);
-      if (limitBorrowedEl) limitBorrowedEl.textContent = String(borrowed);
-      if (limitSessionEl) limitSessionEl.textContent = String(sessionCount);
-      if (limitRemainingEl) limitRemainingEl.textContent = String(remaining);
-
-      if (slotPillEl) slotPillEl.className = "slot-pill";
-      if (remaining <= 0){
-        if (slotPillEl) slotPillEl.classList.add("err");
-        if (slotPillEl) slotPillEl.textContent = "No slots left";
-        if (limitNoteEl) limitNoteEl.textContent = limit > 0
-          ? `This student already used all ${limit} available borrowing slot${limit === 1 ? "" : "s"} for now.`
-          : "No borrowing slots are available for this student right now.";
-      } else if (remaining === 1){
-        if (slotPillEl) slotPillEl.classList.add("warn");
-        if (slotPillEl) slotPillEl.textContent = "1 slot left";
-        if (limitNoteEl) limitNoteEl.textContent = "Only 1 more book can be added in this session.";
-      } else {
-        if (slotPillEl) slotPillEl.textContent = `${remaining} slots left`;
-        if (limitNoteEl) limitNoteEl.textContent = `${remaining} more books can still be added in this checkout session.`;
+      if (borrowStripValueEl) {
+        borrowStripValueEl.className = "borrow-strip__value";
       }
 
-      if (remaining <= 0){
+      if (remaining <= 0) {
+        if (borrowStripValueEl) {
+          borrowStripValueEl.classList.add("err");
+          borrowStripValueEl.textContent = "No slots left";
+        }
+        if (borrowStripNoteEl) {
+          borrowStripNoteEl.textContent =
+            limit > 0
+              ? `This student already reached the borrowing limit of ${limit}.`
+              : "This student cannot borrow books right now.";
+        }
+      } else if (remaining === 1) {
+        if (borrowStripValueEl) {
+          borrowStripValueEl.classList.add("warn");
+          borrowStripValueEl.textContent = "1 slot left";
+        }
+        if (borrowStripNoteEl) {
+          borrowStripNoteEl.textContent = "Only 1 more book can be borrowed.";
+        }
+      } else {
+        if (borrowStripValueEl) {
+          borrowStripValueEl.textContent = `${remaining} slots left`;
+        }
+        if (borrowStripNoteEl) {
+          borrowStripNoteEl.textContent = `${borrowed} already borrowed${sessionCount ? `, ${sessionCount} in this session` : ""}.`;
+        }
+      }
+
+      if (remaining <= 0) {
         checkoutBtn.disabled = true;
       }
 
@@ -1005,7 +1030,7 @@ document.documentElement.classList.add("branding-loading");
 
     function renderItems(){
       const arr = getItems();
-      if (countEl) countEl.textContent = `${arr.length} in session`;
+      if (countEl) countEl.textContent = String(arr.length);
       itemsEl.innerHTML = "";
 
       if (!arr.length){
@@ -1026,7 +1051,7 @@ document.documentElement.classList.add("branding-loading");
       arr.forEach((it, index) => {
         const ok = it.ok === true;
         const pending = it.ok === null || typeof it.ok === "undefined";
-        const badgeText = ok ? "✓ Ready" : (pending ? "⏳ Pending" : ("⚠ " + escapeHtml(it.error || "Failed")));
+        const badgeText = ok ? "Ready" : (pending ? "Pending" : escapeHtml(it.error || "Failed"));
         const badgeClass = ok ? "" : (pending ? "warn" : "err");
         const disableRemove = it.ok === true;
 
@@ -1061,16 +1086,6 @@ document.documentElement.classList.add("branding-loading");
       });
     }
 
-    function normalizeDetailToString(data){
-      if (!data) return "";
-      if (typeof data.detail === "string") return data.detail;
-      if (typeof data.detail === "object" && data.detail !== null){
-        return data.detail.message || data.detail.error || JSON.stringify(data.detail);
-      }
-      if (typeof data.message === "string") return data.message;
-      return "";
-    }
-
     async function finalizeCheckout(){
       const items = getItems();
       if (!items.length){
@@ -1089,7 +1104,7 @@ document.documentElement.classList.add("branding-loading");
       changeStudentBtn.disabled = true;
 
       showProgress();
-      setHint("Finalizing checkout…");
+      setHint("Finalizing checkout...");
 
       const updated = [];
       for (const it of items){
@@ -1120,7 +1135,7 @@ document.documentElement.classList.add("branding-loading");
           } else {
             updated.push({ ...it, ok: true });
           }
-        }catch(err){
+        } catch(err){
           updated.push({
             ...it,
             ok: false,
@@ -1157,7 +1172,7 @@ document.documentElement.classList.add("branding-loading");
       }
 
       showProgress();
-      setHint("Looking up book…");
+      setHint("Looking up book...");
 
       try{
         const res = await fetch(`${BASE_URL}/api/circulation/lookup?barcode=${encodeURIComponent(barcode)}`, { headers: authHeaders() });
@@ -1188,7 +1203,7 @@ document.documentElement.classList.add("branding-loading");
         }
 
         hideProgressAfterComplete();
-      }catch(err){
+      } catch(err){
         hideProgressAfterComplete();
         checkoutBtn.disabled = true;
         setHint(err?.message || "Lookup failed.", true);
@@ -1253,9 +1268,12 @@ document.documentElement.classList.add("branding-loading");
       setItems(items);
 
       const remainingAfterAdd = refreshBorrowingStatus();
-      setHint(remainingAfterAdd > 0
-        ? `Added to this session. ${remainingAfterAdd} slot${remainingAfterAdd === 1 ? "" : "s"} left.`
-        : "Added to this session. Borrowing limit reached for this student.");
+      setHint(
+        remainingAfterAdd > 0
+          ? `Added to this session. ${remainingAfterAdd} slot${remainingAfterAdd === 1 ? "" : "s"} left.`
+          : "Added to this session. Borrowing limit reached for this student."
+      );
+
       bookCodeEl.value = "";
       clearBookFields();
       progressWrap.style.display = "none";
@@ -1279,9 +1297,12 @@ document.documentElement.classList.add("branding-loading");
 
     renderItems();
     const startingRemaining = refreshBorrowingStatus();
-    setHint(startingRemaining > 0
-      ? `Scan a book barcode. ${startingRemaining} borrowing slot${startingRemaining === 1 ? "" : "s"} left for this student.`
-      : "This student has already reached the borrow limit. Change student or finish removing session books.", startingRemaining <= 0);
+    setHint(
+      startingRemaining > 0
+        ? `Scan a book barcode. ${startingRemaining} borrowing slot${startingRemaining === 1 ? "" : "s"} left for this student.`
+        : "This student has already reached the borrow limit. Change student or finish removing session books.",
+      startingRemaining <= 0
+    );
 
     const header = document.getElementById("siteHeader");
     function syncHeader(){
@@ -1303,8 +1324,165 @@ document.documentElement.classList.add("branding-loading");
       const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
       window.scrollTo({ top: y, behavior: "smooth" });
     });
+
+    function setSafeLogo(logoEl, schoolName, rawLogoUrl) {
+      if (!logoEl) return;
+
+      const logoUrl = String(rawLogoUrl || "").trim();
+
+      logoEl.alt = `${schoolName} Logo`;
+      logoEl.classList.add("is-loaded");
+
+      logoEl.onerror = function () {
+        this.onerror = null;
+        this.classList.add("is-loaded");
+        this.src = DEFAULT_LOGO;
+      };
+
+      logoEl.src = logoUrl || DEFAULT_LOGO;
+    }
+
+    function applyCirculationBranding(data) {
+      if (!data || typeof data !== "object") return;
+
+      const schoolName =
+        data.school_name ||
+        data.library_name ||
+        "Your School Name";
+
+      const systemName =
+        data.footer_title ||
+        data.system_name ||
+        "Library Management System";
+
+      const headerSubtitle =
+        data.header_subtitle ||
+        "Librarian Portal";
+
+      const footerDescription =
+        data.footer_description ||
+        "Customize your school branding, contact details, and interface appearance in Display Settings.";
+
+      const footerAddress =
+        data.footer_address ||
+        data.address ||
+        "School Address";
+
+      const footerPhone =
+        data.footer_phone ||
+        data.phone ||
+        "School Contact Number";
+
+      const footerEmail =
+        data.footer_email ||
+        data.email ||
+        "library@school.edu";
+
+      const footerWebsite =
+        data.footer_website ||
+        data.website_url ||
+        "";
+
+      const footerFacebook =
+        data.footer_facebook ||
+        data.facebook_url ||
+        "";
+
+      const footerCopyright =
+        data.footer_copyright ||
+        `${schoolName} — All Rights Reserved.`;
+
+      const schoolNameEl = document.querySelector("[data-brand-school-name]");
+      const subtitleEl = document.querySelector("[data-brand-header-subtitle]");
+      const logoEl = document.querySelector("[data-brand-logo]");
+      const footerTitleEl = document.getElementById("footerBrandTitle");
+      const footerDescriptionEl = document.getElementById("footerBrandDescription");
+      const footerAddressEl = document.getElementById("footerBrandAddress");
+      const footerPhoneEl = document.getElementById("footerBrandPhone");
+      const footerEmailEl = document.getElementById("footerBrandEmail");
+      const footerCopyrightEl = document.getElementById("footerBrandCopyright");
+      const footerWebsiteEl = document.getElementById("footerBrandWebsite");
+      const footerFacebookEl = document.getElementById("footerBrandFacebook");
+      const footerDividerEl = document.getElementById("footerBrandDivider");
+
+      if (schoolNameEl) schoolNameEl.textContent = schoolName;
+      if (subtitleEl) subtitleEl.textContent = headerSubtitle;
+      if (footerTitleEl) footerTitleEl.textContent = systemName;
+      if (footerDescriptionEl) footerDescriptionEl.textContent = footerDescription;
+      if (footerAddressEl) footerAddressEl.textContent = footerAddress;
+      if (footerPhoneEl) footerPhoneEl.textContent = footerPhone;
+      if (footerEmailEl) footerEmailEl.textContent = footerEmail;
+      if (footerCopyrightEl) footerCopyrightEl.textContent = footerCopyright;
+
+      setSafeLogo(
+        logoEl,
+        schoolName,
+        data.logo_url || data.logo || data.school_logo || ""
+      );
+
+      if (footerFacebookEl) {
+        if (footerFacebook) {
+          footerFacebookEl.href = /^https?:\/\//i.test(footerFacebook) ? footerFacebook : `https://${footerFacebook}`;
+          footerFacebookEl.style.display = "inline-flex";
+        } else {
+          footerFacebookEl.removeAttribute("href");
+          footerFacebookEl.style.display = "none";
+        }
+      }
+
+      if (footerWebsiteEl) {
+        if (footerWebsite) {
+          footerWebsiteEl.href = /^https?:\/\//i.test(footerWebsite) ? footerWebsite : `https://${footerWebsite}`;
+          footerWebsiteEl.style.display = "inline-flex";
+        } else {
+          footerWebsiteEl.removeAttribute("href");
+          footerWebsiteEl.style.display = "none";
+        }
+      }
+
+      if (footerDividerEl) {
+        footerDividerEl.style.display =
+          footerFacebook && footerWebsite ? "inline-block" : "none";
+      }
+
+      document.documentElement.classList.remove("branding-loading");
+    }
+
+    function initCirculationBranding() {
+      try {
+        const raw = localStorage.getItem("displaySettings");
+        if (raw) {
+          applyCirculationBranding(JSON.parse(raw));
+        } else {
+          const logoEl = document.querySelector("[data-brand-logo]");
+          setSafeLogo(logoEl, "Your School Name", "");
+          document.documentElement.classList.remove("branding-loading");
+        }
+      } catch (e) {
+        console.warn("Local circulation branding failed:", e);
+        const logoEl = document.querySelector("[data-brand-logo]");
+        setSafeLogo(logoEl, "Your School Name", "");
+        document.documentElement.classList.remove("branding-loading");
+      }
+    }
+
+    initCirculationBranding();
   </script>
-  
+
+  <script src="config.js"></script>
   <script src="branding.js"></script>
+  <script>
+    window.addEventListener("load", () => {
+      try {
+        if (typeof window.loadBranding === "function") {
+          window.loadBranding();
+        } else if (typeof window.initBranding === "function") {
+          window.initBranding();
+        }
+      } catch (e) {
+        console.warn("branding.js refresh failed:", e);
+      }
+    });
+  </script>
 </body>
 </html>

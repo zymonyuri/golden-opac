@@ -8,9 +8,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+
   <script>
-document.documentElement.classList.add("branding-loading");
-</script>
+    (function () {
+      try {
+        document.documentElement.classList.add("branding-loading");
+
+        const raw = localStorage.getItem("displaySettings");
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+        const root = document.documentElement;
+
+        if (data.brand_primary) {
+          root.style.setProperty("--brand-yellow", data.brand_primary);
+          root.style.setProperty("--brand-primary", data.brand_primary);
+        }
+
+        if (data.brand_secondary) {
+          root.style.setProperty("--brand-green", data.brand_secondary);
+          root.style.setProperty("--brand-secondary", data.brand_secondary);
+        }
+      } catch (e) {
+        console.warn("Brand preload failed:", e);
+      }
+    })();
+  </script>
   
   <link rel="stylesheet" href="styles.css" />
 
@@ -24,11 +47,13 @@ document.documentElement.classList.add("branding-loading");
       --mutedInk: rgba(0,0,0,0.65);
       --softInk: rgba(0,0,0,0.55);
       --line: rgba(0,0,0,0.10);
+      --brand-primary: #2563eb;
+      --brand-secondary: #94a3b8;
+      --brand-yellow: #2563eb;
+      --brand-green: #94a3b8;
     }
 
     * { box-sizing: border-box; }
-
-    
 
     .page{
       position:relative;
@@ -223,41 +248,56 @@ document.documentElement.classList.add("branding-loading");
       color: rgba(0,0,0,0.85);
     }
 
-    .status-grid{
+    .borrow-strip{
       margin-top:12px;
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0,1fr));
-      gap:10px;
-    }
-
-    .status-card{
-      border-radius:14px;
+      padding:14px 16px;
+      border-radius:16px;
       border:1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.76);
-      padding:12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(0,0,0,0.02));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
     }
 
-    .status-card__label{
-      font-size:11px;
+    .borrow-strip__label{
+      font-size:12px;
       font-weight:1000;
       letter-spacing:.08em;
       text-transform:uppercase;
-      color: rgba(0,0,0,0.60);
+      color: rgba(0,0,0,0.62);
     }
 
-    .status-card__value{
-      margin-top:6px;
-      font-size:22px;
-      line-height:1;
+    .borrow-strip__value{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:13px;
       font-weight:1000;
-      color:#111;
+      border:1px solid rgba(141,217,89,0.55);
+      background: rgba(141,217,89,0.16);
+      color: rgba(0,0,0,0.82);
+      white-space:nowrap;
     }
 
-    .status-card__sub{
-      margin-top:6px;
-      font-size:12px;
+    .borrow-strip__value.warn{
+      border-color: rgba(244,227,47,0.60);
+      background: rgba(244,227,47,0.22);
+    }
+
+    .borrow-strip__value.err{
+      border-color: rgba(176,0,0,0.22);
+      background: rgba(176,0,0,0.10);
+      color: rgba(176,0,0,0.82);
+    }
+
+    .borrow-strip__note{
+      font-size:13px;
       font-weight:900;
-      color: rgba(0,0,0,0.52);
+      color: rgba(0,0,0,0.58);
     }
 
     .mono{
@@ -368,11 +408,6 @@ document.documentElement.classList.add("branding-loading");
       .row{ grid-template-columns:1fr; }
       .item{ grid-template-columns:1fr; }
       .badge{ justify-self:start; }
-      .status-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); }
-    }
-
-    @media (max-width: 640px){
-      .status-grid{ grid-template-columns: 1fr; }
     }
 
     .modal{
@@ -509,7 +544,7 @@ document.documentElement.classList.add("branding-loading");
 </head>
 
 <body>
-  <script src="branding.js"></script>
+  
   <div class="topbar" id="siteHeader">
     <div class="brand">
       <img
@@ -561,27 +596,11 @@ document.documentElement.classList.add("branding-loading");
 
             <div class="box">
               <div class="rows" id="studentRows"></div>
-              <div class="status-grid">
-                <div class="status-card">
-                  <div class="status-card__label">Borrow Limit</div>
-                  <div class="status-card__value" id="sumLimit">0</div>
-                  <div class="status-card__sub">Maximum active books</div>
-                </div>
-                <div class="status-card">
-                  <div class="status-card__label">Already Borrowed</div>
-                  <div class="status-card__value" id="sumBorrowed">0</div>
-                  <div class="status-card__sub">Before this checkout</div>
-                </div>
-                <div class="status-card">
-                  <div class="status-card__label">Checked Out Now</div>
-                  <div class="status-card__value" id="sumSession">0</div>
-                  <div class="status-card__sub">Successful books this session</div>
-                </div>
-                <div class="status-card">
-                  <div class="status-card__label">Slots Left After</div>
-                  <div class="status-card__value" id="sumRemaining">0</div>
-                  <div class="status-card__sub">Still available after this checkout</div>
-                </div>
+
+              <div class="borrow-strip" id="borrowStrip">
+                <div class="borrow-strip__label">Borrowing Status</div>
+                <div class="borrow-strip__value" id="borrowStripValue">Checking...</div>
+                <div class="borrow-strip__note" id="borrowStripNote">Please wait...</div>
               </div>
             </div>
 
@@ -664,7 +683,7 @@ document.documentElement.classList.add("branding-loading");
             Facebook
           </a>
 
-          <span class="site-footer__dot">•</span>
+          <span class="site-footer__dot" id="footerBrandDivider" style="display:none;">•</span>
 
           <a
             class="site-footer__social"
@@ -701,27 +720,57 @@ document.documentElement.classList.add("branding-loading");
   </div>
 
   <script>
-    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    const DEFAULT_LOGO = "assets/default-school-logo.png";
+
+    const token =
+      sessionStorage.getItem("gk_token") ||
+      sessionStorage.getItem("access_token") ||
+      sessionStorage.getItem("token") ||
+      localStorage.getItem("gk_token") ||
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("token");
+
     if (!token) window.location.href = "login.html";
 
     const byId = (id) => document.getElementById(id);
-    const setText = (id, value) => { const el = byId(id); if (el) el.textContent = String(value ?? ""); return el; };
+    const setText = (id, value) => {
+      const el = byId(id);
+      if (el) el.textContent = String(value ?? "");
+      return el;
+    };
 
     setText("footerYear", new Date().getFullYear());
+
     document.getElementById("logoutLink")?.addEventListener("click", (e) => {
       e.preventDefault();
       sessionStorage.removeItem("gk_token");
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("token");
       localStorage.removeItem("gk_token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("token");
       window.location.href = "login.html";
     });
 
-    function safeJSON(s){ try{ return s ? JSON.parse(s) : null; }catch{ return null; } }
+    function safeJSON(s){
+      try{ return s ? JSON.parse(s) : null; }
+      catch{ return null; }
+    }
+
     function fmtISOToMDY(iso){
       if (!iso) return "—";
-      const [y,m,d] = String(iso).split("-");
-      if (!y || !m || !d) return String(iso);
-      return `${m}/${d}/${y}`;
+      const date = new Date(iso);
+      if (!Number.isNaN(date.getTime())) {
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const yyyy = date.getFullYear();
+        return `${mm}/${dd}/${yyyy}`;
+      }
+      const parts = String(iso).split("T")[0].split("-");
+      if (parts.length !== 3) return String(iso);
+      return `${parts[1]}/${parts[2]}/${parts[0]}`;
     }
+
     function escapeHtml(s){
       return String(s ?? "").replace(/[&<>"']/g, m => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -751,10 +800,45 @@ document.documentElement.classList.add("branding-loading");
     const checkedOutNow = items.filter(it => it?.ok === true).length;
     const remainingAfter = Math.max(0, limit - borrowedBefore - checkedOutNow);
 
-    setText("sumLimit", limit);
-    setText("sumBorrowed", borrowedBefore);
-    setText("sumSession", checkedOutNow);
-    setText("sumRemaining", remainingAfter);
+    const borrowStripValueEl = document.getElementById("borrowStripValue");
+    const borrowStripNoteEl = document.getElementById("borrowStripNote");
+
+    function refreshBorrowingStatus() {
+      if (borrowStripValueEl) {
+        borrowStripValueEl.className = "borrow-strip__value";
+      }
+
+      if (remainingAfter <= 0) {
+        if (borrowStripValueEl) {
+          borrowStripValueEl.classList.add("err");
+          borrowStripValueEl.textContent = "No slots left";
+        }
+        if (borrowStripNoteEl) {
+          borrowStripNoteEl.textContent =
+            limit > 0
+              ? `This student already reached the borrowing limit of ${limit}.`
+              : "This student cannot borrow books right now.";
+        }
+      } else if (remainingAfter === 1) {
+        if (borrowStripValueEl) {
+          borrowStripValueEl.classList.add("warn");
+          borrowStripValueEl.textContent = "1 slot left";
+        }
+        if (borrowStripNoteEl) {
+          borrowStripNoteEl.textContent = "Only 1 more book can still be borrowed after this checkout.";
+        }
+      } else {
+        if (borrowStripValueEl) {
+          borrowStripValueEl.textContent = `${remainingAfter} slots left`;
+        }
+        if (borrowStripNoteEl) {
+          borrowStripNoteEl.textContent =
+            `${borrowedBefore} already borrowed, ${checkedOutNow} checked out in this transaction.`;
+        }
+      }
+    }
+
+    refreshBorrowingStatus();
 
     setText("count", `${items.length} item(s)`);
 
@@ -784,7 +868,7 @@ document.documentElement.classList.add("branding-loading");
               <div class="v">${escapeHtml(it.title || "—")}</div>
               <div class="k">${escapeHtml(it.author || "")}</div>
             </div>
-            <div class="badge ${ok ? "" : "err"}">${ok ? "✓ Added" : `⚠ ${escapeHtml(it.error || "Failed")}`}</div>
+            <div class="badge ${ok ? "" : "err"}">${ok ? "✓ Added" : `${escapeHtml(it.error || "Failed")}`}</div>
           </div>
         `);
       }
@@ -815,6 +899,7 @@ document.documentElement.classList.add("branding-loading");
       sessionStorage.removeItem("gk_checkout_items");
       sessionStorage.removeItem("gk_checkout_session_started_at");
       sessionStorage.removeItem("gk_book_lookup");
+      sessionStorage.removeItem("gk_checkout_session_done");
 
       window.location.href = "circulation.html";
     }
@@ -852,10 +937,165 @@ document.documentElement.classList.add("branding-loading");
       const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
       window.scrollTo({ top: y, behavior: "smooth" });
     });
+
+    function setSafeLogo(logoEl, schoolName, rawLogoUrl) {
+      if (!logoEl) return;
+
+      const logoUrl = String(rawLogoUrl || "").trim();
+
+      logoEl.alt = `${schoolName} Logo`;
+      logoEl.classList.add("is-loaded");
+
+      logoEl.onerror = function () {
+        this.onerror = null;
+        this.classList.add("is-loaded");
+        this.src = DEFAULT_LOGO;
+      };
+
+      logoEl.src = logoUrl || DEFAULT_LOGO;
+    }
+
+    function applySummaryBranding(data) {
+      if (!data || typeof data !== "object") return;
+
+      const schoolName =
+        data.school_name ||
+        data.library_name ||
+        "Your School Name";
+
+      const systemName =
+        data.footer_title ||
+        data.system_name ||
+        "Library Management System";
+
+      const headerSubtitle =
+        data.header_subtitle ||
+        "Librarian Portal";
+
+      const footerDescription =
+        data.footer_description ||
+        "Customize your school branding, contact details, and interface appearance in Display Settings.";
+
+      const footerAddress =
+        data.footer_address ||
+        data.address ||
+        "School Address";
+
+      const footerPhone =
+        data.footer_phone ||
+        data.phone ||
+        "School Contact Number";
+
+      const footerEmail =
+        data.footer_email ||
+        data.email ||
+        "library@school.edu";
+
+      const footerWebsite =
+        data.footer_website ||
+        data.website_url ||
+        "";
+
+      const footerFacebook =
+        data.footer_facebook ||
+        data.facebook_url ||
+        "";
+
+      const footerCopyright =
+        data.footer_copyright ||
+        `${schoolName} — All Rights Reserved.`;
+
+      const schoolNameEl = document.querySelector("[data-brand-school-name]");
+      const subtitleEl = document.querySelector("[data-brand-header-subtitle]");
+      const logoEl = document.querySelector("[data-brand-logo]");
+      const footerTitleEl = document.getElementById("footerBrandTitle");
+      const footerDescriptionEl = document.getElementById("footerBrandDescription");
+      const footerAddressEl = document.getElementById("footerBrandAddress");
+      const footerPhoneEl = document.getElementById("footerBrandPhone");
+      const footerEmailEl = document.getElementById("footerBrandEmail");
+      const footerCopyrightEl = document.getElementById("footerBrandCopyright");
+      const footerWebsiteEl = document.getElementById("footerBrandWebsite");
+      const footerFacebookEl = document.getElementById("footerBrandFacebook");
+      const footerDividerEl = document.getElementById("footerBrandDivider");
+
+      if (schoolNameEl) schoolNameEl.textContent = schoolName;
+      if (subtitleEl) subtitleEl.textContent = headerSubtitle;
+      if (footerTitleEl) footerTitleEl.textContent = systemName;
+      if (footerDescriptionEl) footerDescriptionEl.textContent = footerDescription;
+      if (footerAddressEl) footerAddressEl.textContent = footerAddress;
+      if (footerPhoneEl) footerPhoneEl.textContent = footerPhone;
+      if (footerEmailEl) footerEmailEl.textContent = footerEmail;
+      if (footerCopyrightEl) footerCopyrightEl.textContent = footerCopyright;
+
+      setSafeLogo(
+        logoEl,
+        schoolName,
+        data.logo_url || data.logo || data.school_logo || ""
+      );
+
+      if (footerFacebookEl) {
+        if (footerFacebook) {
+          footerFacebookEl.href = /^https?:\/\//i.test(footerFacebook) ? footerFacebook : `https://${footerFacebook}`;
+          footerFacebookEl.style.display = "inline-flex";
+        } else {
+          footerFacebookEl.removeAttribute("href");
+          footerFacebookEl.style.display = "none";
+        }
+      }
+
+      if (footerWebsiteEl) {
+        if (footerWebsite) {
+          footerWebsiteEl.href = /^https?:\/\//i.test(footerWebsite) ? footerWebsite : `https://${footerWebsite}`;
+          footerWebsiteEl.style.display = "inline-flex";
+        } else {
+          footerWebsiteEl.removeAttribute("href");
+          footerWebsiteEl.style.display = "none";
+        }
+      }
+
+      if (footerDividerEl) {
+        footerDividerEl.style.display =
+          footerFacebook && footerWebsite ? "inline-block" : "none";
+      }
+
+      document.documentElement.classList.remove("branding-loading");
+    }
+
+    function initSummaryBranding() {
+      try {
+        const raw = localStorage.getItem("displaySettings");
+        if (raw) {
+          applySummaryBranding(JSON.parse(raw));
+        } else {
+          const logoEl = document.querySelector("[data-brand-logo]");
+          setSafeLogo(logoEl, "Your School Name", "");
+          document.documentElement.classList.remove("branding-loading");
+        }
+      } catch (e) {
+        console.warn("Local summary branding failed:", e);
+        const logoEl = document.querySelector("[data-brand-logo]");
+        setSafeLogo(logoEl, "Your School Name", "");
+        document.documentElement.classList.remove("branding-loading");
+      }
+    }
+
+    initSummaryBranding();
   </script>
  
-  
-
- 
+  <script src="config.js"></script>
+  <script src="branding.js"></script>
+  <script>
+    window.addEventListener("load", () => {
+      try {
+        if (typeof window.loadBranding === "function") {
+          window.loadBranding();
+        } else if (typeof window.initBranding === "function") {
+          window.initBranding();
+        }
+      } catch (e) {
+        console.warn("branding.js refresh failed:", e);
+      }
+    });
+  </script>
 </body>
 </html>
