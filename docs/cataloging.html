@@ -156,7 +156,6 @@
       background:rgba(0,0,0,0.02);
     }
 
-    /* ── ISBN row: isbn field + copies box ── */
     .isbnRow{
       display:grid;
       grid-template-columns: 1fr 220px;
@@ -181,14 +180,6 @@
       border:1px solid rgba(0,0,0,0.12); background:rgba(0,0,0,0.04);
       font-weight:900; text-align:center;
     }
-
-    .helperBanner{
-      margin-top:12px; border-radius:14px;
-      border:1px solid rgba(0,0,0,0.08); background:rgba(255,255,255,0.74);
-      padding:10px 12px;
-    }
-    .helperBanner .t{ font-weight:1000; color:#111; margin-bottom:4px; }
-    .helperBanner .s{ color:rgba(0,0,0,0.62); font-weight:850; font-size:13px; line-height:1.35; }
 
     .btn{
       border:0; border-radius:999px; padding:12px 18px; cursor:pointer;
@@ -235,7 +226,6 @@
     }
     .metaList span{ color:rgba(0,0,0,0.55); font-weight:900; }
 
-    /* exists banner — shown when ISBN or title already in catalog */
     .existsBanner{
       margin-top:12px; border-radius:14px;
       border:1px solid rgba(255,138,0,0.25); background:rgba(255,138,0,0.10);
@@ -301,29 +291,6 @@
     .brand__subtitle{ color:var(--brand-green); font-weight:700; }
     .site-footer{ position:relative; z-index:2; margin-top:0; }
 
-    /* ── Add Copies modal copy summary table ── */
-    .copySummaryTable{
-      width:100%; border-radius:12px; overflow:hidden;
-      border:1px solid rgba(0,0,0,0.10); margin:14px 0 4px;
-      font-size:13px; border-collapse:collapse;
-    }
-    .copySummaryTable td{
-      padding:9px 12px; border-bottom:1px solid rgba(0,0,0,0.07);
-      font-weight:800;
-    }
-    .copySummaryTable tr:last-child td{ border-bottom:0; }
-    .copySummaryTable td:first-child{
-      color:rgba(0,0,0,0.55); font-weight:900; width:55%;
-    }
-    .copySummaryTable td:last-child{ font-weight:1000; color:#111; }
-    .copySummaryTable .row-new td{
-      background:rgba(255,200,0,0.12);
-    }
-    .copySummaryTable .row-new td:last-child{
-      color:color-mix(in srgb, var(--brand-yellow, #d4af37) 60%, #000);
-    }
-
-    /* modal field rows */
     .modalFieldGrid{
       display:grid; grid-template-columns:1fr 1fr;
       gap:8px 12px; margin-top:14px;
@@ -398,12 +365,11 @@
                 </div>
 
                 <div class="cardBody">
-                  <!-- ISBN row -->
                   <div class="isbnRow">
                     <div class="field">
                       <label for="isbn">ISBN <span class="optionalTag"></span></label>
                       <input id="isbn"
-                        placeholder="ISBN-10 or ISBN-13"
+                        placeholder="ISBN-10 or ISBN-13 — press Enter to look up"
                         autocomplete="off" />
                     </div>
                     <div class="copiesBox" aria-label="Number of copies">
@@ -412,9 +378,7 @@
                     </div>
                   </div>
 
-                  <!-- Form fields — Title and Author first, then Location, then optional fields -->
                   <div class="formGrid" style="margin-top:14px;">
-
                     <div class="field" style="grid-column:1 / -1;">
                       <label for="title">Title <span class="reqMark">*</span></label>
                       <input id="title" placeholder="Book title" />
@@ -493,7 +457,6 @@
 
                   <div class="previewActions">
                     <button class="btn ghost small" id="clearBtn" type="button">Clear</button>
-                    <button class="btn ghost small" id="addCopiesOnlyBtn" type="button" style="display:none;">Add Copies Only</button>
                     <button class="btn small" id="saveBtn" type="button">Save</button>
                   </div>
                 </div>
@@ -542,7 +505,7 @@
               <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
             </svg>
           </span>
-          <div><div id="footerBrandEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0c60656e7e6d7e754c7f6f6463636022696879">[email&#160;protected]</a></div></div>
+          <div><div id="footerBrandEmail">library@school.edu</div></div>
         </div>
         <div class="site-footer__row" style="margin-top:14px;">
           <a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a>
@@ -563,7 +526,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false">
+  <script data-cfasync="false">
     const BASE_URL = 'https://golden-opac-backend.onrender.com';
 
     const token =
@@ -605,8 +568,8 @@
     }
 
     /* ── Toast ── */
-    const toast     = document.getElementById("toast");
-    let toastTimer  = null;
+    const toast    = document.getElementById("toast");
+    let toastTimer = null;
     function showToast(msg){
       toast.textContent = msg;
       toast.classList.add("show");
@@ -635,14 +598,13 @@
     const genreEl     = document.getElementById("genre");
     const subjectEl   = document.getElementById("subject");
 
-    const existsBanner   = document.getElementById("existsBanner");
-    const existsTitle    = document.getElementById("existsTitle");
-    const existsSub      = document.getElementById("existsSub");
-    const addCopiesOnlyBtn = document.getElementById("addCopiesOnlyBtn");
+    const existsBanner = document.getElementById("existsBanner");
+    const existsTitle  = document.getElementById("existsTitle");
+    const existsSub    = document.getElementById("existsSub");
 
-    const uploadBox  = document.getElementById("uploadBox");
-    const coverFile  = document.getElementById("coverFile");
-    const coverImg   = document.getElementById("coverImg");
+    const uploadBox    = document.getElementById("uploadBox");
+    const coverFile    = document.getElementById("coverFile");
+    const coverImg     = document.getElementById("coverImg");
     const previewTitle = document.getElementById("previewTitle");
     const previewList  = document.getElementById("previewList");
 
@@ -681,8 +643,7 @@
       existingTotalCopies = Number(total || 0);
       existingBookId      = bookId || null;
 
-      existsBanner.style.display    = exists ? "block" : "none";
-      addCopiesOnlyBtn.style.display = exists ? "inline-flex" : "none";
+      existsBanner.style.display = exists ? "block" : "none";
 
       if (exists){
         existsTitle.textContent =
@@ -711,6 +672,7 @@
     function renderPreview(){
       const isbn        = normalizeIsbn(isbnEl.value);
       const copiesToAdd = getCopiesValue();
+
       const currentCopiesDisplay = isbnExists ? existingTotalCopies : "—";
       const newTotalDisplay      = isbnExists ? (existingTotalCopies + copiesToAdd) : "—";
 
@@ -744,14 +706,7 @@
       `;
     }
 
-    /* ── API helpers ── */
-    async function apiGet(path){
-      const res  = await fetch(BASE_URL + path, { headers: authHeaders() });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.detail || data?.message || "Request failed");
-      return data;
-    }
-
+    /* ── API helper ── */
     async function apiGetSafe(path){
       try {
         const res  = await fetch(BASE_URL + path, { headers: authHeaders() });
@@ -764,27 +719,23 @@
 
     /* ── Fill form from a data object ── */
     function fillForm(d){
-      titleEl.value     = d.title     || "";
-      authorEl.value    = d.author    || "";
-      publisherEl.value = d.publisher || "";
-      yearEl.value      = (d.pub_year !== null && d.pub_year !== undefined && d.pub_year !== "")
-                            ? String(d.pub_year) : "";
-      genreEl.value     = d.genre    || "";
-      subjectEl.value   = d.subject  || "";
-      sectionEl.value   = d.section  || "";
+      if (d.title)     titleEl.value     = d.title;
+      if (d.author)    authorEl.value    = d.author;
+      if (d.publisher) publisherEl.value = d.publisher;
+      if (d.pub_year !== null && d.pub_year !== undefined && String(d.pub_year).trim() !== "")
+                       yearEl.value      = String(d.pub_year);
+      if (d.genre)     genreEl.value     = d.genre;
+      if (d.subject)   subjectEl.value   = d.subject;
+      if (d.section)   sectionEl.value   = d.section;
       if (!coverDataUrl){
         coverPreviewUrl = d.cover_url || "";
       }
     }
 
-    /*
-     * ══════════════════════════════════════════════════════════════════
-     *  autoLookup(force, mode)
-     * ══════════════════════════════════════════════════════════════════
-     */
+    /* ── autoLookup ── */
     async function autoLookup(force=false, mode="isbn"){
-      const isbn  = normalizeIsbn(isbnEl.value);
-      const title = titleEl.value.trim();
+      const isbn   = normalizeIsbn(isbnEl.value);
+      const title  = titleEl.value.trim();
       const author = authorEl.value.trim();
       const lookupToken = ++lastLookupToken;
 
@@ -799,14 +750,12 @@
       if (mode === "isbn" || mode === "silent"){
         if (!isbn){
           if (force){ isLookupInProgress=false; setLoading(false); }
-          renderPreview();
-          return;
+          renderPreview(); return;
         }
         if (!(isbn.length === 10 || isbn.length === 13)){
           if (force){ isLookupInProgress=false; setLoading(false); }
           if (mode !== "silent") showToast("Enter a valid 10- or 13-digit ISBN.");
-          renderPreview();
-          return;
+          renderPreview(); return;
         }
       }
 
@@ -814,8 +763,7 @@
         if (!title){
           if (force){ isLookupInProgress=false; setLoading(false); }
           showToast("Enter a title to search the local catalog.");
-          renderPreview();
-          return;
+          renderPreview(); return;
         }
       }
 
@@ -825,25 +773,22 @@
         if (mode === "isbn" || mode === "silent"){
           const resp = await apiGetSafe(`/api/cataloging/preview/${encodeURIComponent(isbn)}`);
           if (lookupToken !== lastLookupToken) return;
-
           const d = resp.ok ? resp.data : {};
-
           merged = {
             exists:       !!d.exists,
             book_id:      d.book_id    ?? null,
-            total_copies: Number(d.total_copies || 0),
+            total_copies: Number(d.total_copies ?? 0),
             found:        !!(d.found || d.exists),
             title:        d.title      || "",
             author:       d.author     || "",
             publisher:    d.publisher  || "",
-            pub_year:     d.pub_year   ?? "",
+            pub_year:     (d.pub_year !== null && d.pub_year !== undefined) ? d.pub_year : "",
             genre:        d.genre      || "",
             subject:      d.subject    || "",
             section:      d.section    || "",
             cover_url:    d.cover_url  || "",
             matched_by:   "isbn",
           };
-
           if (!resp.ok && mode !== "silent"){
             showToast(d?.message || d?.detail || "Lookup failed — check your connection.");
           }
@@ -854,25 +799,22 @@
           if (author) params.set("author", author);
           const resp = await apiGetSafe(`/api/cataloging/search-by-title?${params}`);
           if (lookupToken !== lastLookupToken) return;
-
           const d = resp.ok ? resp.data : {};
-
           merged = {
             exists:       !!d.exists,
             book_id:      d.book_id    ?? null,
-            total_copies: Number(d.total_copies || 0),
+            total_copies: Number(d.total_copies ?? 0),
             found:        !!(d.found || d.exists),
             title:        d.title      || "",
             author:       d.author     || "",
             publisher:    d.publisher  || "",
-            pub_year:     d.pub_year   ?? "",
+            pub_year:     (d.pub_year !== null && d.pub_year !== undefined) ? d.pub_year : "",
             genre:        d.genre      || "",
             subject:      d.subject    || "",
             section:      d.section    || "",
             cover_url:    d.cover_url  || "",
             matched_by:   "title",
           };
-
           if (!resp.ok){
             showToast(d?.message || d?.detail || "Title search failed.");
           }
@@ -880,8 +822,6 @@
 
         if (!merged) return;
 
-        // ── IMPORTANT: fillForm FIRST so fields are populated before
-        //    setExistsState → renderPreview reads them ──
         if (merged.found){
           fillForm(merged);
         } else {
@@ -914,12 +854,9 @@
       }
     }
 
-    /* ── ISBN field: Enter triggers ISBN lookup ── */
+    /* ── ISBN field ── */
     isbnEl.addEventListener("keydown", async (e) => {
-      if (e.key === "Enter"){
-        e.preventDefault();
-        await autoLookup(true, "isbn");
-      }
+      if (e.key === "Enter"){ e.preventDefault(); await autoLookup(true, "isbn"); }
     });
     isbnEl.addEventListener("input", () => {
       setExistsState(false, 0, null);
@@ -928,18 +865,15 @@
       renderPreview();
     });
 
-    /* ── Title field: Enter triggers title lookup ONLY when ISBN is blank ── */
+    /* ── Title field: Enter triggers title lookup when ISBN is blank ── */
     titleEl.addEventListener("keydown", async (e) => {
       if (e.key === "Enter"){
         e.preventDefault();
-        const isbn = normalizeIsbn(isbnEl.value);
-        if (!isbn){
-          await autoLookup(true, "title");
-        }
+        if (!normalizeIsbn(isbnEl.value)) await autoLookup(true, "title");
       }
     });
 
-    /* ── All other fields: just re-render preview ── */
+    /* ── Other fields: re-render preview ── */
     [copiesEl, authorEl, sectionEl, publisherEl, yearEl, genreEl, subjectEl].forEach(el => {
       el.addEventListener("input", renderPreview);
     });
@@ -960,171 +894,27 @@
       const btnWrap = m.querySelector("#modalBtns");
       (actions || []).forEach(a => {
         const b = document.createElement("button");
-        b.className  = "btn" + (a.kind === "ghost" ? " ghost" : "");
-        b.type       = "button";
+        b.className   = "btn" + (a.kind === "ghost" ? " ghost" : "");
+        b.type        = "button";
         b.textContent = a.label;
         b.addEventListener("click", () => a.onClick?.());
         btnWrap.appendChild(b);
       });
-      const close = () => { try{ m.remove(); }catch(_){} };
-      return { close };
+      return { close: () => { try{ m.remove(); }catch(_){} } };
     }
 
-    /*
-     * ══════════════════════════════════════════════════════════════════
-     *  addCopiesOnly — shows full book details + copy count summary
-     * ══════════════════════════════════════════════════════════════════
-     */
-    async function addCopiesOnly(){
-      const isbn   = normalizeIsbn(isbnEl.value);
-      const title  = titleEl.value.trim();
-      const author = authorEl.value.trim();
-      const copies = getCopiesValue();
-
-      if (!existingBookId && !isbn && !title){
-        showToast("Enter an ISBN or Title so the system can find the existing book.");
-        return;
-      }
-
-      // If not yet confirmed to exist, do a silent lookup first
-      if (!isbnExists){
-        if (isbn){
-          await autoLookup(false, "silent");
-        } else if (title){
-          await autoLookup(false, "title");
-        }
-        if (!isbnExists){
-          showToast("No matching book found in the catalog. Use Save to add it as a new entry.");
-          return;
-        }
-      }
-
-      // Gather all current field values to display in modal
-      const currentTitle     = titleEl.value.trim()     || "—";
-      const currentAuthor    = authorEl.value.trim()    || "—";
-      const currentPublisher = publisherEl.value.trim() || "—";
-      const currentYear      = yearEl.value.trim()      || "—";
-      const currentGenre     = genreEl.value.trim()     || "—";
-      const currentSubject   = subjectEl.value.trim()   || "—";
-      const currentSection   = sectionEl.value.trim()   || "—";
-      const currentIsbn      = normalizeIsbn(isbnEl.value) || "Manual entry";
-
-      const currentCopies = existingTotalCopies;
-      const newTotal      = currentCopies + copies;
-
-      // Build modal body HTML
-      const bodyHtml = `
-        <div class="modalFieldGrid">
-          <div class="mf full">
-            <label>Title</label>
-            <div class="mv">${escapeHtml(currentTitle)}</div>
-          </div>
-          <div class="mf full">
-            <label>Author</label>
-            <div class="mv">${escapeHtml(currentAuthor)}</div>
-          </div>
-          <div class="mf">
-            <label>Publisher</label>
-            <div class="mv">${escapeHtml(currentPublisher)}</div>
-          </div>
-          <div class="mf">
-            <label>Year</label>
-            <div class="mv">${escapeHtml(currentYear)}</div>
-          </div>
-          <div class="mf">
-            <label>Subject</label>
-            <div class="mv">${escapeHtml(currentGenre)}</div>
-          </div>
-          <div class="mf">
-            <label>Keywords</label>
-            <div class="mv">${escapeHtml(currentSubject)}</div>
-          </div>
-          <div class="mf">
-            <label>Location</label>
-            <div class="mv">${escapeHtml(currentSection)}</div>
-          </div>
-          <div class="mf">
-            <label>ISBN</label>
-            <div class="mv">${escapeHtml(currentIsbn)}</div>
-          </div>
-        </div>
-        <table class="copySummaryTable">
-          <tr>
-            <td>Current copies in catalog</td>
-            <td>${currentCopies}</td>
-          </tr>
-          <tr>
-            <td>Copies to add</td>
-            <td>+ ${copies}</td>
-          </tr>
-          <tr class="row-new">
-            <td>New total after adding</td>
-            <td>${newTotal}</td>
-          </tr>
-        </table>
-      `;
-
-      const modal = openModal({
-        title: "Add copies only?",
-        body:  bodyHtml,
-        actions: [
-          { label: "Cancel", kind: "ghost", onClick: () => modal.close() },
-          { label: `Add ${copies} ${copies === 1 ? "copy" : "copies"}`, kind: "primary", onClick: async () => {
-              modal.close();
-              setLoading(true, "Adding copies…", "Creating barcodes");
-              try {
-                const payload = { copies };
-                if (existingBookId){
-                  payload.book_id = existingBookId;
-                } else if (isbn){
-                  payload.isbn = isbn;
-                } else {
-                  payload.title  = title;
-                  payload.author = author;
-                }
-
-                const r = await fetch(BASE_URL + "/api/cataloging/add-copies", {
-                  method: "POST",
-                  headers: authHeaders({ "Content-Type": "application/json" }),
-                  body: JSON.stringify(payload)
-                });
-                const data = await r.json().catch(() => ({}));
-                if (!r.ok) throw new Error(data?.detail || "Failed to add copies");
-
-                showToast(`Added ${data?.created_copies || copies} ${(data?.created_copies || copies) === 1 ? "copy" : "copies"}.`);
-
-                // Refresh copy count display
-                if (isbn){
-                  await autoLookup(true, "isbn");
-                } else {
-                  await autoLookup(true, "title");
-                }
-              } catch(err){
-                console.error(err);
-                showToast(err.message || "Add copies failed");
-              } finally {
-                setLoading(false);
-              }
-            }
-          }
-        ]
-      });
-    }
-
-    addCopiesOnlyBtn.addEventListener("click", addCopiesOnly);
-
-    /* ── Save / Add ── */
+    /* ── Save ── */
     async function saveOrAdd(){
-      const isbn   = normalizeIsbn(isbnEl.value);
-      const title  = titleEl.value.trim();
-      const author = authorEl.value.trim();
+      const isbn    = normalizeIsbn(isbnEl.value);
+      const title   = titleEl.value.trim();
+      const author  = authorEl.value.trim();
       const section = sectionEl.value.trim();
       const copies  = getCopiesValue();
 
       const missing = getManualRequiredMissing();
       if (missing.length){
         showToast(`${missing.join(", ")} required.`);
-        if (!title)   titleEl.focus();
+        if (!title)        titleEl.focus();
         else if (!author)  authorEl.focus();
         else if (!section) sectionEl.focus();
         return;
@@ -1148,8 +938,8 @@
       setLoading(true, "Saving book…", "Uploading details and cover");
       try {
         const form = new FormData();
-        if (isbn)            form.append("isbn",      isbn);
-        if (existingBookId)  form.append("book_id",   String(existingBookId));
+        if (isbn)           form.append("isbn",      isbn);
+        if (existingBookId) form.append("book_id",   String(existingBookId));
         form.append("copies",    String(copies));
         form.append("title",     title);
         form.append("author",    author);
@@ -1203,8 +993,7 @@
       existingTotalCopies = 0;
       existingBookId      = null;
       isLookupInProgress  = false;
-      existsBanner.style.display    = "none";
-      addCopiesOnlyBtn.style.display = "none";
+      existsBanner.style.display = "none";
 
       coverPreviewUrl = "";
       coverDataUrl    = "";
@@ -1218,10 +1007,9 @@
 
     document.getElementById("clearBtn").addEventListener("click", () => clearAll(true));
 
-    // Initial render
     renderPreview();
   </script>
- 
+
   <script src="branding.js"></script>
 </body>
 </html>
