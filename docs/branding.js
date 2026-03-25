@@ -32,11 +32,18 @@ function setImage(selector, src, alt) {
       return;
     }
 
-    el.onload = () => el.classList.add("is-loaded");
-    el.onerror = () => el.classList.remove("is-loaded");
+    el.onload = () => {
+      el.classList.add("is-loaded");
+    };
+
+    el.onerror = () => {
+      el.classList.remove("is-loaded");
+    };
+
     el.src = src;
   });
 }
+
 function setAnchorLink(elementId, rawValue) {
   const el = document.getElementById(elementId);
   if (!el) return;
@@ -119,9 +126,18 @@ function saveBrandingCache(data) {
 
     const logo = String(data.logo_url || "").trim();
 
-if (logo) {
-  cacheData.logo_url = logo;
-}
+    if (logo) {
+      if (logo.startsWith("data:")) {
+        // Size guard: only cache base64 logos under ~800KB
+        // (approx 600KB image — well within localStorage limits)
+        if (logo.length < 800_000) {
+          cacheData.logo_url = logo;
+        }
+        // If over limit, skip caching the logo — it will refetch next time
+      } else {
+        cacheData.logo_url = logo;
+      }
+    }
 
     localStorage.setItem(DISPLAY_CACHE_KEY, JSON.stringify(cacheData));
   } catch (err) {
@@ -171,10 +187,10 @@ function applyBranding(data = {}) {
   root.style.setProperty("--brand-secondary", secondary);
 
   if (logoUrl) {
-  setImage(".brand__logo", logoUrl, `${schoolName} Logo`);
-} else {
-  setImage(".brand__logo", "", `${schoolName} Logo`);
-}
+    setImage(".brand__logo", logoUrl, `${schoolName} Logo`);
+  } else {
+    setImage(".brand__logo", "", `${schoolName} Logo`);
+  }
 
   document.querySelectorAll(".brand__name").forEach((el) => {
     const schoolSpan = el.querySelector("[data-brand-school-name]");
@@ -269,6 +285,27 @@ function applyCachedBranding() {
   return true;
 }
 
+// Fetches a logo URL and returns it as a base64 data URL.
+// Falls back to the original URL if anything goes wrong.
+async function fetchLogoAsBase64(logoUrl) {
+  try {
+    if (!logoUrl || logoUrl.startsWith("data:")) return logoUrl;
+
+    const res = await fetch(logoUrl);
+    if (!res.ok) return logoUrl;
+
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => resolve(logoUrl);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return logoUrl;
+  }
+}
+
 async function loadDisplayBranding() {
   applyCachedBranding();
 
@@ -280,6 +317,18 @@ async function loadDisplayBranding() {
     }
 
     const data = await res.json();
+
+    // Convert logo to base64 so the next page load is instant (no backend round-trip).
+    // Resolve relative URLs against the backend origin before fetching.
+    if (data.logo_url) {
+      const absoluteUrl = data.logo_url.startsWith("http")
+        ? data.logo_url
+        : `${DISPLAY_BASE_URL}${data.logo_url}`;
+
+      const base64 = await fetchLogoAsBase64(absoluteUrl);
+      data.logo_url = base64;
+    }
+
     applyBranding(data);
     saveBrandingCache(data);
   } catch (err) {
@@ -296,12 +345,11 @@ if (document.readyState === "loading") {
   loadDisplayBranding();
 }
 
-
 window.addEventListener("message", (event) => {
   const msg = event.data;
   if (!msg || msg.type !== "DISPLAY_PREVIEW_UPDATE" || !msg.data) return;
-
   applyBranding(msg.data);
 });
+
 window.applyBranding = applyBranding;
 window.saveBrandingCache = saveBrandingCache;

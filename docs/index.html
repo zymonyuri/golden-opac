@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
- <script>
+  <script>
 (function () {
   try {
     document.documentElement.classList.add("branding-loading");
@@ -25,7 +25,8 @@
       root.style.setProperty("--brand-secondary", data.brand_secondary);
     }
 
-    // Preload the logo image immediately from cache
+    // Preload the logo immediately from cache so it renders with the rest of the branding.
+    // Works for both data: URLs (base64) and regular URLs.
     if (data.logo_url) {
       const link = document.createElement("link");
       link.rel = "preload";
