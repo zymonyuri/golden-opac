@@ -8,45 +8,33 @@
 (function () {
   try {
     document.documentElement.classList.add("branding-loading");
+
     const raw = localStorage.getItem("displaySettings");
     if (!raw) return;
-    const data = JSON.parse(raw) || {};
+
+    const data = JSON.parse(raw);
     const root = document.documentElement;
-    const resolveUrl = (value) => {
-      const rawValue = String(value || "").trim();
-      if (!rawValue) return "";
-      if (/^(data:|blob:|https?:|file:)/i.test(rawValue)) return rawValue;
-      try { return new URL(rawValue, "https://golden-opac-backend.onrender.com/").href; }
-      catch { return rawValue; }
-    };
 
     if (data.brand_primary) {
       root.style.setProperty("--brand-yellow", data.brand_primary);
       root.style.setProperty("--brand-primary", data.brand_primary);
     }
+
     if (data.brand_secondary) {
       root.style.setProperty("--brand-green", data.brand_secondary);
       root.style.setProperty("--brand-secondary", data.brand_secondary);
     }
 
-    const logoUrl = resolveUrl(data.logo_url);
-    if (logoUrl) {
-      const preload = document.createElement("link");
-      preload.rel = "preload";
-      preload.as = "image";
-      preload.href = logoUrl;
-      preload.setAttribute("data-brand-preload", "logo");
-      document.head.appendChild(preload);
+    // Preload the logo immediately from cache so it renders with the rest of the branding.
+    // Works for both data: URLs (base64) and regular URLs.
+    if (data.logo_url) {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = data.logo_url;
+      document.head.appendChild(link);
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const logo = document.querySelector("[data-brand-logo]");
-      if (!logo) return;
-      logo.loading = "eager";
-      logo.decoding = "async";
-      logo.fetchPriority = "high";
-      if (logoUrl) logo.src = logoUrl;
-    }, { once: true });
   } catch (e) {
     console.warn("Brand preload failed:", e);
   }
@@ -76,7 +64,7 @@
   <!-- Top Bar -->
   <div class="topbar" id="siteHeader">
     <div class="brand">
-      <img class="brand__logo" src="assets/default-school-logo.png" data-default-src="assets/default-school-logo.png" alt="School Logo" data-brand-logo loading="eager" fetchpriority="high" decoding="async" />
+      <img class="brand__logo" alt="School Logo" data-brand-logo />
       <div class="brand__text">
         <div class="brand__name">
           <span class="brand__school" data-brand-school-name>Your School Name</span>
