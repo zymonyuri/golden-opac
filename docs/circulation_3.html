@@ -509,9 +509,15 @@ document.documentElement.classList.add("branding-loading");
 </head>
 
 <body>
+  <script src="branding.js"></script>
   <div class="topbar" id="siteHeader">
     <div class="brand">
-      <img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" data-brand-logo />
+      <img
+        src="assets/default-school-logo.png"
+        class="brand__logo"
+        alt="School Logo"
+        data-brand-logo
+      />
       <div class="brand__text">
         <div class="brand__name">
           <span class="brand__school" data-brand-school-name>Your School Name</span>
@@ -619,7 +625,9 @@ document.documentElement.classList.add("branding-loading");
               <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/>
             </svg>
           </span>
-          <div><div id="footerBrandAddress">School Address</div></div>
+          <div>
+            <div id="footerBrandAddress">School Address</div>
+          </div>
         </div>
 
         <div class="site-footer__item">
@@ -628,7 +636,9 @@ document.documentElement.classList.add("branding-loading");
               <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V21a1 1 0 0 1-1 1A19 19 0 0 1 2 5a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1z"/>
             </svg>
           </span>
-          <div><div id="footerBrandPhone">School Contact Number</div></div>
+          <div>
+            <div id="footerBrandPhone">School Contact Number</div>
+          </div>
         </div>
 
         <div class="site-footer__item">
@@ -637,13 +647,35 @@ document.documentElement.classList.add("branding-loading");
               <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
             </svg>
           </span>
-          <div><div id="footerBrandEmail">library@school.edu</div></div>
+          <div>
+            <div id="footerBrandEmail">library@school.edu</div>
+          </div>
         </div>
 
         <div class="site-footer__row" style="margin-top:14px;">
-          <a class="site-footer__social" id="footerBrandFacebook" href="#" target="_blank" rel="noopener" style="display:none;">Facebook</a>
+          <a
+            class="site-footer__social"
+            id="footerBrandFacebook"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            style="display:none;"
+          >
+            Facebook
+          </a>
+
           <span class="site-footer__dot">•</span>
-          <a class="site-footer__social" id="footerBrandWebsite" href="#" target="_blank" rel="noopener" style="display:none;">Official Website</a>
+
+          <a
+            class="site-footer__social"
+            id="footerBrandWebsite"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            style="display:none;"
+          >
+            Official Website
+          </a>
         </div>
       </section>
     </div>
@@ -672,7 +704,10 @@ document.documentElement.classList.add("branding-loading");
     const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
     if (!token) window.location.href = "login.html";
 
-    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+    const byId = (id) => document.getElementById(id);
+    const setText = (id, value) => { const el = byId(id); if (el) el.textContent = String(value ?? ""); return el; };
+
+    setText("footerYear", new Date().getFullYear());
     document.getElementById("logoutLink")?.addEventListener("click", (e) => {
       e.preventDefault();
       sessionStorage.removeItem("gk_token");
@@ -716,12 +751,12 @@ document.documentElement.classList.add("branding-loading");
     const checkedOutNow = items.filter(it => it?.ok === true).length;
     const remainingAfter = Math.max(0, limit - borrowedBefore - checkedOutNow);
 
-    document.getElementById("sumLimit").textContent = String(limit);
-    document.getElementById("sumBorrowed").textContent = String(borrowedBefore);
-    document.getElementById("sumSession").textContent = String(checkedOutNow);
-    document.getElementById("sumRemaining").textContent = String(remainingAfter);
+    setText("sumLimit", limit);
+    setText("sumBorrowed", borrowedBefore);
+    setText("sumSession", checkedOutNow);
+    setText("sumRemaining", remainingAfter);
 
-    document.getElementById("count").textContent = `${items.length} item(s)`;
+    setText("count", `${items.length} item(s)`);
 
     const itemsEl = document.getElementById("items");
     itemsEl.innerHTML = "";
@@ -755,20 +790,22 @@ document.documentElement.classList.add("branding-loading");
       }
     }
 
-    document.getElementById("backBtn").addEventListener("click", () => {
+    byId("backBtn")?.addEventListener("click", () => {
       window.location.href = "circulation_2.html";
     });
 
-    const modal = document.getElementById("successModal");
-    const modalOk = document.getElementById("modalOkBtn");
+    const modal = byId("successModal");
+    const modalOk = byId("modalOkBtn");
 
     function openModal(){
+      if (!modal || !modalOk) return;
       modal.classList.add("is-open");
       modal.setAttribute("aria-hidden", "false");
       modalOk.focus();
     }
 
     function closeModalAndFinish(){
+      if (!modal) return;
       modal.classList.remove("is-open");
       modal.setAttribute("aria-hidden", "true");
 
@@ -782,12 +819,12 @@ document.documentElement.classList.add("branding-loading");
       window.location.href = "circulation.html";
     }
 
-    document.getElementById("finishBtn").addEventListener("click", () => {
+    byId("finishBtn")?.addEventListener("click", () => {
       openModal();
     });
 
-    modalOk.addEventListener("click", closeModalAndFinish);
-    modal.querySelector(".modal__backdrop").addEventListener("click", closeModalAndFinish);
+    modalOk?.addEventListener("click", closeModalAndFinish);
+    modal?.querySelector(".modal__backdrop")?.addEventListener("click", closeModalAndFinish);
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && modal.classList.contains("is-open")){
@@ -795,13 +832,17 @@ document.documentElement.classList.add("branding-loading");
       }
     });
 
-    const header = document.getElementById("siteHeader");
+    const header = byId("siteHeader");
     function syncHeader(){
       if (!header) return;
-      header.classList.toggle("is-scrolled", window.scrollY > 8);
+      const scrolled = (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) > 8;
+      header.classList.toggle("is-scrolled", scrolled);
     }
     syncHeader();
     window.addEventListener("scroll", syncHeader, { passive: true });
+    window.addEventListener("load", syncHeader);
+    setTimeout(syncHeader, 0);
+    setTimeout(syncHeader, 250);
 
     document.getElementById("contactLink")?.addEventListener("click", (e) => {
       e.preventDefault();
@@ -813,7 +854,7 @@ document.documentElement.classList.add("branding-loading");
     });
   </script>
  
-  <script src="branding.js"></script>
+  
 
  
 </body>

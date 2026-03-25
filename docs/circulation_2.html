@@ -777,7 +777,10 @@ document.documentElement.classList.add("branding-loading");
     const CHECKOUT_STUDENT_KEY = "gk_checkout_items_student";
     const CHECKOUT_DONE_KEY = "gk_checkout_session_done";
 
-    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+    const byId = (id) => document.getElementById(id);
+    const setText = (id, value) => { const el = byId(id); if (el) el.textContent = String(value ?? ""); return el; };
+
+    setText("footerYear", new Date().getFullYear());
     document.getElementById("logoutLink")?.addEventListener("click", (e) => {
       e.preventDefault();
       sessionStorage.removeItem("gk_token");
@@ -828,10 +831,10 @@ document.documentElement.classList.add("branding-loading");
     const chipDue  = document.getElementById("chipDue");
     const chipGrade= document.getElementById("chipGrade");
 
-    chipCode.textContent = studentCode;
-    chipName.textContent = `${studentLookup.last_name || ""}, ${studentLookup.first_name || ""}`.replace(/^,\s*/,"—");
-    chipDue.textContent  = fmtISOToMDY(precheck.due_date);
-    chipGrade.textContent = studentLookup.grade_section || `${studentLookup.grade || ""}${studentLookup.section ? (" - " + studentLookup.section) : ""}`.trim() || "—";
+    if (chipCode) chipCode.textContent = studentCode;
+    if (chipName) chipName.textContent = `${studentLookup.last_name || ""}, ${studentLookup.first_name || ""}`.replace(/^,\s*/,"—");
+    if (chipDue) chipDue.textContent = fmtISOToMDY(precheck.due_date);
+    if (chipGrade) chipGrade.textContent = studentLookup.grade_section || `${studentLookup.grade || ""}${studentLookup.section ? (" - " + studentLookup.section) : ""}`.trim() || "—";
 
     const bookCodeEl = document.getElementById("bookCode");
     const titleEl = document.getElementById("title");
@@ -910,25 +913,25 @@ document.documentElement.classList.add("branding-loading");
       const sessionCount = getSessionPendingCount();
       const remaining = Math.max(0, limit - borrowed - sessionCount);
 
-      limitMaxEl.textContent = String(limit);
-      limitBorrowedEl.textContent = String(borrowed);
-      limitSessionEl.textContent = String(sessionCount);
-      limitRemainingEl.textContent = String(remaining);
+      if (limitMaxEl) limitMaxEl.textContent = String(limit);
+      if (limitBorrowedEl) limitBorrowedEl.textContent = String(borrowed);
+      if (limitSessionEl) limitSessionEl.textContent = String(sessionCount);
+      if (limitRemainingEl) limitRemainingEl.textContent = String(remaining);
 
-      slotPillEl.className = "slot-pill";
+      if (slotPillEl) slotPillEl.className = "slot-pill";
       if (remaining <= 0){
-        slotPillEl.classList.add("err");
-        slotPillEl.textContent = "No slots left";
-        limitNoteEl.textContent = limit > 0
+        if (slotPillEl) slotPillEl.classList.add("err");
+        if (slotPillEl) slotPillEl.textContent = "No slots left";
+        if (limitNoteEl) limitNoteEl.textContent = limit > 0
           ? `This student already used all ${limit} available borrowing slot${limit === 1 ? "" : "s"} for now.`
           : "No borrowing slots are available for this student right now.";
       } else if (remaining === 1){
-        slotPillEl.classList.add("warn");
-        slotPillEl.textContent = "1 slot left";
-        limitNoteEl.textContent = "Only 1 more book can be added in this session.";
+        if (slotPillEl) slotPillEl.classList.add("warn");
+        if (slotPillEl) slotPillEl.textContent = "1 slot left";
+        if (limitNoteEl) limitNoteEl.textContent = "Only 1 more book can be added in this session.";
       } else {
-        slotPillEl.textContent = `${remaining} slots left`;
-        limitNoteEl.textContent = `${remaining} more books can still be added in this checkout session.`;
+        if (slotPillEl) slotPillEl.textContent = `${remaining} slots left`;
+        if (limitNoteEl) limitNoteEl.textContent = `${remaining} more books can still be added in this checkout session.`;
       }
 
       if (remaining <= 0){
@@ -939,6 +942,7 @@ document.documentElement.classList.add("branding-loading");
     }
 
     function setHint(text, isError=false){
+      if (!hintEl) return;
       hintEl.textContent = text;
       hintEl.classList.toggle("is-error", !!isError);
     }
@@ -1001,7 +1005,7 @@ document.documentElement.classList.add("branding-loading");
 
     function renderItems(){
       const arr = getItems();
-      countEl.textContent = `${arr.length} in session`;
+      if (countEl) countEl.textContent = `${arr.length} in session`;
       itemsEl.innerHTML = "";
 
       if (!arr.length){
@@ -1282,12 +1286,25 @@ document.documentElement.classList.add("branding-loading");
     const header = document.getElementById("siteHeader");
     function syncHeader(){
       if (!header) return;
-      header.classList.toggle("is-scrolled", window.scrollY > 8);
+      const scrolled = (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) > 8;
+      header.classList.toggle("is-scrolled", scrolled);
     }
     syncHeader();
     window.addEventListener("scroll", syncHeader, { passive: true });
+    window.addEventListener("load", syncHeader);
+    setTimeout(syncHeader, 0);
+    setTimeout(syncHeader, 250);
+
+    document.getElementById("contactLink")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      const footer = document.getElementById("footer");
+      if (!footer) return;
+      const headerH = header?.getBoundingClientRect().height ?? 0;
+      const y = footer.getBoundingClientRect().top + window.scrollY - headerH - 12;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    });
   </script>
-  <script src="config.js"></script>
+  
   <script src="branding.js"></script>
 </body>
 </html>
