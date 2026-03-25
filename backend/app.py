@@ -7303,3 +7303,7 @@ def reports_school_years(current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
+
+@app.get("/health")
+def health():
+    return {"ok": True}
