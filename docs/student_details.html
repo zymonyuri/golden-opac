@@ -707,10 +707,11 @@
     #paymentStatusActions{
       padding-bottom: 24px;
       padding-top: 4px;
+    
+
+
+      color: rgba(255,255,255,0.78);
     }
-
-
-      
 
     .brand__school{
       color: var(--brand-yellow);
@@ -936,8 +937,8 @@
         <p class="statusText" id="paymentStatusText">Please wait while the fine payment is being recorded.</p>
         <div class="statusMeta" id="paymentStatusMeta"></div>
       </div>
-      <div class="modalActions" id="paymentStatusActions" style="justify-content:center; padding-top:0;">
-        <button class="btn" id="paymentStatusOkBtn" type="button" style="display:none; min-width:160px; height:46px; font-size:14px; border-radius:999px; letter-spacing:0.02em;">Done</button>
+      <div class="modalActions" id="paymentStatusActions" style="justify-content:center; padding:0 24px 28px;">
+        <button class="btn" id="paymentStatusOkBtn" type="button" style="display:none; width:100%; max-width:260px; height:48px; font-size:15px; letter-spacing:0.03em; align-items:center; justify-content:center; text-align:center; padding:0;">Done</button>
       </div>
     </div>
   </div>
@@ -1201,7 +1202,7 @@
         <span class="badge b-info">Method: ${esc(String(method || "cash")).toUpperCase()}</span>
         <span class="badge">Fine #${esc(fineId)}</span>
       `;
-      paymentStatusOkBtn.style.display = "inline-flex";
+      paymentStatusOkBtn.style.display = "flex";
       paymentStatusDots.style.display = "none";
       paymentStatusCheck.style.display = "block";
       paymentStatusIconWrap.classList.remove("is-loading");
@@ -1211,7 +1212,7 @@
 
     paymentStatusOkBtn.addEventListener("click", closePaymentStatusModal);
     paymentStatusModal.addEventListener("click", (e) => {
-      if (e.target === paymentStatusModal && paymentStatusOkBtn.style.display !== "none") closePaymentStatusModal();
+      if (e.target === paymentStatusModal && paymentStatusOkBtn.style.display === "flex") closePaymentStatusModal();
     });
 
 
@@ -1902,7 +1903,7 @@
         hideProgress(false);
         loadingBlock.style.display = "none";
         showError(err?.message || "Failed to load student profile.");
-        document.getElementById("tab_current").style.display = "block";
+        document.getElementById("tab_current").style.display ="block";
         document.getElementById("tab_current").innerHTML = `<div class="empty">Unable to load.</div>`;
       }
     }
