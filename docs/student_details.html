@@ -627,9 +627,90 @@
       display:none;
     }
 
-    .nav__link:hover{
-      color: rgba(255,255,255,0.78);
+
+    .statusModal .modal{
+      width:min(440px, 92vw);
+      text-align:center;
     }
+
+    .statusIconWrap{
+      width:72px;
+      height:72px;
+      margin:2px auto 14px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.12);
+    }
+
+    /* Spinner inside the status icon circle */
+    .statusSpinner{
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      border:3.5px solid rgba(0,0,0,0.10);
+      border-top-color: var(--brand-yellow, #f5c800);
+      animation: spinnerRot 700ms linear infinite;
+    }
+    @keyframes spinnerRot{
+      to{ transform: rotate(360deg); }
+    }
+
+    .statusIconWrap.is-loading{
+      background: color-mix(in srgb, var(--brand-yellow) 26%, rgba(0,0,0,0.03));
+      border:1px solid color-mix(in srgb, var(--brand-yellow) 55%, rgba(0,0,0,0.08));
+    }
+
+    .statusIconWrap.is-success{
+      background: rgba(31,157,65,0.12);
+      border:1px solid rgba(31,157,65,0.26);
+      color:#0b6a1e;
+    }
+
+    .statusIconWrap svg{
+      width:34px;
+      height:34px;
+    }
+
+    .statusTitle{
+      margin:0 0 8px;
+      font-size:24px;
+      font-weight:1000;
+      color:#111;
+      letter-spacing:0.01em;
+    }
+
+    .statusText{
+      margin:0;
+      color: rgba(0,0,0,0.68);
+      font-weight:800;
+      line-height:1.45;
+    }
+
+    .statusMeta{
+      margin-top:14px;
+      display:flex;
+      justify-content:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    @keyframes fadeUp{
+      from{ opacity:0; transform:translateY(8px); }
+      to{ opacity:1; transform:translateY(0); }
+    }
+
+    #paymentStatusOkBtn:not([style*="none"]){
+      animation: fadeUp 280ms ease forwards;
+    }
+
+    #paymentStatusActions{
+      padding-bottom: 24px;
+      padding-top: 4px;
+    }
+
+
+      
 
     .brand__school{
       color: var(--brand-yellow);
@@ -785,7 +866,7 @@
               <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 4-8 5-8-5V6l8 5 8-5z"/>
             </svg>
           </span>
-          <div><div id="footerBrandEmail">library@school.edu</div></div>
+          <div><div id="footerBrandEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3b575259495a49427b485853545457155e5f4e">[email&#160;protected]</a></div></div>
         </div>
 
         <div class="site-footer__row" style="margin-top:14px;">
@@ -836,6 +917,27 @@
       <div class="modalActions">
         <button class="btnGhost" id="viewPaymentsBtn" type="button">Payment History</button>
         <button class="btn" id="confirmPayBtn" type="button">Record Payment</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Payment Status Modal -->
+  <div class="modalOverlay statusModal" id="paymentStatusModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="paymentStatusTitle">
+      <div class="modalBody" style="padding:32px 24px 20px;">
+        <div class="statusIconWrap is-loading" id="paymentStatusIconWrap">
+          <div class="statusSpinner" id="paymentStatusDots"></div>
+          <svg id="paymentStatusCheck" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:none;">
+            <path d="M6 12.5l4 4 8-9" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h2 class="statusTitle" id="paymentStatusTitle">Processing payment…</h2>
+        <p class="statusText" id="paymentStatusText">Please wait while the fine payment is being recorded.</p>
+        <div class="statusMeta" id="paymentStatusMeta"></div>
+      </div>
+      <div class="modalActions" id="paymentStatusActions" style="justify-content:center; padding-top:0;">
+        <button class="btn" id="paymentStatusOkBtn" type="button" style="display:none; min-width:160px; height:46px; font-size:14px; border-radius:999px; letter-spacing:0.02em;">Done</button>
       </div>
     </div>
   </div>
@@ -922,7 +1024,7 @@
     </div>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     const BASE_URL = 'https://golden-opac-backend.onrender.com';
     const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
     if (!token) window.location.href = "login.html";
@@ -1060,6 +1162,58 @@
     const histTable = document.getElementById("histTable");
     const histError = document.getElementById("histError");
     const histLoader = document.getElementById("histLoader");
+
+    // ---------- PAYMENT STATUS MODAL ----------
+    const paymentStatusModal = document.getElementById("paymentStatusModal");
+    const paymentStatusTitle = document.getElementById("paymentStatusTitle");
+    const paymentStatusText = document.getElementById("paymentStatusText");
+    const paymentStatusMeta = document.getElementById("paymentStatusMeta");
+    const paymentStatusOkBtn = document.getElementById("paymentStatusOkBtn");
+    const paymentStatusIconWrap = document.getElementById("paymentStatusIconWrap");
+    const paymentStatusDots = document.getElementById("paymentStatusDots");
+    const paymentStatusCheck = document.getElementById("paymentStatusCheck");
+
+    function openPaymentStatusModal(){
+      paymentStatusModal.style.display = "flex";
+    }
+
+    function closePaymentStatusModal(){
+      paymentStatusModal.style.display = "none";
+    }
+
+    function setPaymentStatusLoading(){
+      paymentStatusTitle.textContent = "Processing payment…";
+      paymentStatusText.textContent = "Please wait while the fine payment is being recorded.";
+      paymentStatusMeta.innerHTML = "";
+      paymentStatusOkBtn.style.display = "none";
+      paymentStatusDots.style.display = "block";
+      paymentStatusCheck.style.display = "none";
+      paymentStatusIconWrap.classList.remove("is-success");
+      paymentStatusIconWrap.classList.add("is-loading");
+      openPaymentStatusModal();
+    }
+
+    function setPaymentStatusSuccess({ amount, method, fineId }){
+      paymentStatusTitle.textContent = "Payment recorded";
+      paymentStatusText.textContent = "The fine payment was saved successfully.";
+      paymentStatusMeta.innerHTML = `
+        <span class="badge b-ok">Amount: ${esc(fmtMoney(amount))}</span>
+        <span class="badge b-info">Method: ${esc(String(method || "cash")).toUpperCase()}</span>
+        <span class="badge">Fine #${esc(fineId)}</span>
+      `;
+      paymentStatusOkBtn.style.display = "inline-flex";
+      paymentStatusDots.style.display = "none";
+      paymentStatusCheck.style.display = "block";
+      paymentStatusIconWrap.classList.remove("is-loading");
+      paymentStatusIconWrap.classList.add("is-success");
+      openPaymentStatusModal();
+    }
+
+    paymentStatusOkBtn.addEventListener("click", closePaymentStatusModal);
+    paymentStatusModal.addEventListener("click", (e) => {
+      if (e.target === paymentStatusModal && paymentStatusOkBtn.style.display !== "none") closePaymentStatusModal();
+    });
+
 
     function openHistoryModal(){ histError.style.display="none"; histError.textContent=""; historyModal.style.display="flex"; }
     function closeHistoryModal(){ historyModal.style.display="none"; }
@@ -1302,16 +1456,21 @@
       }
 
       confirmPayBtn.disabled = true;
+      viewPaymentsBtn.disabled = true;
+      setPaymentStatusLoading();
 
       try{
         await postPayFine({fine_id, amount, method, note});
         closePayModal();
+        setPaymentStatusSuccess({ amount, method, fineId: fine_id });
         await loadProfile();
       }catch(err){
+        closePaymentStatusModal();
         payError.style.display = "block";
         payError.textContent = err?.message || "Payment failed.";
       }finally{
         confirmPayBtn.disabled = false;
+        viewPaymentsBtn.disabled = false;
       }
     });
     

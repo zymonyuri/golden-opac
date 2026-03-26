@@ -6195,6 +6195,28 @@ def restore_damaged_copy(
 
 from fastapi import HTTPException, Depends
 
+def _delete_copy_dependencies(cur, copy_ids: list[int]):
+    if not copy_ids:
+        return
+
+    cur.execute(
+        """
+        SELECT loan_id
+        FROM loan
+        WHERE copy_id = ANY(%s)
+        """,
+        (copy_ids,),
+    )
+    loan_ids = [row["loan_id"] for row in cur.fetchall()]
+
+    if loan_ids:
+        cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE loan_id = ANY(%s))", (loan_ids,))
+        cur.execute("DELETE FROM fine WHERE loan_id = ANY(%s)", (loan_ids,))
+        cur.execute("DELETE FROM loan WHERE loan_id = ANY(%s)", (loan_ids,))
+
+    cur.execute("DELETE FROM print_log WHERE copy_id = ANY(%s)", (copy_ids,))
+    cur.execute("DELETE FROM damage_report WHERE copy_id = ANY(%s)", (copy_ids,))
+
 @app.delete("/api/books/{book_id}")
 def delete_book(
     book_id: int,
@@ -6203,14 +6225,62 @@ def delete_book(
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # confirm exists
-        cur.execute("SELECT book_id FROM book WHERE book_id = %s", (book_id,))
-        if not cur.fetchone():
+        cur.execute(
+            """
+            SELECT book_id, title
+            FROM book
+            WHERE book_id = %s
+            """,
+            (book_id,),
+        )
+        book = cur.fetchone()
+        if not book:
             raise HTTPException(status_code=404, detail="Book not found")
 
+        cur.execute(
+            """
+            SELECT copy_id
+            FROM book_copy
+            WHERE book_id = %s
+            ORDER BY copy_id ASC
+            """,
+            (book_id,),
+        )
+        copy_ids = [row["copy_id"] for row in cur.fetchall()]
+
+        if copy_ids:
+            cur.execute(
+                """
+                SELECT copy_id
+                FROM loan
+                WHERE copy_id = ANY(%s)
+                  AND returned_at IS NULL
+                LIMIT 1
+                """,
+                (copy_ids,),
+            )
+            active_loan = cur.fetchone()
+            if active_loan:
+                raise HTTPException(
+                    status_code=400,
+                    detail="This book cannot be deleted because one or more copies are currently on loan. Please check in or resolve them first.",
+                )
+
+            _delete_copy_dependencies(cur, copy_ids)
+            cur.execute("DELETE FROM book_copy WHERE book_id = %s", (book_id,))
+
+        cur.execute("DELETE FROM book_identifier WHERE book_id = %s", (book_id,))
         cur.execute("DELETE FROM book WHERE book_id = %s RETURNING book_id", (book_id,))
+        deleted = cur.fetchone()
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Book not found")
+
         conn.commit()
-        return {"message": "Book record deleted", "book_id": book_id}
+        return {
+            "message": "Book record deleted",
+            "book_id": deleted["book_id"],
+            "deleted_copy_count": len(copy_ids),
+        }
     except HTTPException:
         conn.rollback()
         raise
@@ -6643,8 +6713,7 @@ def delete_book_copy(
                 detail="This copy cannot be deleted because it has an active loan"
             )
 
-        cur.execute("DELETE FROM print_log WHERE copy_id = %s", (copy_id,))
-        cur.execute("DELETE FROM damage_report WHERE copy_id = %s", (copy_id,))
+        _delete_copy_dependencies(cur, [copy_id])
 
         cur.execute(
             """
