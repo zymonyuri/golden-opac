@@ -7385,26 +7385,21 @@ def reports_school_years(current=Depends(get_current_librarian)):
         conn.close()
 
 @app.delete("/api/students/{student_id}")
-def delete_student(student_id: str, current=Depends(get_current_librarian)):
-    """
-    Permanently deletes a student and all associated records:
-    loans, fines, fine payments, damage records.
-    """
+def delete_student(student_id: int, current=Depends(get_current_librarian)):  # int, not str
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # Verify student exists
-        cur.execute("SELECT student_id FROM student WHERE student_code = %s", (student_id,))
+        # FIX: look up by student_id (PK), not student_code
+        cur.execute("SELECT student_id FROM student WHERE student_id = %s", (student_id,))
         row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Student not found")
 
         sid = row["student_id"]
 
-        # Delete in dependency order
         cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE student_id = %s)", (sid,))
         cur.execute("DELETE FROM fine WHERE student_id = %s", (sid,))
-        cur.execute("DELETE FROM damage_record WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM damage_report WHERE student_id = %s", (sid,))  # also fix: damage_report not damage_record
         cur.execute("DELETE FROM loan WHERE student_id = %s", (sid,))
         cur.execute("DELETE FROM student WHERE student_id = %s", (sid,))
 
