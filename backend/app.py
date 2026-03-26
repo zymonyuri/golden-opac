@@ -5427,26 +5427,27 @@ def opac_search(
     params = []
 
     if q_clean:
-    # Normalize possible ISBN (remove hyphens/spaces/etc; keep digits and X)
+        # Normalize possible ISBN (remove hyphens/spaces/etc; keep digits and X)
         isbn_norm = re.sub(r"[^0-9Xx]", "", q_clean).upper()
 
-    where.append("""
-      (
-        b.title ILIKE %s
-        OR b.author ILIKE %s
-        OR COALESCE(b.subject,'') ILIKE %s
-        OR EXISTS (
-          SELECT 1
-          FROM book_identifier bi
-          WHERE bi.book_id = b.book_id
-            AND (
-              bi.id_value ILIKE %s
-              OR regexp_replace(upper(bi.id_value), '[^0-9X]', '', 'g') = %s
+        where.append("""
+          (
+            b.title ILIKE %s
+            OR b.author ILIKE %s
+            OR COALESCE(b.subject,'') ILIKE %s
+            OR COALESCE(b.section,'') ILIKE %s
+            OR EXISTS (
+              SELECT 1
+              FROM book_identifier bi
+              WHERE bi.book_id = b.book_id
+                AND (
+                  bi.id_value ILIKE %s
+                  OR regexp_replace(upper(bi.id_value), '[^0-9X]', '', 'g') = %s
+                )
             )
-        )
-      )
-    """)
-    params += [like, like, like, like, isbn_norm]
+          )
+        """)
+        params += [like, like, like, like, like, isbn_norm]
 
     if genre and genre.strip():
         where.append("COALESCE(b.genre,'') ILIKE %s")
@@ -5504,7 +5505,7 @@ def opac_search(
         )
         rows = cur.fetchall()
 
-        return {"page": page, "page_size": page_size, "sort": sort, "results": rows}
+        return {"page": page, "page_size": page_size, "sort": sort, "total": len(rows), "results": rows}
 
     finally:
         cur.close()
@@ -5557,6 +5558,16 @@ def opac_book_details(book_id: int):
 # PUBLIC OPAC: FILTER OPTIONS (No Login)
 # -----------------------------
 @app.get("/api/opac/filters")
+
+
+# Not-mentioned feature recommendations
+# 1. Add an explicit search_mode in /api/opac/books responses so the frontend can label whether results came from q, section, or both.
+# 2. Return available distinct sections from /api/opac/filters to support a future public location dropdown.
+# 3. Add optional exact_match=true support for shelf browsing to avoid broad partial matches on similar section names.
+# 4. Include normalized_section in responses if section naming varies across records.
+# 5. Add lightweight server logs for q/genre/subject/section combinations to trace public OPAC search issues faster.
+# 6. Consider returning total_count via COUNT(*) OVER() later if you add pagination controls to the public results grid.
+# — by Malvin in Team SAISys
 def opac_filters():
     conn = get_connection()
     cur = conn.cursor()

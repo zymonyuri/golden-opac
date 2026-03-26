@@ -563,6 +563,7 @@
 
   let progressTimer = null;
   let progress = 0;
+  let activeSectionFilter = "";   // holds ?section= value from URL
 
   const escapeHtml = (s) => String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -758,22 +759,24 @@
   const yEl = document.getElementById("footerYear");
   if (yEl) yEl.textContent = String(new Date().getFullYear());
 
-  function buildParams() {
+ function buildParams() {
     const params = new URLSearchParams();
     const q = qEl.value.trim();
-
+ 
     if (q) params.set("q", q);
     params.set("page_size", String(pageSize));
-
+ 
     const field = fieldEl.value;
     if (field && field !== "all") params.set("field", field);
     if (genreEl.value) params.set("genre", genreEl.value);
     if (availabilityEl.value) params.set("availability", availabilityEl.value);
     if (sortEl.value) params.set("sort", sortEl.value);
-
+ 
+    // Section filter (set when navigating from a section tag on details page)
+    if (activeSectionFilter) params.set("section", activeSectionFilter);
+ 
     return params;
   }
-
   function renderEmpty(query) {
     const q = escapeHtml(query || "");
     emptySlot.innerHTML = `
@@ -893,6 +896,8 @@
     genreEl.value = "";
     availabilityEl.value = "";
     sortEl.value = "az";
+    activeSectionFilter = "";
+    showSectionBadge("");
     updateUrlFromState();
     load();
   });
@@ -915,12 +920,66 @@
     history.replaceState(null, "", `results.html?${params.toString()}`);
   }
 
-  function loadFromUrl() {
+   function loadFromUrl() {
     const params = new URLSearchParams(location.search);
     qEl.value = params.get("q") ?? "";
     fieldEl.value = params.get("field") ?? "all";
     availabilityEl.value = params.get("availability") ?? "";
     sortEl.value = params.get("sort") ?? "az";
+ 
+    // Restore section filter from URL (set by section tag clicks)
+    activeSectionFilter = params.get("section") ?? "";
+ 
+    // Show a visual indicator when a section filter is active
+    showSectionBadge(activeSectionFilter);
+  }
+
+  function showSectionBadge(section) {
+    // Remove any existing badge
+    const existing = document.getElementById("sectionBadge");
+    if (existing) existing.remove();
+ 
+    if (!section) return;
+ 
+    // Inject a dismissible badge above the results panel
+    const badge = document.createElement("div");
+    badge.id = "sectionBadge";
+    badge.style.cssText = [
+      "display:inline-flex",
+      "align-items:center",
+      "gap:8px",
+      "background:rgba(255,255,255,0.12)",
+      "border:1px solid rgba(255,255,255,0.22)",
+      "backdrop-filter:blur(10px)",
+      "-webkit-backdrop-filter:blur(10px)",
+      "color:rgba(255,255,255,0.92)",
+      "padding:8px 14px",
+      "border-radius:999px",
+      "font-size:13px",
+      "font-weight:800",
+      "margin-bottom:10px",
+      "cursor:default",
+    ].join(";");
+ 
+    badge.innerHTML = `
+      <span>📍 Location: ${section.replace(/</g,"&lt;")}</span>
+      <button id="sectionBadgeClear" title="Clear location filter" style="
+        background:none;border:none;cursor:pointer;
+        color:rgba(255,255,255,0.75);font-size:15px;line-height:1;
+        padding:0;margin:0;display:flex;align-items:center;
+      ">✕</button>
+    `;
+ 
+    // Insert before the results panel
+    const panel = document.querySelector(".results-panel");
+    if (panel) panel.parentNode.insertBefore(badge, panel);
+ 
+    document.getElementById("sectionBadgeClear")?.addEventListener("click", () => {
+      activeSectionFilter = "";
+      showSectionBadge("");
+      updateUrlFromState();
+      load();
+    });
   }
 
   async function initResultsPage() {
