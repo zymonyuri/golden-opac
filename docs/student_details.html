@@ -240,6 +240,73 @@
     .btnGhost:hover{ transform: translateY(-1px); }
     .btnGhost:active{ transform: translateY(1px); }
 
+    .btnDanger{
+      height:42px;
+      border-radius:999px;
+      padding:0 16px;
+      border:0;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:13px;
+      background: #dc2626;
+      color:#fff;
+      box-shadow: 0 16px 34px rgba(220,38,38,0.28);
+      transition: transform 160ms ease, opacity 160ms ease;
+      white-space: nowrap;
+    }
+    .btnDanger:hover{ transform: translateY(-1px); opacity:.96; }
+    .btnDanger:active{ transform: translateY(1px); }
+    .btnDanger:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    /* Delete Student Modal */
+    .deleteStudentModal{
+      position:fixed;
+      inset:0;
+      z-index:3000;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .deleteStudentModal.show{ display:flex; }
+    .deleteStudentModalBox{
+      width:min(440px,94vw);
+      border-radius:22px;
+      background:#fff;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.28), 0 0 0 1px rgba(0,0,0,0.06);
+      overflow:hidden;
+      animation: dsModalIn 280ms cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes dsModalIn{
+      from{ opacity:0; transform:scale(0.86) translateY(14px); }
+      to{ opacity:1; transform:scale(1) translateY(0); }
+    }
+    .deleteStudentModalAccent{ height:4px; background:#dc2626; }
+    .deleteStudentModalBody{ padding:28px 28px 20px; display:flex; flex-direction:column; gap:18px; }
+    .deleteStudentModalTitle{ margin:0; font-size:18px; font-weight:1000; color:#111; letter-spacing:0.01em; }
+    .deleteStudentModalName{ font-size:13px; font-weight:900; color:rgba(0,0,0,0.55); }
+    .deleteStudentModalName strong{ color:#111; font-weight:1000; }
+    .deleteStudentDivider{ height:1px; background:rgba(0,0,0,0.08); margin:0 -28px; }
+    .deleteStudentModalQuestion{ font-size:14px; font-weight:900; color:rgba(0,0,0,0.72); line-height:1.55; }
+    .deleteStudentModalMeta{ display:flex; flex-direction:column; gap:7px; }
+    .deleteStudentMetaRow{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:800; color:rgba(0,0,0,0.65); }
+    .deleteStudentMetaDot{ width:5px; height:5px; border-radius:50%; background:rgba(220,38,38,0.55); flex:0 0 auto; }
+    .deleteStudentStatus{ min-height:16px; font-size:12px; font-weight:900; color:#dc2626; margin-top:-8px; }
+    .deleteStudentModalFooter{ display:flex; gap:10px; justify-content:flex-end; padding:16px 28px 24px; }
+    .deleteStudentConfirmBtn{
+      height:42px; border-radius:999px; padding:0 20px; border:0;
+      cursor:pointer; font-weight:1000; font-size:13px; font-family:inherit; white-space:nowrap;
+      background:#dc2626; color:#fff;
+      box-shadow:0 8px 24px rgba(220,38,38,0.28);
+      transition:transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+    }
+    .deleteStudentConfirmBtn:hover:not(:disabled){ transform:translateY(-1px); box-shadow:0 12px 28px rgba(220,38,38,0.34); }
+    .deleteStudentConfirmBtn:active:not(:disabled){ transform:translateY(1px); }
+    .deleteStudentConfirmBtn:disabled{ opacity:0.55; cursor:not-allowed; }
+
     .search-progress{
       height:4px;
       width:100%;
@@ -791,6 +858,7 @@
               <div class="actions">
                 <button class="btnGhost" id="editBtn" type="button">Edit Details</button>
                 <button class="btn" id="payBtn" type="button">Pay Fine</button>
+                <button class="btnDanger" id="deleteStudentBtn" type="button">Delete Student</button>
               </div>
             </div>
 
@@ -1025,6 +1093,32 @@
     </div>
   </div>
 
+  <!-- Delete Student Modal -->
+  <div class="deleteStudentModal" id="deleteStudentModal">
+    <div class="deleteStudentModalBox" role="dialog" aria-modal="true" aria-labelledby="deleteStudentTitle">
+      <div class="deleteStudentModalAccent"></div>
+      <div class="deleteStudentModalBody">
+        <div>
+          <h2 class="deleteStudentModalTitle" id="deleteStudentTitle">Delete Student</h2>
+          <div class="deleteStudentModalName" id="deleteStudentModalName"></div>
+        </div>
+        <div class="deleteStudentDivider"></div>
+        <div class="deleteStudentModalQuestion">Are you sure you want to permanently delete this student? This action cannot be undone and will remove all associated records:</div>
+        <div class="deleteStudentModalMeta">
+          <div class="deleteStudentMetaRow"><span class="deleteStudentMetaDot"></span>Student profile and personal details</div>
+          <div class="deleteStudentMetaRow"><span class="deleteStudentMetaDot"></span>All borrow history and active loans</div>
+          <div class="deleteStudentMetaRow"><span class="deleteStudentMetaDot"></span>All fines and payment records</div>
+          <div class="deleteStudentMetaRow"><span class="deleteStudentMetaDot"></span>All damage records</div>
+        </div>
+        <div class="deleteStudentStatus" id="deleteStudentStatus"></div>
+      </div>
+      <div class="deleteStudentModalFooter">
+        <button class="btnGhost" id="cancelDeleteStudentBtn" type="button">Cancel</button>
+        <button class="deleteStudentConfirmBtn" id="confirmDeleteStudentBtn" type="button">Yes, Delete Student</button>
+      </div>
+    </div>
+  </div>
+
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     const BASE_URL = 'https://golden-opac-backend.onrender.com';
     const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
@@ -1129,6 +1223,58 @@
     // Edit
     document.getElementById("editBtn").addEventListener("click", () => {
       window.location.href = `edit_students.html?student_id=${encodeURIComponent(student_id)}`;
+    });
+
+    // ---------- DELETE STUDENT ----------
+    const deleteStudentModal = document.getElementById("deleteStudentModal");
+    const confirmDeleteStudentBtn = document.getElementById("confirmDeleteStudentBtn");
+    const deleteStudentStatus = document.getElementById("deleteStudentStatus");
+
+    document.getElementById("deleteStudentBtn").addEventListener("click", () => {
+      deleteStudentStatus.textContent = "";
+      confirmDeleteStudentBtn.disabled = false;
+      confirmDeleteStudentBtn.textContent = "Yes, Delete Student";
+      // Show student name in modal
+      const nameEl = document.querySelector(".studentName");
+      const codeEl = document.querySelector(".code");
+      const nameDisplay = document.getElementById("deleteStudentModalName");
+      if (nameEl && codeEl){
+        nameDisplay.innerHTML = `<strong>${esc(nameEl.textContent.trim())}</strong> &mdash; ${esc(codeEl.textContent.trim())}`;
+      } else if (nameEl) {
+        nameDisplay.innerHTML = `<strong>${esc(nameEl.textContent.trim())}</strong>`;
+      } else {
+        nameDisplay.textContent = "";
+      }
+      deleteStudentModal.classList.add("show");
+    });
+
+    document.getElementById("cancelDeleteStudentBtn").addEventListener("click", () => {
+      deleteStudentModal.classList.remove("show");
+    });
+
+    deleteStudentModal.addEventListener("click", (e) => {
+      if (e.target === deleteStudentModal) deleteStudentModal.classList.remove("show");
+    });
+
+    confirmDeleteStudentBtn.addEventListener("click", async () => {
+      if (confirmDeleteStudentBtn.disabled) return;
+      deleteStudentStatus.textContent = "";
+      confirmDeleteStudentBtn.disabled = true;
+      confirmDeleteStudentBtn.textContent = "Deleting…";
+      try {
+        const res = await fetch(`${BASE_URL}/api/students/${encodeURIComponent(student_id)}`, {
+          method: "DELETE",
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.detail || "Delete failed.");
+        deleteStudentModal.classList.remove("show");
+        window.location.href = "students.html";
+      } catch(err) {
+        deleteStudentStatus.textContent = err?.message || "Delete failed.";
+        confirmDeleteStudentBtn.disabled = false;
+        confirmDeleteStudentBtn.textContent = "Yes, Delete Student";
+      }
     });
 
     const loadingBlock = document.getElementById("loadingBlock");

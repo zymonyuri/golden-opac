@@ -7384,6 +7384,43 @@ def reports_school_years(current=Depends(get_current_librarian)):
         cur.close()
         conn.close()
 
+@app.delete("/api/students/{student_id}")
+def delete_student(student_id: str, current=Depends(get_current_librarian)):
+    """
+    Permanently deletes a student and all associated records:
+    loans, fines, fine payments, damage records.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Verify student exists
+        cur.execute("SELECT student_id FROM student WHERE student_code = %s", (student_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        sid = row["student_id"]
+
+        # Delete in dependency order
+        cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE student_id = %s)", (sid,))
+        cur.execute("DELETE FROM fine WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM damage_record WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM loan WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM student WHERE student_id = %s", (sid,))
+
+        conn.commit()
+        return {"message": "Student and all associated records deleted successfully"}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete student failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
 @app.get("/health")
 def health():
     return {"ok": True}

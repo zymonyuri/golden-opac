@@ -1678,7 +1678,14 @@ document.documentElement.classList.add("branding-loading");
                         <div class="field"><label>Email</label><input id="newLibEmail" type="email"></div>
                         <div class="field"><label>First Name</label><input id="newLibFirst" type="text"></div>
                         <div class="field"><label>Last Name</label><input id="newLibLast" type="text"></div>
-                        <div class="field full"><label>Password</label><input id="newLibPassword" type="password"></div>
+                        <div class="field full"><label>Password</label>
+                          <input id="newLibPassword" type="password" autocomplete="new-password">
+                        </div>
+                        <div class="field full">
+                          <label>Confirm Password</label>
+                          <input id="newLibConfirmPassword" type="password" autocomplete="new-password">
+                          <div id="newLibPasswordMatchMsg" style="font-size:12px;font-weight:900;min-height:16px;margin-top:-4px;"></div>
+                        </div>
                       </div>
                       <div class="actions">
                         <button class="btn" id="createLibBtn" type="button">Create Profile</button>
@@ -2609,10 +2616,19 @@ document.documentElement.classList.add("branding-loading");
       const first_name = document.getElementById("newLibFirst").value.trim();
       const last_name = document.getElementById("newLibLast").value.trim();
       const password = document.getElementById("newLibPassword").value;
+      const confirmPassword = document.getElementById("newLibConfirmPassword").value;
       if (!username || !email || !password){ showToast("Username, email, and password are required"); return; }
+      if (!confirmPassword){ showToast("Please confirm the password"); return; }
+      if (password !== confirmPassword){
+        document.getElementById("newLibPasswordMatchMsg").style.color = "#dc2626";
+        document.getElementById("newLibPasswordMatchMsg").textContent = "Passwords do not match.";
+        showToast("Passwords do not match");
+        return;
+      }
       await apiFetch("/api/settings/librarians/create?" + qs({ username, email, first_name, last_name, password }), { method: "POST" });
       document.getElementById("createLibStatus").textContent = "Librarian profile created successfully.";
-      ["newLibUsername","newLibEmail","newLibFirst","newLibLast","newLibPassword"].forEach(id => { document.getElementById(id).value = ""; });
+      ["newLibUsername","newLibEmail","newLibFirst","newLibLast","newLibPassword","newLibConfirmPassword"].forEach(id => { document.getElementById(id).value = ""; });
+      document.getElementById("newLibPasswordMatchMsg").textContent = "";
       showToast("Librarian created");
       await loadLibrarians();
     }
@@ -2765,6 +2781,23 @@ document.documentElement.classList.add("branding-loading");
     document.getElementById("promoteBtn").addEventListener("click", async () => { try { setProgress(true,20); await promoteStudents(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Promotion failed"); } });
     document.getElementById("graduateBtn").addEventListener("click", async () => { try { setProgress(true,20); await graduateStudents(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Graduation update failed"); } });
     document.getElementById("createLibBtn").addEventListener("click", async () => { try { setProgress(true,20); await createLibrarian(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Creating librarian failed"); } });
+
+    // Live confirm-password match indicator for new librarian form
+    function syncLibPasswordMatch(){
+      const pw = document.getElementById("newLibPassword").value;
+      const cpw = document.getElementById("newLibConfirmPassword").value;
+      const msg = document.getElementById("newLibPasswordMatchMsg");
+      if (!cpw){ msg.textContent = ""; return; }
+      if (pw === cpw){
+        msg.style.color = "#1f9d41";
+        msg.textContent = "✓ Passwords match";
+      } else {
+        msg.style.color = "#dc2626";
+        msg.textContent = "Passwords do not match";
+      }
+    }
+    document.getElementById("newLibPassword").addEventListener("input", syncLibPasswordMatch);
+    document.getElementById("newLibConfirmPassword").addEventListener("input", syncLibPasswordMatch);
     document.getElementById("reloadDisplayBtn").addEventListener("click", async () => { try { setProgress(true,20); await loadDisplaySettings(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Reload display settings failed"); } });
     document.getElementById("editDisplayBtn").addEventListener("click", () => { setDisplayEditMode(true); document.getElementById("displayStatus").textContent = "Editing enabled. Input fields are now highlighted."; });
     document.getElementById("cancelDisplayBtn").addEventListener("click", () => { pendingLogoData = null; pendingLogoFileUrl = null; if (currentDisplaySettings){ setDisplayForm(currentDisplaySettings); applyDisplayPreview(currentDisplaySettings); } setDisplayEditMode(false); document.getElementById("displayStatus").textContent = "Changes discarded."; });
