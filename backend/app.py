@@ -2379,6 +2379,9 @@ def student_profile(student_id: int, current=Depends(get_current_librarian)):
 from fastapi import Query
 from datetime import datetime, timedelta
 
+
+
+
 @app.get("/api/reports/dashboard")
 def reports_dashboard(
     period: str = Query("monthly"),
@@ -2409,10 +2412,12 @@ def reports_dashboard(
             trend_params.append(range_start)
             loan_scope_where.append("l.borrowed_at >= %s")
             loan_scope_params.append(range_start)
-            trend_sql_label = "TO_CHAR(DATE(l.borrowed_at), 'Mon DD')"
-            trend_group_sql = "DATE(l.borrowed_at)"
+            # CHANGED: group by hour instead of day
+            trend_sql_label = "TO_CHAR(DATE_TRUNC('hour', l.borrowed_at), 'HH12 AM')"
+            trend_group_sql = "DATE_TRUNC('hour', l.borrowed_at)"
 
         elif period == "weekly":
+            # CHANGED: last 7 days inclusive of today
             range_start = (now - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
             trend_where.append("l.borrowed_at >= %s")
             trend_params.append(range_start)
@@ -2430,7 +2435,7 @@ def reports_dashboard(
             trend_sql_label = "TO_CHAR(DATE_TRUNC('month', l.borrowed_at), 'Mon YYYY')"
             trend_group_sql = "DATE_TRUNC('month', l.borrowed_at)"
 
-        else:
+        else:  # monthly
             period = "monthly"
             range_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             trend_where.append("l.borrowed_at >= %s")
