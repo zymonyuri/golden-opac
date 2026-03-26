@@ -139,7 +139,6 @@
     .rptFilters span b{color:#111;}
     .rptTable{width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;table-layout:fixed;}
     .rptTable thead tr{background:#f2f2f2;color:#222;}
-    .rptTable thead th{padding:8px 8px;text-align:left;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:normal;line-height:1.2;word-break:normal;overflow-wrap:normal;hyphens:none;}
     .rptTable tbody tr{border-bottom:1px solid #f0f0f0;}
     .rptTable tbody tr:nth-child(even){background:#f8f8f8;}
     .rptTable tbody tr:hover{background:#f2f2f2;}
@@ -160,61 +159,83 @@
     .rptSumGrid.compactCards{gap:8px;margin-bottom:12px;}
     .rptFilters.compact{gap:8px;padding:8px 10px;font-size:10.5px;margin-bottom:12px;}
     .rptTable.inventoryTable col.num{width:4%;}
-    .rptTable.inventoryTable col.title{width:23%;}
-    .rptTable.inventoryTable col.author{width:14%;}
-    .rptTable.inventoryTable col.subject{width:12%;}
-    .rptTable.inventoryTable col.location{width:10%;}
-    .rptTable.inventoryTable col.total{width:7%;}
-    .rptTable.inventoryTable col.available{width:8%;}
-    .rptTable.inventoryTable col.borrowed{width:8%;}
-    .rptTable.inventoryTable col.damaged{width:7%;}
-    .rptTable.inventoryTable col.lost{width:5%;}
-    .rptTable.inventoryTable col.printed{width:4%;}
+    .rptTable.inventoryTable col.title{width:25%;}
+    .rptTable.inventoryTable col.author{width:15%;}
+    .rptTable.inventoryTable col.subject{width:13%;}
+    .rptTable.inventoryTable col.location{width:14%;}
+    .rptTable.inventoryTable col.total{width:9%;}
+    .rptTable.inventoryTable col.available{width:9%;}
+    .rptTable.inventoryTable col.borrowed{width:9%;}
+    .rptTable.inventoryTable col.damaged{width:8%;}
+    .rptTable.inventoryTable col.lost{width:7%;}
     .rptTable.inventoryTable td,.rptTable.inventoryTable th,.rptTable.finesTable td,.rptTable.finesTable th{overflow-wrap:normal;word-break:normal;}
     .rptTable.inventoryTable td{line-height:1.18;}
     .rptTable.inventoryTable .pill,.rptTable.finesTable .pill{padding:2px 6px;font-size:9px;}
+    .rptTable.finesTable{table-layout:fixed;}
     .rptTable.finesTable col.num{width:4%;}
-    .rptTable.finesTable col.student{width:15%;}
-    .rptTable.finesTable col.grade{width:13%;}
-    .rptTable.finesTable col.book{width:15%;}
-    .rptTable.finesTable col.reason{width:14%;}
+    .rptTable.finesTable col.student{width:10%;}
+    .rptTable.finesTable col.grade{width:10%;}
+    .rptTable.finesTable col.book{width:10%;}
+    .rptTable.finesTable col.reason{width:10%;}
     .rptTable.finesTable col.assessed{width:10%;}
-    .rptTable.finesTable col.amount{width:9%;}
-    .rptTable.finesTable col.paid{width:8%;}
+    .rptTable.finesTable col.amount{width:10%;}
+    .rptTable.finesTable col.paid{width:10%;}
     .rptTable.finesTable col.outstanding{width:12%;}
-    .rptTable.finesTable col.status{width:10%;}
-    .rptTable.circulationTable col.num{width:5%;}
-    .rptTable.circulationTable col.student{width:14%;}
+    .rptTable.finesTable col.status{width:14%;}
+    .rptTable.finesTable td,.rptTable.finesTable th{white-space:normal;overflow-wrap:anywhere;word-break:break-word;}
+    .rptTable.finesTable td:last-child,.rptTable.finesTable th:last-child{text-align:center;}
+    .rptTable.finesTable .pill{max-width:100%;justify-content:center;}
+    .rptTable.circulationTable col.num{width:4%;}
+    .rptTable.circulationTable col.student{width:12%;}
     .rptTable.circulationTable col.grade{width:9%;}
-    .rptTable.circulationTable col.book{width:17%;}
-    .rptTable.circulationTable col.borrowed{width:10%;}
+    .rptTable.circulationTable col.book{width:18%;}
+    .rptTable.circulationTable col.borrowed{width:12%;}
     .rptTable.circulationTable col.due{width:10%;}
-    .rptTable.circulationTable col.returned{width:10%;}
-    .rptTable.circulationTable col.status{width:11%;}
-    .rptTable.circulationTable col.fine{width:14%;}
+    .rptTable.circulationTable col.returned{width:12%;}
+    .rptTable.circulationTable col.status{width:10%;}
+    .rptTable.circulationTable col.fine{width:13%;}
     .rptTable.circulationTable td:nth-child(9),.rptTable.circulationTable th:nth-child(9){white-space:normal;overflow-wrap:anywhere;word-break:break-word;text-align:left;}
     .rptTable.circulationTable td:nth-child(8),.rptTable.circulationTable th:nth-child(8){white-space:normal;overflow-wrap:break-word;}
+    .rptTable.circulationTable td:nth-child(1),.rptTable.circulationTable th:nth-child(1){text-align:center;}
+    .rptTable.circulationTable td:nth-child(1){font-size:11px;font-weight:900;}
+    .rptTable.circulationTable td:nth-child(2),.rptTable.circulationTable th:nth-child(2){padding-left:9px;padding-right:9px;}
+    .rptTable.circulationTable td:nth-child(5),.rptTable.circulationTable th:nth-child(5),
+    .rptTable.circulationTable td:nth-child(6),.rptTable.circulationTable th:nth-child(6),
+    .rptTable.circulationTable td:nth-child(7),.rptTable.circulationTable th:nth-child(7){font-size:10px;line-height:1.2;font-variant-numeric:tabular-nums;}
+    .rptTable.finesTable th:nth-child(9),.rptTable.finesTable th:nth-child(10),.rptTable.borrowedTable th:nth-child(6),.rptTable.circulationTable th:nth-child(5),.rptTable.circulationTable th:nth-child(7){white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.1;}
     .rptFineCell{display:grid;gap:2px;min-width:0;}
     .rptFineMain{font-size:10px;font-weight:900;color:#111;line-height:1.15;}
     .rptFineSub{font-size:9px;font-weight:800;color:#666;line-height:1.15;}
-    .rptTable.studentsTable col.num{width:6%;}
-    .rptTable.studentsTable col.student{width:24%;}
-    .rptTable.studentsTable col.grade{width:14%;}
+    .rptTable.studentsTable col.num{width:4%;}
+    .rptTable.studentsTable col.student{width:26%;}
+    .rptTable.studentsTable col.grade{width:13%;}
     .rptTable.studentsTable col.total{width:10%;}
     .rptTable.studentsTable col.active{width:10%;}
-    .rptTable.studentsTable col.overdue{width:9%;}
-    .rptTable.studentsTable col.fines{width:13%;}
-    .rptTable.studentsTable col.last{width:14%;}
-    .rptTable.borrowedTable col.rank{width:8%;}
-    .rptTable.borrowedTable col.title{width:28%;}
-    .rptTable.borrowedTable col.author{width:18%;}
-    .rptTable.borrowedTable col.subject{width:14%;}
-    .rptTable.borrowedTable col.location{width:13%;}
-    .rptTable.borrowedTable col.borrowCount{width:10%;}
-    .rptTable.borrowedTable col.readers{width:9%;}
+    .rptTable.studentsTable col.overdue{width:12%;}
+    .rptTable.studentsTable col.fines{width:14%;}
+    .rptTable.studentsTable col.last{width:11%;}
+    .rptTable.borrowedTable col.rank{width:9%;}
+    .rptTable.borrowedTable col.title{width:32%;}
+    .rptTable.borrowedTable col.author{width:20%;}
+    .rptTable.borrowedTable col.subject{width:15%;}
+    .rptTable.borrowedTable col.borrowCount{width:12%;}
+    .rptTable.borrowedTable col.readers{width:12%;}
     .rptTable.circulationTable td,.rptTable.circulationTable th,.rptTable.studentsTable td,.rptTable.studentsTable th,.rptTable.borrowedTable td,.rptTable.borrowedTable th{overflow-wrap:break-word;word-break:normal;}
     .rptTable .ct{font-weight:800;line-height:1.16;}
     .rptTable .cs{font-size:10px;line-height:1.15;color:#666;margin-top:2px;}
+    /* ===== UNIFIED HEADER STYLE FOR ALL REPORT TABLES ===== */
+.rptTable thead th{
+  padding:8px 7px;
+  text-align:left;
+  font-size:10px;        /* ✅ SAME SIZE EVERYWHERE */
+  font-weight:900;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  line-height:1.2;
+  white-space:normal;
+  word-break:normal;
+  overflow-wrap:break-word;
+}
 
     /* On-screen footer */
     .rptFoot{padding:10px 18px;background:#f7f7f7;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:12px;}
@@ -292,12 +313,15 @@
     .rptHdrText{min-width:0;}
     .rptSchoolName{margin:0;font-size:20px;line-height:1.1;font-weight:900;color:var(--brand-yellow,#f4e32f);letter-spacing:.04em;text-transform:uppercase;}
     .rptSchoolSub{margin-top:4px;font-size:12px;line-height:1.25;font-weight:700;color:var(--brand-green,#8dd959);}
-    .rptHdrMeta{text-align:right;min-width:220px;}
+    .rptHdrMeta{text-align:right;min-width:220px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:4px;}
     .rptTypeLbl{font-size:18px;line-height:1.15;font-weight:900;color:#222;letter-spacing:.06em;text-transform:uppercase;}
     .rptTimestamp{margin-top:4px;font-size:11px;font-weight:600;color:#666;}
     .rptBody{padding:14px 20px 18px;background:#fff;}
     .rptContNote{margin:0 0 10px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#666;}
-    .rptFilters{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 12px;padding:8px 0;border-bottom:1px solid #ececec;font-size:11px;color:#444;}
+    .rptFilters{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 14px;padding:6px 10px 10px;border:1px solid #e4e4e4;border-radius:12px;background:#fafafa;font-size:11px;color:#444;}
+    .rptFilters span{display:inline-flex;align-items:center;gap:4px;min-height:28px;font-weight:700;line-height:1.2;white-space:normal;}
+    .rptFilters span b{display:inline-block;color:#111;font-size:13px;line-height:1.1;}
+
     .rptSumGrid,.rsc{display:none !important;}
     .rptTable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10.5px;color:#222;}
     .rptTable thead th{padding:8px 7px;border:1px solid #d9d9d9;background:#efefef;font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;text-align:left;color:#222;}
@@ -1186,7 +1210,7 @@
       const rows=data.rows||[],summ=data.summary||{};const srt=gfv("f_ssort")||"borrow_count_desc";const topBorrower=rows[0]||null;
       const fp=[{k:"Date",v:`${data.date_from||"—"} to ${data.date_to||"—"}`},{k:"Grade",v:data.grade||gradeLabel()},{k:"Section",v:data.section||sectionLabel()},{k:"Sort",v:srt.replace(/_/g," ")}];
       const sc=[{val:fmtNum(summ.total_students||rows.length),lbl:"Students Included"},{val:fmtNum(summ.total_loans||0),lbl:"Total Borrows"},{val:fmtNum(summ.active_loans||0),lbl:"Active Loans",cls:Number(summ.active_loans||0)>0?"warn":""},{val:fmtNum(summ.overdue_count||0),lbl:"Overdue Loans",cls:Number(summ.overdue_count||0)>0?"danger":""},{val:peso(summ.outstanding_fines||0),lbl:"Outstanding Fines",cls:Number(summ.outstanding_fines||0)>0?"danger":""}];
-      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Total Borrows</th><th>Active Loans</th><th>Overdue</th><th>Outstanding Fines</th><th>Last Borrowed</th></tr>`;
+      const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Borrows</th><th>Active</th><th>Overdue Loans</th><th>Balance Due</th><th>Last Loan</th></tr>`;
       const cg=`<colgroup><col class="num"><col class="student"><col class="grade"><col class="total"><col class="active"><col class="overdue"><col class="fines"><col class="last"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>{const studentName=`${r.last_name||""}, ${r.first_name||""}`.replace(/^,\s*/,"").trim()||r.student_code||"Student";return`<tr><td>${i+1}</td><td><div class="ct">${esc(studentName)}</div><div class="cs">${esc(r.student_code||"—")}</div></td><td>${esc(r.grade||"—")} / ${esc(r.student_section||"—")}</td><td><span class="pill blue">${fmtNum(r.borrow_count||0)}</span></td><td>${Number(r.active_loans||0)>0?`<span class="pill yellow">${fmtNum(r.active_loans)}</span>`:"—"}</td><td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td><td>${Number(r.outstanding_fines||0)>0?`<span class="pill orange">${peso(r.outstanding_fines)}</span>`:"—"}</td><td>${r.last_borrowed_at?fmtDate(r.last_borrowed_at):"—"}</td></tr>`;}).join(""):`<tr><td colspan="8" class="rptEmpty">No student borrowing records found for these filters.</td></tr>`;
       const insightHtml=rows.length?`<div class="rptFilters" style="margin-bottom:14px;"><span><b>Top Borrower:</b> ${esc(`${topBorrower?.last_name||""}, ${topBorrower?.first_name||""}`.replace(/^,\s*/,"").trim()||topBorrower?.student_code||"—")}</span><span><b>Borrow Count:</b> ${fmtNum(topBorrower?.borrow_count||0)}</span><span><b>Active Loans:</b> ${fmtNum(topBorrower?.active_loans||0)}</span><span><b>Overdue:</b> ${fmtNum(topBorrower?.overdue_count||0)}</span></div>`:"";
@@ -1199,15 +1223,15 @@
       const th=`<tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Book</th><th>Reason</th><th>Assessed</th><th>Amount</th><th>Paid</th><th>Outstanding</th><th>Status</th></tr>`;
       const cg=`<colgroup><col class="num"><col class="student"><col class="grade"><col class="book"><col class="reason"><col class="assessed"><col class="amount"><col class="paid"><col class="outstanding"><col class="status"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.last_name||"")}, ${esc(r.first_name||"")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.student_section||"\u2014")}</td><td>${r.title?`<div class="ct">${esc(r.title)}</div>`:"\u2014"}</td><td>${esc(r.reason||"\u2014")}</td><td>${fmtDate(r.assessed_at)}</td><td>${peso(r.amount)}</td><td>${Number(r.amount_paid||0)>0?peso(r.amount_paid):"\u2014"}</td><td>${Number(r.outstanding||0)>0?`<b style="color:#b91c1c">${peso(r.outstanding)}</b>`:`<span style="color:#16a34a">\u2713 Settled</span>`}</td><td>${r.status==="paid"?`<span class="pill green">Paid</span>`:`<span class="pill red">Unpaid</span>`}</td></tr>`).join(""):`<tr><td colspan="10" class="rptEmpty">No fine records found.</td></tr>`;
-      return buildHdr(brand,"Fines Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Fines Report");
+      return buildHdr(brand,"Fines Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable finesTable"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Fines Report");
     },
     most_borrowed(data,brand){
       const rows=data.rows||[];const totB=rows.reduce((s,r)=>s+Number(r.borrow_count||0),0);
       const fp=[{k:"Date",v:`${data.date_from||"\u2014"} to ${data.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()},{k:"Grade",v:gradeLabel()},{k:"Section",v:sectionLabel()}];
-      const sc=[{val:fmtNum(rows.length),lbl:"Books Ranked"},{val:fmtNum(totB),lbl:"Total Borrows"},{val:fmtNum(new Set(rows.map(r=>r.book_section)).size),lbl:"Sections"},{val:rows.length?fmtNum(rows[0].borrow_count):"\u2014",lbl:"Top Borrow Count"}];
-      const th=`<tr><th>Rank</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Borrow Count</th><th>Unique Readers</th></tr>`;
-      const cg=`<colgroup><col class="rank"><col class="title"><col class="author"><col class="subject"><col class="location"><col class="borrowCount"><col class="readers"></colgroup>`;
-      const tb=rows.length?rows.map((r,i)=>`<tr><td><b>#${i+1}</b></td><td><div class="ct">${esc(r.title||"")}</div></td><td>${esc(r.author||"\u2014")}</td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><span class="pill ${i===0?"yellow":i<3?"green":"gray"}">${fmtNum(r.borrow_count)}</span></td><td>${fmtNum(r.unique_borrowers)}</td></tr>`).join(""):`<tr><td colspan="7" class="rptEmpty">No borrowing data for this period.</td></tr>`;
+      const sc=[{val:fmtNum(rows.length),lbl:"Books Ranked"},{val:fmtNum(totB),lbl:"Total Borrows"},{val:rows.length?fmtNum(rows[0].borrow_count):"\u2014",lbl:"Top Borrow Count"},{val:fmtNum(rows.reduce((s,r)=>s+Number(r.unique_borrowers||0),0)),lbl:"Total Unique Readers"}];
+      const th=`<tr><th>Rank</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Borrow Count</th><th>Unique Readers</th></tr>`;
+      const cg=`<colgroup><col class="rank"><col class="title"><col class="author"><col class="subject"><col class="borrowCount"><col class="readers"></colgroup>`;
+      const tb=rows.length?rows.map((r,i)=>`<tr><td><b>#${i+1}</b></td><td><div class="ct">${esc(r.title||"")}</div></td><td>${esc(r.author||"\u2014")}</td><td>${esc(r.genre||"\u2014")}</td><td><span class="pill ${i===0?"yellow":i<3?"green":"gray"}">${fmtNum(r.borrow_count)}</span></td><td>${fmtNum(r.unique_borrowers)}</td></tr>`).join(""):`<tr><td colspan="6" class="rptEmpty">No borrowing data for this period.</td></tr>`;
       return buildHdr(brand,"Most Borrowed Books")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable borrowedTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Most Borrowed Books");
     },
     grade_summary(data,brand){
@@ -1228,9 +1252,9 @@
       const st=gfv("f_ist"),bs=gfv("f_bsec"),srt=gfv("f_isort")||"title";
       const fp=[];if(st)fp.push({k:"Status",v:st});if(bs)fp.push({k:"Subject",v:bs});fp.push({k:"Sort",v:srt.replace("_"," ")});
       const sc=[{val:fmtNum(rows.length),lbl:"Book Titles"},{val:fmtNum(tC),lbl:"Total Copies"},{val:fmtNum(tA),lbl:"Available"},{val:fmtNum(tD+tL),lbl:"Damaged / Lost",cls:tD+tL>0?"danger":""}];
-      const th=`<tr><th>#</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Total</th><th>Avail.</th><th>Borrowed</th><th>Damaged</th><th>Lost</th><th>Printed</th></tr>`;
-      const cg=`<colgroup><col class="num"><col class="title"><col class="author"><col class="subject"><col class="location"><col class="total"><col class="available"><col class="borrowed"><col class="damaged"><col class="lost"><col class="printed"></colgroup>`;
-      const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.title||"")}</div></td><td><div class="cs">${esc(r.author||"\u2014")}</div></td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><b>${fmtNum(r.total_copies)}</b></td><td><span class="pill ${Number(r.available||0)>0?"green":"gray"}">${fmtNum(r.available)}</span></td><td>${Number(r.borrowed||0)>0?`<span class="pill blue">${fmtNum(r.borrowed)}</span>`:"\u2014"}</td><td>${Number(r.damaged||0)>0?`<span class="pill yellow">${fmtNum(r.damaged)}</span>`:"\u2014"}</td><td>${Number(r.lost||0)>0?`<span class="pill red">${fmtNum(r.lost)}</span>`:"\u2014"}</td><td>${fmtNum(r.printed)}</td></tr>`).join(""):`<tr><td colspan="11" class="rptEmpty">No inventory records found.</td></tr>`;
+      const th=`<tr><th>#</th><th>Book Title</th><th>Author</th><th>Subject</th><th>Location</th><th>Total</th><th>Avail.</th><th>Borrowed</th><th>Damaged</th><th>Lost</th></tr>`;
+      const cg=`<colgroup><col class="num"><col class="title"><col class="author"><col class="subject"><col class="location"><col class="total"><col class="available"><col class="borrowed"><col class="damaged"><col class="lost"></colgroup>`;
+      const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.title||"")}</div></td><td><div class="cs">${esc(r.author||"\u2014")}</div></td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><b>${fmtNum(r.total_copies)}</b></td><td><span class="pill ${Number(r.available||0)>0?"green":"gray"}">${fmtNum(r.available)}</span></td><td>${Number(r.borrowed||0)>0?`<span class="pill blue">${fmtNum(r.borrowed)}</span>`:"\u2014"}</td><td>${Number(r.damaged||0)>0?`<span class="pill yellow">${fmtNum(r.damaged)}</span>`:"\u2014"}</td><td>${Number(r.lost||0)>0?`<span class="pill red">${fmtNum(r.lost)}</span>`:"\u2014"}</td></tr>`).join(""):`<tr><td colspan="10" class="rptEmpty">No inventory records found.</td></tr>`;
       return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody compactBody">${fp.length?buildFiltBar(fp).replace('class="rptFilters"','class="rptFilters compact"'):""}${buildSum(sc).replace('class="rptSumGrid"','class="rptSumGrid compactCards"')}<table class="rptTable compact inventoryTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
     }
   };
