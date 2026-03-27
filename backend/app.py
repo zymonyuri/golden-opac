@@ -60,6 +60,11 @@ from fastapi.staticfiles import StaticFiles
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
+from zoneinfo import ZoneInfo
+
+PH_TZ = ZoneInfo("Asia/Manila")
+now = datetime.now(PH_TZ)
+
 from typing import Optional
 from pydantic import BaseModel
 
@@ -2380,8 +2385,6 @@ from fastapi import Query
 from datetime import datetime, timedelta
 
 
-
-
 @app.get("/api/reports/dashboard")
 def reports_dashboard(
     period: str = Query("monthly"),
@@ -2393,7 +2396,7 @@ def reports_dashboard(
     try:
         period = (period or "monthly").strip().lower()
         school_year = (school_year or "").strip() or None
-        now = datetime.now()
+        now = datetime.now(PH_TZ)
 
         trend_params = []
         trend_where = []
