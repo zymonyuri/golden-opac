@@ -2403,11 +2403,8 @@ def reports_dashboard(
         period = (period or "monthly").strip().lower()
         school_year = (school_year or "").strip() or None
 
-        # Manila "now" for deciding today's local boundaries
         now_local = datetime.now(PH_TZ)
         now_naive_local = now_local.replace(tzinfo=None)
-
-        # Treat borrowed_at as Manila-local for dashboard grouping/labels
         borrowed_local_sql = "(l.borrowed_at AT TIME ZONE 'Asia/Manila')"
 
         trend_params = []
@@ -2424,66 +2421,35 @@ def reports_dashboard(
         if period == "daily":
             range_start = now_naive_local.replace(hour=0, minute=0, second=0, microsecond=0)
             range_end = range_start + timedelta(days=1)
-
-            trend_where.append(f"{borrowed_local_sql} >= %s")
-            trend_where.append(f"{borrowed_local_sql} < %s")
-            trend_params.extend([range_start, range_end])
-
-            loan_scope_where.append(f"{borrowed_local_sql} >= %s")
-            loan_scope_where.append(f"{borrowed_local_sql} < %s")
-            loan_scope_params.extend([range_start, range_end])
-
             trend_sql_label = f"TO_CHAR(DATE_TRUNC('hour', {borrowed_local_sql}), 'FMHH12 AM')"
             trend_group_sql = f"DATE_TRUNC('hour', {borrowed_local_sql})"
-
         elif period == "weekly":
             range_start = (now_naive_local - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
             range_end = now_naive_local.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-
-            trend_where.append(f"{borrowed_local_sql} >= %s")
-            trend_where.append(f"{borrowed_local_sql} < %s")
-            trend_params.extend([range_start, range_end])
-
-            loan_scope_where.append(f"{borrowed_local_sql} >= %s")
-            loan_scope_where.append(f"{borrowed_local_sql} < %s")
-            loan_scope_params.extend([range_start, range_end])
-
             trend_sql_label = f"TO_CHAR(DATE({borrowed_local_sql}), 'Mon DD')"
             trend_group_sql = f"DATE({borrowed_local_sql})"
-
         elif period == "yearly":
             range_start = now_naive_local.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
             range_end = range_start.replace(year=range_start.year + 1)
-
-            trend_where.append(f"{borrowed_local_sql} >= %s")
-            trend_where.append(f"{borrowed_local_sql} < %s")
-            trend_params.extend([range_start, range_end])
-
-            loan_scope_where.append(f"{borrowed_local_sql} >= %s")
-            loan_scope_where.append(f"{borrowed_local_sql} < %s")
-            loan_scope_params.extend([range_start, range_end])
-
             trend_sql_label = f"TO_CHAR(DATE_TRUNC('month', {borrowed_local_sql}), 'Mon YYYY')"
             trend_group_sql = f"DATE_TRUNC('month', {borrowed_local_sql})"
-
-        else:  # monthly
+        else:
             period = "monthly"
             range_start = now_naive_local.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             if range_start.month == 12:
                 range_end = range_start.replace(year=range_start.year + 1, month=1)
             else:
                 range_end = range_start.replace(month=range_start.month + 1)
-
-            trend_where.append(f"{borrowed_local_sql} >= %s")
-            trend_where.append(f"{borrowed_local_sql} < %s")
-            trend_params.extend([range_start, range_end])
-
-            loan_scope_where.append(f"{borrowed_local_sql} >= %s")
-            loan_scope_where.append(f"{borrowed_local_sql} < %s")
-            loan_scope_params.extend([range_start, range_end])
-
             trend_sql_label = f"TO_CHAR(DATE({borrowed_local_sql}), 'Mon DD')"
             trend_group_sql = f"DATE({borrowed_local_sql})"
+
+        trend_where.append(f"{borrowed_local_sql} >= %s")
+        trend_where.append(f"{borrowed_local_sql} < %s")
+        trend_params.extend([range_start, range_end])
+
+        loan_scope_where.append(f"{borrowed_local_sql} >= %s")
+        loan_scope_where.append(f"{borrowed_local_sql} < %s")
+        loan_scope_params.extend([range_start, range_end])
 
         trend_where_sql = " AND ".join(trend_where) if trend_where else "TRUE"
         loan_scope_sql = " AND ".join(loan_scope_where) if loan_scope_where else "TRUE"
@@ -2550,12 +2516,20 @@ def reports_dashboard(
         )
         fines = cur.fetchone()
 
-        cur.execute("""
-            SELECT status, COUNT(*) AS count
-            FROM book_copy
-            GROUP BY status
-            ORDER BY status
-        """)
+        cur.execute(
+            f"""
+            SELECT bc.status, COUNT(*) AS count
+            FROM book_copy bc
+            JOIN (
+                SELECT DISTINCT l.copy_id
+                FROM loan l
+                WHERE {loan_scope_sql}
+            ) scoped ON scoped.copy_id = bc.copy_id
+            GROUP BY bc.status
+            ORDER BY bc.status
+            """,
+            tuple(loan_scope_params),
+        )
         copy_status_distribution = cur.fetchall()
 
         cur.execute(
@@ -2571,6 +2545,56 @@ def reports_dashboard(
             tuple(trend_params),
         )
         borrow_trend = cur.fetchall()
+
+        cur.execute(
+            f"""
+            SELECT
+                COALESCE(NULLIF(TRIM(b.subject), ''), 'Unknown') AS subject,
+                COUNT(l.loan_id) AS borrow_count
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE {loan_scope_sql}
+            GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), 'Unknown')
+            ORDER BY borrow_count DESC, subject ASC
+            LIMIT 10
+            """,
+            tuple(loan_scope_params),
+        )
+        borrows_by_subject = cur.fetchall()
+
+        cur.execute(
+            f"""
+            SELECT
+                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
+                COUNT(l.loan_id) AS borrow_count
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE {loan_scope_sql}
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
+            ORDER BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') ASC
+            """,
+            tuple(loan_scope_params),
+        )
+        borrows_by_grade = cur.fetchall()
+
+        cur.execute(
+            f"""
+            SELECT
+                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
+                COUNT(l.loan_id) AS overdue_count
+            FROM loan l
+            JOIN student s ON s.student_id = l.student_id
+            WHERE {loan_scope_sql}
+              AND l.returned_at IS NULL
+              AND l.due_at < NOW()
+              AND COALESCE(l.status, '') NOT IN ('lost', 'returned')
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
+            ORDER BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') ASC
+            """,
+            tuple(loan_scope_params),
+        )
+        overdue_by_grade = cur.fetchall()
 
         cur.execute(
             f"""
@@ -2616,6 +2640,10 @@ def reports_dashboard(
         return {
             "period": period,
             "school_year": school_year,
+            "filters": {
+                "range_start": range_start.isoformat(),
+                "range_end": range_end.isoformat(),
+            },
             "totals": {
                 "total_books": int(total_books or 0),
                 "total_copies": int(total_copies or 0),
@@ -2634,16 +2662,26 @@ def reports_dashboard(
                 "unpaid_fine_count": int(fines["unpaid_fine_count"] or 0),
             },
             "borrow_trend": [
-                {
-                    "label": r["label"],
-                    "borrow_count": int(r["borrow_count"] or 0),
-                }
+                {"label": r["label"], "borrow_count": int(r["borrow_count"] or 0)}
                 for r in borrow_trend
             ],
+            "breakdowns": {
+                "borrows_by_subject": [
+                    {"subject": r["subject"], "borrow_count": int(r["borrow_count"] or 0)}
+                    for r in borrows_by_subject
+                ],
+                "borrows_by_grade": [
+                    {"grade": r["grade"], "borrow_count": int(r["borrow_count"] or 0)}
+                    for r in borrows_by_grade
+                ],
+                "overdue_by_grade": [
+                    {"grade": r["grade"], "overdue_count": int(r["overdue_count"] or 0)}
+                    for r in overdue_by_grade
+                ],
+            },
             "top_books": [dict(r) for r in top_books],
             "top_students": [dict(r) for r in top_students],
         }
-
     finally:
         cur.close()
         conn.close()

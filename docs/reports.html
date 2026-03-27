@@ -56,12 +56,25 @@
     .statNum{font-size:30px;font-weight:1000;line-height:1.05;margin-bottom:6px;color:#111;position:relative;}
     .statLbl{font-weight:1000;letter-spacing:.06em;text-transform:uppercase;font-size:11px;color:rgba(0,0,0,0.72);line-height:1.15;position:relative;}
     .statSub{margin-top:6px;font-weight:900;font-size:12px;color:rgba(0,0,0,0.60);position:relative;min-height:14px;}
+
+    /* ── DASHBOARD GRID: equal-height columns ── */
     .dashGrid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:12px;align-items:stretch;}
-    .leftCol,.rightCol{display:grid;gap:12px;min-height:0;}
-    .card{border-radius:16px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.62);overflow:hidden;display:flex;flex-direction:column;min-height:0;backdrop-filter:blur(10px);}
+    .leftCol{display:flex;flex-direction:column;gap:12px;}
+    .rightCol{display:flex;flex-direction:column;gap:12px;}
+
+    .card{border-radius:16px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.62);overflow:hidden;display:flex;flex-direction:column;backdrop-filter:blur(10px);}
+
+    /* Right column cards: each takes equal share of remaining space */
+    .rightCol .card{flex:1 1 0;min-height:0;}
+    .rightCol .cardHead{min-height:48px;}
+
     .cardHead{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;background:rgba(255,255,255,0.55);}
     .cardTitle{font-weight:1000;letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:rgba(0,0,0,0.78);line-height:1.2;}
-    .cardBody{padding:14px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;}
+    .cardBody{padding:14px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
+
+    /* Fixed scroll height for list/log cards */
+    .rightCol .cardBody{overflow:hidden;padding:10px 12px;min-height:250px;max-height:250px;}
+
     .dots{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.65);border:1px solid rgba(0,0,0,0.08);line-height:1;}
     .dot{width:8px;height:8px;border-radius:999px;background:var(--brand-green);animation:b 1.1s infinite ease-in-out;}
     .dot:nth-child(2){animation-delay:.12s;}.dot:nth-child(3){animation-delay:.24s;}
@@ -73,7 +86,11 @@
     .chartViewport{height:250px;min-height:250px;max-height:250px;position:relative;}
     .chartViewport.scrollY{overflow-y:auto;overflow-x:hidden;padding-right:6px;}
     .chartCanvas{width:100% !important;display:block;}
-    .list{display:flex;flex-direction:column;gap:10px;overflow:auto;padding-right:4px;max-height:300px;}
+
+    /* ── RIGHT COLUMN LIST/LOG heights ── */
+    .list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1 1 auto;min-height:0;height:100%;}
+    .logList{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1 1 auto;min-height:0;height:100%;}
+
     .rowLink{text-decoration:none;color:inherit;display:block;}
     .rowItem{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;padding:10px;border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.86);transition:transform 160ms ease,box-shadow 160ms ease;cursor:pointer;}
     .rowItem:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(0,0,0,0.12);}
@@ -85,7 +102,6 @@
     .badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:color-mix(in srgb,var(--brand-green) 18%,white);font-weight:1000;font-size:12px;white-space:nowrap;}
     .badge.yellow{background:color-mix(in srgb,var(--brand-yellow) 18%,white);}
     .empty{padding:14px;border-radius:14px;border:1px dashed rgba(0,0,0,0.18);background:rgba(255,255,255,0.40);color:rgba(0,0,0,0.70);font-weight:800;text-align:center;}
-    .logList{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:300px;padding-right:4px;}
     .logItem{border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.86);border-radius:14px;padding:10px 12px;display:grid;gap:6px;cursor:pointer;transition:transform 160ms ease,box-shadow 160ms ease;}
     .logItem:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(0,0,0,0.12);}
     .logTop{display:flex;align-items:center;justify-content:space-between;gap:10px;}
@@ -223,43 +239,11 @@
     .rptTable.circulationTable td,.rptTable.circulationTable th,.rptTable.studentsTable td,.rptTable.studentsTable th,.rptTable.borrowedTable td,.rptTable.borrowedTable th{overflow-wrap:break-word;word-break:normal;}
     .rptTable .ct{font-weight:800;line-height:1.16;}
     .rptTable .cs{font-size:10px;line-height:1.15;color:#666;margin-top:2px;}
-    /* ===== UNIFIED HEADER STYLE FOR ALL REPORT TABLES ===== */
-.rptTable thead th{
-  padding:8px 7px;
-  text-align:left;
-  font-size:10px;        /* ✅ SAME SIZE EVERYWHERE */
-  font-weight:900;
-  letter-spacing:.05em;
-  text-transform:uppercase;
-  line-height:1.2;
-  white-space:normal;
-  word-break:normal;
-  overflow-wrap:break-word;
-}
-
-    /* On-screen footer */
+    .rptTable thead th{padding:8px 7px;text-align:left;font-size:10px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;line-height:1.2;white-space:normal;word-break:normal;overflow-wrap:break-word;}
     .rptFoot{padding:10px 18px;background:#f7f7f7;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;gap:12px;}
     .rptFoot span{font-size:10px;color:#888;font-weight:700;line-height:1.25;}
-
-    /* ══════════════════════════════════════════════
-       UNIFIED NEUTRAL DROPDOWN
-    ══════════════════════════════════════════════ */
-    select{
-      appearance:none;
-      -webkit-appearance:none;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-repeat:no-repeat;
-      background-position:right 12px center;
-      background-size:12px 8px;
-      padding-right:36px;
-      cursor:pointer;
-    }
-    select:focus{
-      border-color:rgba(0,0,0,0.30);
-      box-shadow:0 0 0 3px rgba(0,0,0,0.07);
-    }
-
-    /* ── Grade & Section multi-select wrapper ── */
+    select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;padding-right:36px;cursor:pointer;}
+    select:focus{border-color:rgba(0,0,0,0.30);box-shadow:0 0 0 3px rgba(0,0,0,0.07);}
     .gradeMultiWrap{position:relative;min-width:190px;}
     .gradeMultiTrigger{width:100%;min-height:44px;padding:11px 36px 11px 12px;border-radius:12px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.70);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;color:#111;outline:none;font-size:14px;font-weight:800;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px;flex-wrap:wrap;position:relative;transition:border-color 160ms ease,box-shadow 160ms ease,background-color 160ms ease;user-select:none;overflow:hidden;}
     .gradeMultiTrigger:hover{background-color:rgba(255,255,255,0.85);}
@@ -288,7 +272,6 @@
     .gradeCheckbox::after{content:"";width:8px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translateY(-1px);opacity:0;transition:opacity 120ms ease;}
     .gradeDropItem.is-checked .gradeCheckbox::after{opacity:1;}
     .gradeDropLabel{font-size:13px;font-weight:800;color:#111;line-height:1;}
-
     .topbar{position:fixed;top:0;left:0;right:0;z-index:999;border-bottom:1px solid rgba(0,0,0,0.08);backdrop-filter:none;transition:background 200ms ease,border-color 200ms ease,box-shadow 200ms ease,backdrop-filter 200ms ease;}
     .topbar.is-scrolled{background:rgba(0,0,0,0.22);border-bottom:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);box-shadow:0 18px 45px rgba(0,0,0,0.22);}
     .nav__link:hover{color:rgba(255,255,255,0.78);}
@@ -301,8 +284,6 @@
     @media(max-width:760px){.twoCharts{grid-template-columns:1fr;}}
     @media(max-width:640px){.wrap{padding:104px 12px 80px;}.content{padding:14px 14px 18px;}.titleRow h1{font-size:24px;}.statsGrid{grid-template-columns:1fr;}.reportTypeGrid{grid-template-columns:1fr;}.insightRow{grid-template-columns:1fr;}.gradeDropList{grid-template-columns:repeat(3,1fr);}}
     @media(max-width:980px){.shell{grid-template-columns:74px 1fr;}}
-  
-    /* Simplified printable report layout */
     .previewBody{background:#dcdcdc;}
     .previewPages{padding:16px;gap:16px;}
     .rptPage{background:#fff;border:1px solid #d7d7d7;box-shadow:0 10px 22px rgba(0,0,0,0.08);}
@@ -321,7 +302,6 @@
     .rptFilters{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 14px;padding:6px 10px 10px;border:1px solid #e4e4e4;border-radius:12px;background:#fafafa;font-size:11px;color:#444;}
     .rptFilters span{display:inline-flex;align-items:center;gap:4px;min-height:28px;font-weight:700;line-height:1.2;white-space:normal;}
     .rptFilters span b{display:inline-block;color:#111;font-size:13px;line-height:1.1;}
-
     .rptSumGrid,.rsc{display:none !important;}
     .rptTable{width:100%;border-collapse:collapse;table-layout:fixed;font-size:10.5px;color:#222;}
     .rptTable thead th{padding:8px 7px;border:1px solid #d9d9d9;background:#efefef;font-size:10px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;text-align:left;color:#222;}
@@ -331,7 +311,6 @@
     .cs{margin-top:2px;font-size:9.4px;line-height:1.15;color:#666;}
     .pill{padding:2px 6px;font-size:9px;font-weight:800;border-radius:999px;}
     .rptFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 20px;border-top:1px solid #dcdcdc;background:#fff;font-size:10px;color:#666;font-weight:700;}
-
   </style>
 </head>
 <body>
@@ -420,6 +399,7 @@
                 </div>
 
                 <div class="dashGrid">
+                  <!-- LEFT COLUMN -->
                   <div class="leftCol">
                     <div class="card">
                       <div class="cardHead">
@@ -466,6 +446,7 @@
                     </div>
                   </div>
 
+                  <!-- RIGHT COLUMN -->
                   <div class="rightCol">
                     <div class="card">
                       <div class="cardHead"><div class="cardTitle" id="topBooksTitle">Most Borrowed Books</div><div id="dotsBooks" class="dots" style="display:none;"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>
@@ -599,7 +580,6 @@
   function getBP(){const y=cssVar("--brand-yellow")||"#f4e32f",g=cssVar("--brand-green")||"#8dd959";return{y,g,ys:wa(y,0.8),ym:wa(y,0.68),yl:wa(y,0.48),gs:wa(g,0.8),gm:wa(g,0.68),gl:wa(g,0.48),grid:wa(g,0.12),fill:wa(g,0.18),wl:"rgba(255,255,255,0.78)"};}
   function hasAny(a){return Array.isArray(a)&&a.some(v=>Number(v??0)>0);}
 
-  // Numeric grade sort
   function sortGradesNumeric(arr){
     return [...arr].sort((a,b)=>{
       const na=Number(String(a).trim()),nb=Number(String(b).trim());
@@ -701,6 +681,7 @@
   // ─────────────────────────────────────────────
   let cMonthly=null,cGenres=null,cBG=null,cOG=null,cInv=null;
   let _rg=[],_rbg=[],_rog=[],_ri=[];
+
   function destroyCharts(){for(const c of[cMonthly,cGenres,cBG,cOG,cInv])if(c)c.destroy();cMonthly=cGenres=cBG=cOG=cInv=null;}
   function setDots(on){["dotsTrend","dotsBreakdown","dotsOps","dotsBooks","dotsStudents"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=on?"inline-flex":"none";});}
   function coverFb(t){const p=getBP(),s=(t||"?").slice(0,14);return"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="280"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${p.g}"/><stop offset="1" stop-color="${p.y}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><rect x="18" y="18" width="164" height="244" rx="18" fill="rgba(255,255,255,0.25)"/><text x="100" y="145" font-size="20" text-anchor="middle" font-family="Arial" fill="rgba(0,0,0,0.65)" font-weight="700">${esc(s)}</text></svg>`);}
@@ -711,17 +692,20 @@
     const cl=["#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f","#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac"];
     cGenres=new Chart(el,{type:"doughnut",data:{labels:lb,datasets:[{data:vl,backgroundColor:cl.slice(0,lb.length),borderColor:"rgba(255,255,255,0.8)",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom",labels:{boxWidth:10,font:{size:10}}}}}});
   }
+
   function renderBG(){
     const p=getBP();const d=[..._rbg].sort((a,b)=>Number(b.borrow_count??0)-Number(a.borrow_count??0));
     const el=document.getElementById("chartBorrowByGrade");if(cBG){cBG.destroy();cBG=null;}
     el.height=Math.min(900,Math.max(250,d.length*28+70));
     cBG=new Chart(el,{type:"bar",data:{labels:d.map(x=>x.grade??"?"),datasets:[{data:d.map(x=>Number(x.borrow_count??0)),backgroundColor:"rgba(78,121,167,0.75)",borderColor:"rgba(78,121,167,1)",borderWidth:1.5,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},y:{grid:{display:false},ticks:{autoSkip:false,font:{size:10}}}}}});
   }
+
   function renderOG(){
     const p=getBP();const d=[..._rog].sort((a,b)=>Number(b.overdue_count??0)-Number(a.overdue_count??0));
     const el=document.getElementById("chartOverdueGrade");if(cOG){cOG.destroy();cOG=null;}
     cOG=new Chart(el,{type:"bar",data:{labels:d.map(x=>x.grade??"?"),datasets:[{data:d.map(x=>Number(x.overdue_count??0)),backgroundColor:"rgba(225,87,89,0.75)",borderColor:"rgba(225,87,89,1)",borderWidth:1.5,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},x:{grid:{display:false}}}}});
   }
+
   function renderInv(){
     const el=document.getElementById("chartInventory");if(cInv){cInv.destroy();cInv=null;}
     const statusColors={"available":"rgba(89,161,79,0.85)","borrowed":"rgba(78,121,167,0.85)","damaged":"rgba(242,142,43,0.85)","lost":"rgba(225,87,89,0.85)"};
@@ -730,6 +714,23 @@
     const bg=lb.map(l=>statusColors[l.toLowerCase()]||"rgba(186,176,172,0.85)");
     const bc=lb.map(l=>borderColors[l.toLowerCase()]||"rgba(186,176,172,1)");
     cInv=new Chart(el,{type:"doughnut",data:{labels:lb,datasets:[{data:vl,backgroundColor:bg,borderColor:bc,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:10,font:{size:10}}}}}});
+  }
+
+  // ─────────────────────────────────────────────
+  // Fetch genre distribution from most-borrowed (uses genre field)
+  // and grade data from grade-summary endpoint
+  // ─────────────────────────────────────────────
+  function applyDashboardBreakdowns(data){
+    const bd=data?.breakdowns||{};
+    _rg=(Array.isArray(bd.borrows_by_subject)?bd.borrows_by_subject:[])
+      .map(x=>({genre:String(x.subject||"Unknown").trim()||"Unknown",book_count:Number(x.borrow_count||0)}))
+      .filter(x=>x.book_count>0);
+    _rbg=(Array.isArray(bd.borrows_by_grade)?bd.borrows_by_grade:[])
+      .map(x=>({grade:String(x.grade||"?").trim()||"?",borrow_count:Number(x.borrow_count||0)}))
+      .filter(x=>x.borrow_count>0);
+    _rog=(Array.isArray(bd.overdue_by_grade)?bd.overdue_by_grade:[])
+      .map(x=>({grade:String(x.grade||"?").trim()||"?",overdue_count:Number(x.overdue_count||0)}))
+      .filter(x=>x.overdue_count>0);
   }
 
   async function loadActivity(){
@@ -756,16 +757,24 @@
     document.getElementById("trendTitle").textContent=`Borrowing Trend (${pLbl}${scopeLbl})`;
     document.getElementById("topBooksTitle").textContent=`Most Borrowed Books (${aLbl}${scopeLbl})`;
     document.getElementById("topStudentsTitle").textContent=`Top Borrowers (${aLbl}${scopeLbl})`;
+    document.getElementById("genresTitle").textContent=`Borrows by Subject (${aLbl}${scopeLbl})`;
+    document.getElementById("borrowGradeTitle").textContent=`Borrows by Grade (${aLbl}${scopeLbl})`;
+    document.getElementById("overdueGradeTitle").textContent=`Overdue by Grade (${aLbl}${scopeLbl})`;
+    document.getElementById("inventoryTitle").textContent=`Inventory Status (${aLbl}${scopeLbl})`;
     setDots(true);showProg();
     try{
       const qs=new URLSearchParams();
       if(period)qs.set("period",period);
       if(schoolYear)qs.set("school_year",schoolYear);
-      const res=await fetch(`${BASE_URL}/api/reports/dashboard?${qs.toString()}`,{headers:authHdr()});
+
+      const res = await fetch(`${BASE_URL}/api/reports/dashboard?${qs.toString()}`,{headers:authHdr()});
+
       const data=await res.json().catch(()=>({}));
       hideProg(true);setDots(false);
       if(!res.ok){destroyCharts();return;}
+
       const tot=data?.totals||{},inv=data?.inventory||{},fin=data?.fines||{};
+      applyDashboardBreakdowns(data);
       const tB=Number(tot.total_books??0),tC=Number(tot.total_copies??0),tS=Number(tot.total_students??0),aL=Number(tot.active_loans??0),oL=Number(tot.overdue_loans??0);
       document.getElementById("kpiBooks").textContent=fmtNum(tB);
       document.getElementById("kpiCopies").textContent=fmtNum(tC);
@@ -780,34 +789,53 @@
       const outstanding=Number(fin.outstanding_total??0),unpaidCnt=Number(fin.unpaid_fine_count??0);
       document.getElementById("kpiTotalFines").textContent=peso(outstanding);
       document.getElementById("kpiUnpaidFines").textContent=fmtNum(unpaidCnt);
+
       destroyCharts();
       const p=getBP();
+
+      // Trend chart
       const tr=Array.isArray(data?.borrow_trend)?data.borrow_trend:[];
       const mV=tr.map(x=>Number(x.borrow_count??0));
-      if(hasAny(mV)){document.getElementById("monthlyEmpty").style.display="none";cMonthly=new Chart(document.getElementById("chartMonthly"),{type:"line",data:{labels:tr.map(x=>x.label??""),datasets:[{label:"Borrowed",data:mV,borderColor:p.g,backgroundColor:p.fill,pointBackgroundColor:p.y,borderWidth:3,fill:true,tension:0.28}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},x:{grid:{display:false}}}}});}else document.getElementById("monthlyEmpty").style.display="block";
-      _rg=Array.isArray(data?.genre_distribution)?data.genre_distribution:[];
-      if(hasAny(_rg.map(x=>x.book_count))){document.getElementById("genresEmpty").style.display="none";renderGenres();}else document.getElementById("genresEmpty").style.display="block";
-      _rbg=Array.isArray(data?.borrowed_by_grade)?data.borrowed_by_grade:[];
-      if(hasAny(_rbg.map(x=>x.borrow_count))){document.getElementById("borrowGradeEmpty").style.display="none";renderBG();}else document.getElementById("borrowGradeEmpty").style.display="block";
-      _rog=Array.isArray(data?.overdue_breakdown?.by_grade)?data.overdue_breakdown.by_grade:[];
-      if(hasAny(_rog.map(x=>x.overdue_count))){document.getElementById("overdueGradeEmpty").style.display="none";renderOG();}else document.getElementById("overdueGradeEmpty").style.display="block";
+      if(hasAny(mV)){document.getElementById("monthlyEmpty").style.display="none";cMonthly=new Chart(document.getElementById("chartMonthly"),{type:"line",data:{labels:tr.map(x=>x.label??""),datasets:[{label:"Borrowed",data:mV,borderColor:p.g,backgroundColor:p.fill,pointBackgroundColor:p.y,borderWidth:3,fill:true,tension:0.28}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:p.grid},ticks:{precision:0}},x:{grid:{display:false}}}}});}
+      else document.getElementById("monthlyEmpty").style.display="block";
+
+      // Genre chart (from breakdown fetch)
+      if(hasAny(_rg.map(x=>x.book_count))){document.getElementById("genresEmpty").style.display="none";renderGenres();}
+      else document.getElementById("genresEmpty").style.display="block";
+
+      // Borrows by grade (from grade-summary)
+      if(hasAny(_rbg.map(x=>x.borrow_count))){document.getElementById("borrowGradeEmpty").style.display="none";renderBG();}
+      else document.getElementById("borrowGradeEmpty").style.display="block";
+
+      // Overdue by grade (from overdue endpoint)
+      if(hasAny(_rog.map(x=>x.overdue_count))){document.getElementById("overdueGradeEmpty").style.display="none";renderOG();}
+      else document.getElementById("overdueGradeEmpty").style.display="block";
+
+      // Inventory chart
       _ri=cs;
-      if(hasAny(_ri.map(x=>x.count))){document.getElementById("inventoryEmpty").style.display="none";renderInv();}else document.getElementById("inventoryEmpty").style.display="block";
-      const books=Array.isArray(data?.most_borrowed_books)?data.most_borrowed_books:[];
+      if(hasAny(_ri.map(x=>x.count))){document.getElementById("inventoryEmpty").style.display="none";renderInv();}
+      else document.getElementById("inventoryEmpty").style.display="block";
+
+      // Top books
+      const books=Array.isArray(data?.most_borrowed_books)?data.most_borrowed_books:(Array.isArray(data?.top_books)?data.top_books:[]);
       if(books.length){document.getElementById("topBooksEmpty").style.display="none";document.getElementById("topBooks").innerHTML=books.map(b=>{const cv=b.cover_url||coverFb(b.title||"");return`<a class="rowLink" href="${b.book_id?`details.html?book_id=${encodeURIComponent(b.book_id)}`:""}"${!b.book_id?' onclick="return false;"':""}>
         <div class="rowItem"><div class="cover"><img src="${esc(cv)}" alt="" onerror="this.src='${coverFb(b.title||"")}'" ></div>
         <div><div class="metaTitle">${esc(b.title||"Untitled")}</div><div class="metaSub">${esc(b.author||"")}</div>
         <div class="metaBadges"><span class="badge yellow">\u00d7${fmtNum(b.borrow_count??0)} ${aLbl}</span></div></div></div></a>`;}).join("");}
       else{document.getElementById("topBooksEmpty").style.display="block";document.getElementById("topBooks").innerHTML="";}
-      const students=Array.isArray(data?.most_active_students)?data.most_active_students:[];
+
+      // Top students
+      const students=Array.isArray(data?.most_active_students)?data.most_active_students:(Array.isArray(data?.top_students)?data.top_students:[]);
       if(students.length){document.getElementById("topStudentsEmpty").style.display="none";document.getElementById("topStudents").innerHTML=students.map(s=>{const nm=`${s.last_name||""}, ${s.first_name||""}`.replace(/^,\s*/,"").trim()||s.student_code||"Student";return`<a class="rowLink" href="${s.student_id?`student_details.html?student_id=${encodeURIComponent(s.student_id)}`:""}"${!s.student_id?' onclick="return false;"':""}>
         <div class="rowItem" style="grid-template-columns:1fr;"><div>
         <div class="metaTitle">${esc(nm)}</div><div class="metaSub">${esc(s.student_code||"")} \u2022 Grade ${esc(s.grade||"\u2014")} \u2022 ${esc(s.section||"\u2014")}</div>
         <div class="metaBadges"><span class="badge">\u00d7${fmtNum(s.borrow_count??0)} ${aLbl}</span></div></div></div></a>`;}).join("");}
       else{document.getElementById("topStudentsEmpty").style.display="block";document.getElementById("topStudents").innerHTML="";}
+
       await loadActivity();
     }catch(err){hideProg(false);setDots(false);destroyCharts();console.error(err);}
   }
+
   document.getElementById("dashboardPeriod").addEventListener("change",loadDashboard);
   document.getElementById("dashboardSchoolYear").addEventListener("change",loadDashboard);
   document.getElementById("btnRefreshDashboard").addEventListener("click",loadDashboard);
@@ -1299,11 +1327,6 @@
     return `${parts.filter(Boolean).join("_")||"report"}.pdf`;
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // PDF EXPORT — html2canvas + jsPDF (pixel-perfect, immediate download)
-  // No popups. Captures exactly what the preview renders — logos,
-  // brand colours, pills, fonts — everything.
-  // ═══════════════════════════════════════════════════════════════
   async function downloadReportPdf() {
     const srcPages = [...document.querySelectorAll('#reportOutput .rptPage')];
     if (!srcPages.length) {
