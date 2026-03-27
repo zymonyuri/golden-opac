@@ -2446,7 +2446,6 @@ def reports_dashboard(
         trend_where.append(f"{borrowed_local_sql} >= %s")
         trend_where.append(f"{borrowed_local_sql} < %s")
         trend_params.extend([range_start, range_end])
-
         loan_scope_where.append(f"{borrowed_local_sql} >= %s")
         loan_scope_where.append(f"{borrowed_local_sql} < %s")
         loan_scope_params.extend([range_start, range_end])
@@ -2468,12 +2467,11 @@ def reports_dashboard(
         if school_year:
             active_loans_where.append("COALESCE(TRIM(school_year), '') = %s")
             active_loans_params.append(school_year)
-
         cur.execute(
             f"""
             SELECT COUNT(*) AS active_loans
             FROM loan
-            WHERE {" AND ".join(active_loans_where)}
+            WHERE {' AND '.join(active_loans_where)}
             """,
             tuple(active_loans_params),
         )
@@ -2484,12 +2482,11 @@ def reports_dashboard(
         if school_year:
             overdue_where.append("COALESCE(TRIM(school_year), '') = %s")
             overdue_params.append(school_year)
-
         cur.execute(
             f"""
             SELECT COUNT(*) AS overdue_loans
             FROM loan
-            WHERE {" AND ".join(overdue_where)}
+            WHERE {' AND '.join(overdue_where)}
             """,
             tuple(overdue_params),
         )
@@ -2500,9 +2497,7 @@ def reports_dashboard(
         if school_year:
             fine_where.append("COALESCE(TRIM(l.school_year), '') = %s")
             fine_params.append(school_year)
-
         fine_where_sql = ("WHERE " + " AND ".join(fine_where)) if fine_where else ""
-
         cur.execute(
             f"""
             SELECT
@@ -2516,20 +2511,12 @@ def reports_dashboard(
         )
         fines = cur.fetchone()
 
-        cur.execute(
-            f"""
-            SELECT bc.status, COUNT(*) AS count
-            FROM book_copy bc
-            JOIN (
-                SELECT DISTINCT l.copy_id
-                FROM loan l
-                WHERE {loan_scope_sql}
-            ) scoped ON scoped.copy_id = bc.copy_id
-            GROUP BY bc.status
-            ORDER BY bc.status
-            """,
-            tuple(loan_scope_params),
-        )
+        cur.execute("""
+            SELECT status, COUNT(*) AS count
+            FROM book_copy
+            GROUP BY status
+            ORDER BY status
+        """)
         copy_status_distribution = cur.fetchall()
 
         cur.execute(
@@ -2549,13 +2536,13 @@ def reports_dashboard(
         cur.execute(
             f"""
             SELECT
-                COALESCE(NULLIF(TRIM(b.subject), ''), 'Unknown') AS subject,
+                COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown') AS subject,
                 COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN book_copy bc ON bc.copy_id = l.copy_id
             JOIN book b ON b.book_id = bc.book_id
             WHERE {loan_scope_sql}
-            GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), 'Unknown')
+            GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown')
             ORDER BY borrow_count DESC, subject ASC
             LIMIT 10
             """,
@@ -2566,33 +2553,38 @@ def reports_dashboard(
         cur.execute(
             f"""
             SELECT
-                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
+                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unspecified') AS grade,
                 COUNT(l.loan_id) AS borrow_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
             WHERE {loan_scope_sql}
-            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
-            ORDER BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') ASC
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unspecified')
+            ORDER BY borrow_count DESC, grade ASC
             """,
             tuple(loan_scope_params),
         )
         borrows_by_grade = cur.fetchall()
 
+        overdue_grade_where = ["l.returned_at IS NULL", "l.due_at < NOW()"]
+        overdue_grade_params = []
+        if school_year:
+            overdue_grade_where.append("COALESCE(TRIM(l.school_year), '') = %s")
+            overdue_grade_params.append(school_year)
+        overdue_grade_where.append(f"{borrowed_local_sql} >= %s")
+        overdue_grade_where.append(f"{borrowed_local_sql} < %s")
+        overdue_grade_params.extend([range_start, range_end])
         cur.execute(
             f"""
             SELECT
-                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') AS grade,
-                COUNT(l.loan_id) AS overdue_count
+                COALESCE(NULLIF(TRIM(s.grade), ''), 'Unspecified') AS grade,
+                COUNT(*) AS overdue_count
             FROM loan l
             JOIN student s ON s.student_id = l.student_id
-            WHERE {loan_scope_sql}
-              AND l.returned_at IS NULL
-              AND l.due_at < NOW()
-              AND COALESCE(l.status, '') NOT IN ('lost', 'returned')
-            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown')
-            ORDER BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unknown') ASC
+            WHERE {' AND '.join(overdue_grade_where)}
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unspecified')
+            ORDER BY overdue_count DESC, grade ASC
             """,
-            tuple(loan_scope_params),
+            tuple(overdue_grade_params),
         )
         overdue_by_grade = cur.fetchall()
 
@@ -2640,10 +2632,6 @@ def reports_dashboard(
         return {
             "period": period,
             "school_year": school_year,
-            "filters": {
-                "range_start": range_start.isoformat(),
-                "range_end": range_end.isoformat(),
-            },
             "totals": {
                 "total_books": int(total_books or 0),
                 "total_copies": int(total_copies or 0),
@@ -2665,26 +2653,25 @@ def reports_dashboard(
                 {"label": r["label"], "borrow_count": int(r["borrow_count"] or 0)}
                 for r in borrow_trend
             ],
-            "breakdowns": {
-                "borrows_by_subject": [
-                    {"subject": r["subject"], "borrow_count": int(r["borrow_count"] or 0)}
-                    for r in borrows_by_subject
-                ],
-                "borrows_by_grade": [
-                    {"grade": r["grade"], "borrow_count": int(r["borrow_count"] or 0)}
-                    for r in borrows_by_grade
-                ],
-                "overdue_by_grade": [
-                    {"grade": r["grade"], "overdue_count": int(r["overdue_count"] or 0)}
-                    for r in overdue_by_grade
-                ],
-            },
+            "borrows_by_subject": [
+                {"subject": r["subject"], "borrow_count": int(r["borrow_count"] or 0)}
+                for r in borrows_by_subject
+            ],
+            "borrows_by_grade": [
+                {"grade": r["grade"], "borrow_count": int(r["borrow_count"] or 0)}
+                for r in borrows_by_grade
+            ],
+            "overdue_by_grade": [
+                {"grade": r["grade"], "overdue_count": int(r["overdue_count"] or 0)}
+                for r in overdue_by_grade
+            ],
             "top_books": [dict(r) for r in top_books],
             "top_students": [dict(r) for r in top_students],
         }
     finally:
         cur.close()
         conn.close()
+
 # -----------------------------
 # REPORTS: GENERATE REPORT (Preview JSON) (Librarian Only)
 # -----------------------------

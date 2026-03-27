@@ -58,22 +58,21 @@
     .statSub{margin-top:6px;font-weight:900;font-size:12px;color:rgba(0,0,0,0.60);position:relative;min-height:14px;}
 
     /* ── DASHBOARD GRID: equal-height columns ── */
-    .dashGrid{display:grid;grid-template-columns:1.25fr 0.75fr;gap:12px;align-items:stretch;}
+    .dashGrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,0.75fr);gap:12px;align-items:stretch;}
     .leftCol{display:flex;flex-direction:column;gap:12px;}
     .rightCol{display:flex;flex-direction:column;gap:12px;}
 
     .card{border-radius:16px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.62);overflow:hidden;display:flex;flex-direction:column;backdrop-filter:blur(10px);}
 
     /* Right column cards: each takes equal share of remaining space */
-    .rightCol .card{flex:1 1 0;min-height:0;}
-    .rightCol .cardHead{min-height:48px;}
+    .rightCol .card{flex:1 1 0;min-height:318px;max-height:318px;}
 
     .cardHead{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px;flex:0 0 auto;background:rgba(255,255,255,0.55);}
     .cardTitle{font-weight:1000;letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:rgba(0,0,0,0.78);line-height:1.2;}
     .cardBody{padding:14px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px;overflow:hidden;}
 
     /* Fixed scroll height for list/log cards */
-    .rightCol .cardBody{overflow:hidden;padding:10px 12px;min-height:250px;max-height:250px;}
+    .rightCol .cardBody{overflow:hidden;padding:10px 12px;min-height:0;}
 
     .dots{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.65);border:1px solid rgba(0,0,0,0.08);line-height:1;}
     .dot{width:8px;height:8px;border-radius:999px;background:var(--brand-green);animation:b 1.1s infinite ease-in-out;}
@@ -83,13 +82,13 @@
     .chartBox{border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.55);padding:10px;display:flex;flex-direction:column;}
     .chartBoxHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
     .chartBoxTitle{font-weight:1000;letter-spacing:.05em;text-transform:uppercase;font-size:12px;color:rgba(0,0,0,0.75);}
-    .chartViewport{height:250px;min-height:250px;max-height:250px;position:relative;}
+    .chartViewport{height:250px;min-height:250px;max-height:250px;position:relative;flex:0 0 250px;}
     .chartViewport.scrollY{overflow-y:auto;overflow-x:hidden;padding-right:6px;}
     .chartCanvas{width:100% !important;display:block;}
 
     /* ── RIGHT COLUMN LIST/LOG heights ── */
-    .list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1 1 auto;min-height:0;height:100%;}
-    .logList{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1 1 auto;min-height:0;height:100%;}
+    .list{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1 1 auto;min-height:0;}
+    .logList{display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px;flex:1 1 auto;min-height:0;}
 
     .rowLink{text-decoration:none;color:inherit;display:block;}
     .rowItem{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;padding:10px;border-radius:14px;border:1px solid rgba(0,0,0,0.08);background:rgba(255,255,255,0.86);transition:transform 160ms ease,box-shadow 160ms ease;cursor:pointer;}
@@ -720,17 +719,74 @@
   // Fetch genre distribution from most-borrowed (uses genre field)
   // and grade data from grade-summary endpoint
   // ─────────────────────────────────────────────
-  function applyDashboardBreakdowns(data){
-    const bd=data?.breakdowns||{};
-    _rg=(Array.isArray(bd.borrows_by_subject)?bd.borrows_by_subject:[])
-      .map(x=>({genre:String(x.subject||"Unknown").trim()||"Unknown",book_count:Number(x.borrow_count||0)}))
-      .filter(x=>x.book_count>0);
-    _rbg=(Array.isArray(bd.borrows_by_grade)?bd.borrows_by_grade:[])
-      .map(x=>({grade:String(x.grade||"?").trim()||"?",borrow_count:Number(x.borrow_count||0)}))
-      .filter(x=>x.borrow_count>0);
-    _rog=(Array.isArray(bd.overdue_by_grade)?bd.overdue_by_grade:[])
-      .map(x=>({grade:String(x.grade||"?").trim()||"?",overdue_count:Number(x.overdue_count||0)}))
-      .filter(x=>x.overdue_count>0);
+  function getDashboardDateRange(period){
+    const now=new Date();
+    const end=new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start=new Date(end);
+    if(period==="daily"){
+      start=new Date(end);
+    }else if(period==="weekly"){
+      start.setDate(end.getDate()-6);
+    }else if(period==="yearly"){
+      start=new Date(end.getFullYear(),0,1);
+    }else{
+      start=new Date(end.getFullYear(), end.getMonth(), 1);
+    }
+    return {date_from: start.toISOString().slice(0,10), date_to: now.toISOString().slice(0,10)};
+  }
+
+  async function fetchBreakdownData(schoolYear, period){
+    const rg = getDashboardDateRange(period||"monthly");
+    const qs=new URLSearchParams();
+    qs.set("date_from",rg.date_from);
+    qs.set("date_to",rg.date_to);
+    if(schoolYear)qs.set("school_year",schoolYear);
+    qs.set("limit","100");
+
+    const overdueQs = new URLSearchParams();
+    if(schoolYear)overdueQs.set("school_year",schoolYear);
+    if(rg.date_from)overdueQs.set("date_from",rg.date_from);
+    if(rg.date_to)overdueQs.set("date_to",rg.date_to);
+
+    const [mbRes, gsRes, ovRes] = await Promise.allSettled([
+      fetch(`${BASE_URL}/api/reports/most-borrowed?${qs.toString()}`,{headers:authHdr()}),
+      fetch(`${BASE_URL}/api/reports/grade-summary?${qs.toString()}`,{headers:authHdr()}),
+      fetch(`${BASE_URL}/api/reports/overdue?${overdueQs.toString()}`,{headers:authHdr()}),
+    ]);
+
+    let genreMap={};
+    if(mbRes.status==="fulfilled"&&mbRes.value.ok){
+      const d=await mbRes.value.json().catch(()=>({}));
+      const rows=Array.isArray(d.rows)?d.rows:[];
+      rows.forEach(r=>{
+        const g=String(r.subject||r.genre||"Unknown").trim()||"Unknown";
+        genreMap[g]=(genreMap[g]||0)+Number(r.borrow_count||0);
+      });
+    }
+    const genreEntries=Object.entries(genreMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    _rg=genreEntries.map(([genre,book_count])=>({genre,book_count}));
+
+    let bgMap={};
+    if(gsRes.status==="fulfilled"&&gsRes.value.ok){
+      const d=await gsRes.value.json().catch(()=>({}));
+      const rows=Array.isArray(d.rows)?d.rows:[];
+      rows.forEach(r=>{
+        const g=String(r.grade||"?").trim()||"?";
+        bgMap[g]=(bgMap[g]||0)+Number(r.total_borrows||r.borrow_count||0);
+      });
+    }
+    _rbg=Object.entries(bgMap).map(([grade,borrow_count])=>({grade,borrow_count}));
+
+    let ogMap={};
+    if(ovRes.status==="fulfilled"&&ovRes.value.ok){
+      const d=await ovRes.value.json().catch(()=>({}));
+      const rows=Array.isArray(d.rows)?d.rows:(Array.isArray(d.items)?d.items:[]);
+      rows.forEach(r=>{
+        const g=String(r.grade||"?").trim()||"?";
+        ogMap[g]=(ogMap[g]||0)+Number(r.overdue_count||1);
+      });
+    }
+    _rog=Object.entries(ogMap).map(([grade,overdue_count])=>({grade,overdue_count}));
   }
 
   async function loadActivity(){
@@ -757,10 +813,6 @@
     document.getElementById("trendTitle").textContent=`Borrowing Trend (${pLbl}${scopeLbl})`;
     document.getElementById("topBooksTitle").textContent=`Most Borrowed Books (${aLbl}${scopeLbl})`;
     document.getElementById("topStudentsTitle").textContent=`Top Borrowers (${aLbl}${scopeLbl})`;
-    document.getElementById("genresTitle").textContent=`Borrows by Subject (${aLbl}${scopeLbl})`;
-    document.getElementById("borrowGradeTitle").textContent=`Borrows by Grade (${aLbl}${scopeLbl})`;
-    document.getElementById("overdueGradeTitle").textContent=`Overdue by Grade (${aLbl}${scopeLbl})`;
-    document.getElementById("inventoryTitle").textContent=`Inventory Status (${aLbl}${scopeLbl})`;
     setDots(true);showProg();
     try{
       const qs=new URLSearchParams();
@@ -768,13 +820,27 @@
       if(schoolYear)qs.set("school_year",schoolYear);
 
       const res = await fetch(`${BASE_URL}/api/reports/dashboard?${qs.toString()}`,{headers:authHdr()});
-
       const data=await res.json().catch(()=>({}));
+      if(!res.ok){
+        hideProg(false);setDots(false);destroyCharts();
+        throw new Error(data?.detail || 'Dashboard load failed');
+      }
+
+      const apiSubject = Array.isArray(data?.borrows_by_subject) ? data.borrows_by_subject : [];
+      const apiGrade = Array.isArray(data?.borrows_by_grade) ? data.borrows_by_grade : [];
+      const apiOverdue = Array.isArray(data?.overdue_by_grade) ? data.overdue_by_grade : [];
+
+      if(apiSubject.length || apiGrade.length || apiOverdue.length){
+        _rg = apiSubject.map(x=>({genre:(x.subject??x.genre??"Unknown"),book_count:Number(x.borrow_count??x.book_count??x.count??0)}));
+        _rbg = apiGrade.map(x=>({grade:(x.grade??"?"),borrow_count:Number(x.borrow_count??x.total_borrows??x.count??0)}));
+        _rog = apiOverdue.map(x=>({grade:(x.grade??"?"),overdue_count:Number(x.overdue_count??x.count??0)}));
+      }else{
+        await fetchBreakdownData(schoolYear, period);
+      }
+
       hideProg(true);setDots(false);
-      if(!res.ok){destroyCharts();return;}
 
       const tot=data?.totals||{},inv=data?.inventory||{},fin=data?.fines||{};
-      applyDashboardBreakdowns(data);
       const tB=Number(tot.total_books??0),tC=Number(tot.total_copies??0),tS=Number(tot.total_students??0),aL=Number(tot.active_loans??0),oL=Number(tot.overdue_loans??0);
       document.getElementById("kpiBooks").textContent=fmtNum(tB);
       document.getElementById("kpiCopies").textContent=fmtNum(tC);
