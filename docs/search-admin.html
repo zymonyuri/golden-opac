@@ -186,6 +186,23 @@
       gap:6px;
     }
 
+    .sortSelectWrap{
+      position:relative;
+    }
+
+    .sortSelectWrap::after{
+      content:"";
+      position:absolute;
+      right:14px;
+      top:50%;
+      width:10px;
+      height:10px;
+      border-right:2px solid rgba(0,0,0,0.55);
+      border-bottom:2px solid rgba(0,0,0,0.55);
+      transform:translateY(-65%) rotate(45deg);
+      pointer-events:none;
+    }
+
     .sortBlock label{
       font-size:12px;
       font-weight:900;
@@ -195,15 +212,26 @@
     }
 
     .sortBlock select{
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
       height:46px;
+      width:100%;
       border-radius:14px;
       border:1px solid rgba(0,0,0,0.12);
       background: rgba(0,0,0,0.04);
-      padding:0 12px;
+      padding:0 42px 0 12px;
       font:inherit;
       font-weight:800;
       color:#111;
       outline:0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
+      cursor:pointer;
+    }
+
+    .sortBlock select:focus{
+      border-color: color-mix(in srgb, var(--brand-yellow) 42%, rgba(0,0,0,0.12));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 18%, transparent);
     }
 
     .searchWrap{
@@ -1307,13 +1335,15 @@
 
               <div class="sortBlock">
                 <label for="sortBooks">Sort</label>
-                <select id="sortBooks">
-                  <option value="title_asc">A-Z</option>
-                  <option value="title_desc">Z-A</option>
-                  <option value="newest">Recently Added</option>
-                  <option value="oldest">Oldest Added</option>
-                  <option value="updated_desc">Recently Modified</option>
-                </select>
+                <div class="sortSelectWrap">
+                  <select id="sortBooks">
+                    <option value="title_asc">Title: A to Z</option>
+                    <option value="title_desc">Title: Z to A</option>
+                    <option value="newest">Date Added: Newest First</option>
+                    <option value="oldest">Date Added: Oldest First</option>
+                    <option value="updated_desc">Date Modified</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -1321,9 +1351,7 @@
               <div class="search-progress__bar" id="progressBar"></div>
             </div>
 
-            <div class="hint">
-              All current books load automatically. Use search and sort to narrow the list, then click a book to open details and edit.
-            </div>
+           
 
             <div class="error" id="err"></div>
             <div class="empty" id="empty">No books found. Try a different keyword.</div>
@@ -1856,7 +1884,7 @@
           page_size: String(pageSize)
         });
 
-        const res = await fetch(`${BASE_URL}/api/librarian/books?${params.toString()}`, {
+        const res = await fetch(`${BASE_URL}/api/librarian/books/search?${params.toString()}`, {
           headers: authHeaders()
         });
         const data = await res.json().catch(()=> ({}));
