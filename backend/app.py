@@ -3921,27 +3921,25 @@ def bulk_promote_students(
     cur = conn.cursor()
 
     try:
-        if st is None:
-            cur.execute(
-                """
-                UPDATE student
-                SET grade = %s, section = %s, updated_at = NOW()
-                WHERE grade = %s
-                  AND (%s IS NULL OR section = %s)
-                """,
-                (g_to, to_section_clean, g_from, from_section_clean, from_section_clean),
-            )
-        else:
-            cur.execute(
-                """
-                UPDATE student
-                SET grade = %s, section = %s, updated_at = NOW()
-                WHERE grade = %s
-                  AND status = %s
-                  AND (%s IS NULL OR section = %s)
-                """,
-                (g_to, to_section_clean, g_from, st, from_section_clean, from_section_clean),
-            )
+        where_clauses = ["grade = %s"]
+        params = [g_to, to_section_clean, g_from]
+
+        if st is not None:
+            where_clauses.append("status = %s")
+            params.append(st)
+
+        if from_section_clean is not None:
+            where_clauses.append("section = %s")
+            params.append(from_section_clean)
+
+        cur.execute(
+            f"""
+            UPDATE student
+            SET grade = %s, section = %s, updated_at = NOW()
+            WHERE {' AND '.join(where_clauses)}
+            """,
+            tuple(params),
+        )
 
         updated = cur.rowcount
         conn.commit()
