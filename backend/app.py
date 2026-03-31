@@ -3883,6 +3883,8 @@ def circulation_lookup(barcode: str, current=Depends(get_current_librarian)):
 def bulk_promote_students(
     from_grade: str,
     to_grade: str,
+    from_section: str | None = None,
+    to_section: str | None = None,
     only_status: str | None = "active",
     current=Depends(get_current_librarian),
 ):
@@ -3902,6 +3904,12 @@ def bulk_promote_students(
     if g_from == g_to:
         raise HTTPException(status_code=400, detail="from_grade and to_grade must be different")
 
+    from_section_clean = from_section.strip() if from_section and from_section.strip() else None
+    to_section_clean = to_section.strip() if to_section and to_section.strip() else None
+
+    if not to_section_clean:
+        raise HTTPException(status_code=400, detail="to_section is required")
+
     if only_status is not None:
         st = only_status.strip().lower()
         if st not in ["active", "suspended", "graduated"]:
@@ -3917,28 +3925,33 @@ def bulk_promote_students(
             cur.execute(
                 """
                 UPDATE student
-                SET grade = %s, updated_at = NOW()
+                SET grade = %s, section = %s, updated_at = NOW()
                 WHERE grade = %s
+                  AND (%s IS NULL OR section = %s)
                 """,
-                (g_to, g_from),
+                (g_to, to_section_clean, g_from, from_section_clean, from_section_clean),
             )
         else:
             cur.execute(
                 """
                 UPDATE student
-                SET grade = %s, updated_at = NOW()
-                WHERE grade = %s AND status = %s
+                SET grade = %s, section = %s, updated_at = NOW()
+                WHERE grade = %s
+                  AND status = %s
+                  AND (%s IS NULL OR section = %s)
                 """,
-                (g_to, g_from, st),
+                (g_to, to_section_clean, g_from, st, from_section_clean, from_section_clean),
             )
 
         updated = cur.rowcount
         conn.commit()
 
         return {
-            "message": "Bulk grade update complete",
+            "message": "Bulk promotion complete",
             "from_grade": g_from,
             "to_grade": g_to,
+            "from_section": from_section_clean,
+            "to_section": to_section_clean,
             "only_status": st,
             "updated_count": updated,
         }

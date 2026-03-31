@@ -2574,11 +2574,12 @@ document.documentElement.classList.add("branding-loading");
       const from_grade = document.getElementById("promoteFromGrade").value.trim();
       const from_section = document.getElementById("promoteFromSection").value.trim();
       const to_grade = document.getElementById("promoteToGrade").value.trim();
-      if (!from_grade || !to_grade){ showToast("Please complete the promotion fields"); return; }
-      const data = await apiFetch("/api/students/bulk-promote?" + qs({ from_grade, to_grade, only_status: "active" }), { method: "POST" });
+      const to_section = document.getElementById("promoteToSection").value.trim();
+      if (!from_grade || !to_grade || !to_section){ showToast("Please complete the promotion fields"); return; }
+      const data = await apiFetch("/api/students/bulk-promote?" + qs({ from_grade, from_section, to_grade, to_section, only_status: "active" }), { method: "POST" });
       document.getElementById("promoteStatus").textContent = "Promotion completed.";
       const success = document.getElementById("promoteSuccess");
-      success.textContent = `${data?.updated_count ?? 0} student(s) promoted from ${from_grade}${from_section ? " ("+from_section+")" : ""} to ${to_grade}.`;
+      success.textContent = `${data?.updated_count ?? 0} student(s) promoted from ${from_grade}${from_section ? " ("+from_section+")" : ""} to ${data?.to_grade ?? to_grade} (${data?.to_section ?? to_section}).`;
       success.classList.add("show");
       showToast("Students promoted");
       document.getElementById("promoteToGrade").value = "";
