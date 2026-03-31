@@ -5276,7 +5276,7 @@ def list_librarians(current=Depends(get_current_librarian)):
 @app.get("/api/librarian/books/search")
 def librarian_advanced_search(
     q: str = "",
-    sort: str = "relevance",   # relevance|title_asc|title_desc|newest|most_borrowed
+    sort: str = "title_asc",   # relevance|title_asc|title_desc|newest|oldest|updated_desc|updated_asc|most_borrowed
     page: int = 1,
     page_size: int = 20,
     current=Depends(get_current_librarian),
@@ -5312,6 +5312,15 @@ def librarian_advanced_search(
         order_params = []
     elif sort == "newest":
         order_sql = "b.created_at DESC"
+        order_params = []
+    elif sort == "oldest":
+        order_sql = "b.created_at ASC"
+        order_params = []
+    elif sort == "updated_desc":
+        order_sql = "b.updated_at DESC NULLS LAST, b.title ASC"
+        order_params = []
+    elif sort == "updated_asc":
+        order_sql = "b.updated_at ASC NULLS LAST, b.title ASC"
         order_params = []
     elif sort == "most_borrowed":
         order_sql = "borrow_count DESC NULLS LAST, b.title ASC"

@@ -172,11 +172,38 @@
 
     .tools{
       display:grid;
-      grid-template-columns:1fr;
+      grid-template-columns:minmax(0, 1fr) 220px;
       gap:10px;
       margin-bottom:10px;
       flex:0 0 auto;
-      align-items:start;
+      align-items:end;
+    }
+
+    .sortBlock{
+      min-width:0;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .sortBlock label{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.58);
+    }
+
+    .sortBlock select{
+      height:46px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      padding:0 12px;
+      font:inherit;
+      font-weight:800;
+      color:#111;
+      outline:0;
     }
 
     .searchWrap{
@@ -1122,6 +1149,7 @@
 
     @media (max-width:860px){
       .shell{ grid-template-columns:74px 1fr; }
+      .tools{ grid-template-columns:1fr; }
       .editorGrid{ grid-template-columns:1fr; }
       .bigCover{ width:100%; height:220px; }
       .detailsGrid{ grid-template-columns:1fr; }
@@ -1277,13 +1305,24 @@
                 <input id="q" autocomplete="off" placeholder="Search books by any keyword (title, author, section, subject, ISBN...)">
               </div>
 
-              <div class="search-progress" id="progressWrap" aria-hidden="true">
-                <div class="search-progress__bar" id="progressBar"></div>
+              <div class="sortBlock">
+                <label for="sortBooks">Sort</label>
+                <select id="sortBooks">
+                  <option value="title_asc">A-Z</option>
+                  <option value="title_desc">Z-A</option>
+                  <option value="newest">Recently Added</option>
+                  <option value="oldest">Oldest Added</option>
+                  <option value="updated_desc">Recently Modified</option>
+                </select>
               </div>
             </div>
 
+            <div class="search-progress" id="progressWrap" aria-hidden="true">
+              <div class="search-progress__bar" id="progressBar"></div>
+            </div>
+
             <div class="hint">
-              Type any keyword to search. Click a book to open details and edit.
+              All current books load automatically. Use search and sort to narrow the list, then click a book to open details and edit.
             </div>
 
             <div class="error" id="err"></div>
@@ -1613,6 +1652,7 @@
     }
 
     const qEl = document.getElementById("q");
+    const sortEl = document.getElementById("sortBooks");
     const listEl = document.getElementById("list");
     const listLoader = document.getElementById("listLoader");
     const empty = document.getElementById("empty");
@@ -1764,7 +1804,7 @@
 
     function renderList(results){
       clearListCards();
-      empty.style.display = (!results.length && qEl.value.trim()) ? "block" : "none";
+      empty.style.display = results.length ? "none" : "block";
 
       for (const b of results){
         const card = document.createElement("div");
@@ -1803,26 +1843,46 @@
       return [];
     }
 
+    async function fetchAllBooks(q, sort){
+      const pageSize = 100;
+      let page = 1;
+      const all = [];
+
+      while (true){
+        const params = new URLSearchParams({
+          q,
+          sort,
+          page: String(page),
+          page_size: String(pageSize)
+        });
+
+        const res = await fetch(`${BASE_URL}/api/librarian/books?${params.toString()}`, {
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(()=> ({}));
+        if (!res.ok) throw new Error(data?.detail || `Search failed (${res.status})`);
+
+        const rows = extractResults(data);
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        page += 1;
+      }
+
+      return all;
+    }
+
     async function searchNow(){
       const q = qEl.value.trim();
+      const sort = String(sortEl?.value || "title_asc").trim() || "title_asc";
       clearErr();
       empty.style.display = "none";
-
-      if (!q){
-        clearListCards();
-        return;
-      }
 
       showListLoader(true);
       startProgress();
 
       try{
-        const res = await fetch(`${BASE_URL}/api/librarian/books?q=${encodeURIComponent(q)}`, {
-          headers: authHeaders()
-        });
-        const data = await res.json().catch(()=> ({}));
-        if (!res.ok) throw new Error(data?.detail || `Search failed (${res.status})`);
-        renderList(extractResults(data));
+        const results = await fetchAllBooks(q, sort);
+        renderList(results);
       }catch(e){
         showErr(e?.message || "Search failed.");
       }finally{
@@ -1837,6 +1897,7 @@
     }
 
     qEl.addEventListener("input", scheduleSearch);
+    sortEl.addEventListener("change", searchNow);
 
     function openModal(){
       detailsOverlay.style.display = "flex";
@@ -2464,6 +2525,8 @@
         closeConfirm.disabled = false;
       }
     });
+
+    searchNow();
   </script>
  
   <script src="branding.js"></script>
