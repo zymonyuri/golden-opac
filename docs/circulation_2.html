@@ -370,10 +370,30 @@
       font-size:12px;
       font-weight:800;
       color: rgba(0,0,0,0.55);
+      line-height:1.45;
     }
 
     .hint.is-error{
       color: rgba(176,0,0,0.78);
+      display:grid;
+      gap:4px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(176,0,0,0.14);
+      background:rgba(176,0,0,0.06);
+    }
+
+    .hint__title{
+      font-size:12px;
+      font-weight:1000;
+      letter-spacing:.01em;
+      color:rgba(150,0,0,0.88);
+    }
+
+    .hint__detail{
+      font-size:12px;
+      font-weight:800;
+      color:rgba(120,0,0,0.78);
     }
 
     .footer-row{
@@ -899,9 +919,9 @@
       const limit = Number(detail?.limit ?? getBorrowLimit()) || 0;
       const remaining = Math.max(0, limit - active);
       if (remaining <= 0){
-        return `Checkout failed: this student already has ${active} active book${active === 1 ? "" : "s"}, which is the maximum allowed (${limit}).`;
+        return `Checkout not allowed.\nThis student already has ${active} active book${active === 1 ? "" : "s"}, which is the maximum allowed (${limit}).`;
       }
-      return `Checkout failed: this student can only borrow ${remaining} more book${remaining === 1 ? "" : "s"}.`;
+      return `Checkout limit reached.\nThis student can only borrow ${remaining} more book${remaining === 1 ? "" : "s"} right now.`;
     }
 
     function formatCheckoutError(data){
@@ -968,8 +988,14 @@
 
     function setHint(text, isError=false){
       if (!hintEl) return;
-      hintEl.textContent = text;
       hintEl.classList.toggle("is-error", !!isError);
+      if (isError && typeof text === "string" && text.includes("\n")){
+        const [title, ...rest] = text.split("\n");
+        const detail = rest.join(" ").trim();
+        hintEl.innerHTML = `<span class="hint__title">${escapeHtml(title.trim())}</span>${detail ? `<span class="hint__detail">${escapeHtml(detail)}</span>` : ""}`;
+        return;
+      }
+      hintEl.textContent = text;
     }
 
     function showProgress(){
