@@ -102,14 +102,4 @@ http://127.0.0.1:5500
 - `docs/students.html` - student list
 - `docs/settings.html` - system settings and maintenance
 
-## Notes
 
-- The backend must be running for librarian and OPAC features to work.
-- The frontend expects the API base URL configured in the page scripts.
-- Some features depend on valid database tables and seed data already existing.
-
-
-
-1. a shorter professional README
-2. a more polished GitHub README
-3. a school-project style README with screenshots section placeholders
