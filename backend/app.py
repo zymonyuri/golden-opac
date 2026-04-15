@@ -12,6 +12,7 @@ import csv
 import io
 import re
 import os
+import textwrap
 from fastapi import Body
 
 from io import BytesIO
@@ -39,6 +40,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, letter, legal
+from reportlab.pdfgen import canvas
 
 from reportlab.graphics.barcode import code128
 
@@ -85,6 +87,28 @@ class DisplaySettingsPayload(BaseModel):
     footer_website: Optional[str] = None
     footer_facebook: Optional[str] = None
     footer_copyright: Optional[str] = None
+
+
+DISPLAY_SETTINGS_DEFAULTS = {
+    "school_name": "Your School Name",
+    "system_name": "Library Management System",
+    "header_subtitle": "Online Public Access Catalogue",
+    "librarian_portal_title": "Librarian Portal",
+    "brand_primary": "#d4af37",
+    "brand_secondary": "#6aa84f",
+    "theme_mode": "light",
+    "logo_url": "assets/default-school-logo.png",
+    "footer_title": "Library Management System",
+    "footer_description": "Customize your school branding, contact details, and interface appearance in Display Settings.",
+    "footer_address": "School Address",
+    "footer_phone": "School Contact Number",
+    "footer_email": "library@school.edu",
+    "footer_website": None,
+    "footer_facebook": None,
+    "footer_copyright": "Your School Name — All Rights Reserved.",
+}
+
+
 class CheckoutRequest(BaseModel):
     barcode: str
     student_code: str
@@ -105,6 +129,8 @@ import re
 from fastapi import HTTPException
 app = FastAPI()
 
+PAYMENT_ALLOWED_ROLES = {"cashier", "admin"}
+
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOADS_DIR = BASE_DIR / "uploads"
@@ -120,7 +146,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "branding")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
-# ── School Year Helper ──────────────────────────────────────────
+# â”€â”€ School Year Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 from datetime import date as _date
 
 from datetime import date as _date
@@ -178,21 +204,7 @@ def get_public_display():
         row = cur.fetchone()
 
         if not row:
-            return {
-                "school_name": "Your School Name",
-                "system_name": "Library Management System",
-                "header_subtitle": "Librarian Portal",
-                "logo_url": "",
-                "brand_primary": "#2563eb",
-                "brand_secondary": "#94a3b8",
-                "footer_title": "Library Management System",
-                "footer_description": "Customize your school branding, contact details, and interface appearance in Display Settings.",
-                "footer_address": "",
-                "footer_phone": "",
-                "footer_email": "",
-                "footer_website": "",
-                "footer_facebook": ""
-            }
+            return dict(DISPLAY_SETTINGS_DEFAULTS)
 
         return dict(row)
     finally:
@@ -213,7 +225,8 @@ def get_current_librarian(token: str = Depends(oauth2_scheme)):
 
     cur.execute(
         """
-        SELECT librarian_id, username, email, first_name, last_name, is_active
+        SELECT librarian_id, username, email, first_name, last_name, is_active,
+               COALESCE(NULLIF(TRIM(role), ''), 'librarian') AS role
         FROM librarian
         WHERE librarian_id = %s
         """,
@@ -229,10 +242,137 @@ def get_current_librarian(token: str = Depends(oauth2_scheme)):
 
     return librarian
 
+def normalize_staff_role(value: str | None) -> str:
+    role = (value or "librarian").strip().lower()
+    return role or "librarian"
+
+def require_roles(*allowed_roles: str):
+    allowed = {normalize_staff_role(role) for role in allowed_roles}
+
+    def dependency(current=Depends(get_current_librarian)):
+        role = normalize_staff_role(current.get("role"))
+        if role not in allowed:
+            raise HTTPException(status_code=403, detail="You are not allowed to perform this action")
+        current["role"] = role
+        return current
+
+    return dependency
+
+def generate_receipt_number() -> str:
+    stamp = datetime.now(PH_TZ).strftime("%Y%m%d-%H%M%S")
+    suffix = uuid.uuid4().hex[:6].upper()
+    return f"RCP-{stamp}-{suffix}"
+
+def build_payment_receipt_pdf(payment: dict, display: dict | None = None) -> bytes:
+    display = display or {}
+    school_name = display.get("school_name") or "Your School Name"
+    system_name = display.get("system_name") or "Library Management System"
+    footer_text = display.get("footer_copyright") or ""
+
+    student_name = payment.get("student_name") or "Student"
+    student_code = payment.get("student_code") or "â€”"
+    cashier_name = payment.get("cashier_name") or payment.get("cashier_username") or "â€”"
+    paid_at = payment.get("paid_at")
+    paid_at_text = paid_at.astimezone(PH_TZ).strftime("%Y-%m-%d %I:%M %p") if hasattr(paid_at, "astimezone") else str(paid_at or "â€”")
+
+    width, height = (3.15 * inch, 6.4 * inch)
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=(width, height))
+
+    y = height - 22
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawCentredString(width / 2, y, school_name[:38])
+    y -= 14
+    pdf.setFont("Helvetica", 8)
+    pdf.drawCentredString(width / 2, y, system_name[:42])
+    y -= 18
+
+    pdf.setStrokeColor(colors.HexColor("#444444"))
+    pdf.line(16, y, width - 16, y)
+    y -= 18
+
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(16, y, "Fine Payment Receipt")
+    y -= 16
+
+    lines = [
+        ("Receipt No.", payment.get("receipt_number") or "â€”"),
+        ("Student", student_name),
+        ("Student ID", student_code),
+        ("Amount Paid", f"PHP {float(payment.get('amount') or 0):.2f}"),
+        ("Method", str(payment.get("method") or "cash").upper()),
+        ("Date / Time", paid_at_text),
+        ("Cashier", cashier_name),
+    ]
+
+    pdf.setFont("Helvetica", 8.5)
+    for label, value in lines:
+        pdf.setFillColor(colors.HexColor("#555555"))
+        pdf.drawString(16, y, label)
+        y -= 11
+        pdf.setFillColor(colors.black)
+        pdf.setFont("Helvetica-Bold", 9)
+        pdf.drawString(16, y, str(value)[:42])
+        pdf.setFont("Helvetica", 8.5)
+        y -= 15
+
+    note = payment.get("note")
+    if note:
+        pdf.setFillColor(colors.HexColor("#555555"))
+        pdf.drawString(16, y, "Note")
+        y -= 11
+        pdf.setFillColor(colors.black)
+        text = pdf.beginText(16, y)
+        text.setFont("Helvetica", 8.5)
+        for chunk in textwrap.wrap(str(note), width=34)[:4]:
+            text.textLine(chunk)
+            y -= 10
+        pdf.drawText(text)
+        y -= 6
+
+    pdf.line(16, y, width - 16, y)
+    y -= 16
+    pdf.setFillColor(colors.HexColor("#555555"))
+    pdf.setFont("Helvetica", 7.5)
+    pdf.drawCentredString(width / 2, y, "Please keep this receipt for your records.")
+    if footer_text:
+        y -= 12
+        pdf.drawCentredString(width / 2, y, footer_text[:46])
+
+    pdf.showPage()
+    pdf.save()
+    return buffer.getvalue()
+
+def ensure_runtime_schema():
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("ALTER TABLE librarian ADD COLUMN IF NOT EXISTS role VARCHAR(20)")
+        cur.execute("ALTER TABLE librarian ALTER COLUMN role SET DEFAULT 'librarian'")
+        cur.execute("""
+            UPDATE librarian
+            SET role = 'librarian'
+            WHERE role IS NULL OR BTRIM(role) = ''
+        """)
+        cur.execute("ALTER TABLE fine_payment ADD COLUMN IF NOT EXISTS receipt_number VARCHAR(64)")
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_fine_payment_receipt_number
+            ON fine_payment (receipt_number)
+            WHERE receipt_number IS NOT NULL
+        """)
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
+
+@app.on_event("startup")
+def startup_runtime_schema():
+    ensure_runtime_schema()
+
 @app.post("/api/settings/display/logo")
 async def upload_display_logo(
     file: UploadFile = File(...),
-    current=Depends(get_current_librarian)
+    current=Depends(require_roles("librarian", "admin"))
 ):
     try:
         if not file.filename:
@@ -368,26 +508,44 @@ def get_display_settings_row(cur):
             updated_at
         )
         VALUES (
-            'Your School Name',
-            'Library Management System',
-            'Online Public Access Catalogue',
-            'Librarian Portal',
-            '#d4af37',
-            '#6aa84f',
-            'light',
-            'assets/default-school-logo.png',
-            'Library Management System',
-            'Customize your school branding, contact details, and interface appearance in Display Settings.',
-            'School Address',
-            'School Contact Number',
-            'library@school.edu',
-            NULL,
-            NULL,
-            'Your School Name — All Rights Reserved.',
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
             NOW()
         )
         RETURNING *
-        """
+        """,
+        (
+            DISPLAY_SETTINGS_DEFAULTS["school_name"],
+            DISPLAY_SETTINGS_DEFAULTS["system_name"],
+            DISPLAY_SETTINGS_DEFAULTS["header_subtitle"],
+            DISPLAY_SETTINGS_DEFAULTS["librarian_portal_title"],
+            DISPLAY_SETTINGS_DEFAULTS["brand_primary"],
+            DISPLAY_SETTINGS_DEFAULTS["brand_secondary"],
+            DISPLAY_SETTINGS_DEFAULTS["theme_mode"],
+            DISPLAY_SETTINGS_DEFAULTS["logo_url"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_title"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_description"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_address"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_phone"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_email"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_website"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_facebook"],
+            DISPLAY_SETTINGS_DEFAULTS["footer_copyright"],
+        )
     )
     return cur.fetchone()
 
@@ -419,7 +577,7 @@ def resolve_pdf_logo_path(cur):
     return None
 
 @app.get("/api/settings/display")
-def get_display_settings(current=Depends(get_current_librarian)):
+def get_display_settings(current=Depends(require_roles("librarian", "admin"))):
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -431,7 +589,7 @@ def get_display_settings(current=Depends(get_current_librarian)):
 
 
 @app.put("/api/settings/display")
-def save_display_settings(payload: DisplaySettingsPayload, current=Depends(get_current_librarian)):
+def save_display_settings(payload: DisplaySettingsPayload, current=Depends(require_roles("librarian", "admin"))):
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -593,7 +751,7 @@ def search_books(q: str = ""):
     cur.close()
     conn.close()
 
-    # ✅ dict-row safe
+    # âœ… dict-row safe
     return [
         {
             "book_id": b["book_id"],
@@ -615,7 +773,8 @@ def login(username: str, password: str):
 
     cur.execute(
         """
-        SELECT librarian_id, username, password_hash, is_active
+        SELECT librarian_id, username, password_hash, is_active,
+               COALESCE(NULLIF(TRIM(role), ''), 'librarian') AS role
         FROM librarian
         WHERE username = %s
         """,
@@ -727,7 +886,7 @@ def isbn_lookup(isbn: str):
 
 
 @app.get("/api/students/lookup")
-def student_lookup(student_code: str, current=Depends(get_current_librarian)):
+def student_lookup(student_code: str, current=Depends(require_roles("librarian", "admin"))):
     code = (student_code or "").strip()
     if not code:
         raise HTTPException(status_code=400, detail="student_code is required")
@@ -786,7 +945,7 @@ def add_book_by_isbn(
     section: str | None = Form(None),
     cover_url: str | None = Form(None),
 
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if copies < 1 or copies > 100:
         raise HTTPException(status_code=400, detail="copies must be between 1 and 100")
@@ -971,7 +1130,7 @@ def add_book_by_isbn(
         conn.close()
 
 @app.get("/api/cataloging/isbn-exists/{isbn}")
-def isbn_exists(isbn: str, current=Depends(get_current_librarian)):
+def isbn_exists(isbn: str, current=Depends(require_roles("librarian", "admin"))):
     isbn_n = normalize_isbn(isbn)
     if not isbn_n:
         raise HTTPException(status_code=400, detail="Invalid ISBN")
@@ -1016,7 +1175,7 @@ from datetime import datetime
 @app.get("/api/cataloging/isbn-info/{isbn}")
 def cataloging_isbn_info(
     isbn: str,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Returns whether ISBN exists in the system.
@@ -1063,7 +1222,7 @@ def cataloging_isbn_info(
         conn.close()
 
 @app.post("/api/cataloging/add-copies")
-def add_copies_only(req: AddCopiesRequest, current=Depends(get_current_librarian)):
+def add_copies_only(req: AddCopiesRequest, current=Depends(require_roles("librarian", "admin"))):
     isbn_n = normalize_isbn(req.isbn)
     if not isbn_n:
         raise HTTPException(status_code=400, detail="Invalid ISBN")
@@ -1132,7 +1291,7 @@ def add_copies_only(req: AddCopiesRequest, current=Depends(get_current_librarian
 @app.get("/api/librarian/books")
 def librarian_search_books(
     q: str = "",
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Librarian-only universal search.
@@ -1234,7 +1393,7 @@ def librarian_search_books(
 def librarian_get_copies(
     book_id: int,
     only_unprinted: bool = False,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -1300,7 +1459,7 @@ def librarian_get_copies(
 def mark_copies_as_printed(
     copy_ids: str,
     batch_id: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Librarian-only.
@@ -1416,7 +1575,7 @@ def mark_copies_as_printed(
 # SETTINGS: GRADE RULES (Librarian Only)
 # -----------------------------
 @app.get("/api/settings/grade-rules")
-def list_grade_rules(current=Depends(get_current_librarian)):
+def list_grade_rules(current=Depends(require_roles("librarian", "admin"))):
     """
     Lists all grade rules.
     The frontend can display this in Settings -> Circulation Settings.
@@ -1446,7 +1605,7 @@ def upsert_grade_rule(
     fine_per_day: float,
     max_renewals: int = 1,
     block_renew_if_overdue: bool = True,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Creates or updates a grade rule.
@@ -1507,7 +1666,7 @@ class StudentCreate(BaseModel):
 @app.post("/api/students")
 def add_student(
     payload: StudentCreate,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if not payload.student_code.strip():
         raise HTTPException(status_code=400, detail="student_code is required")
@@ -1551,7 +1710,7 @@ def add_student(
     grade: str,
     section: str,
     status: str = "active",
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Adds a student.
@@ -1589,7 +1748,7 @@ def add_student(
 
 
 @app.get("/api/students")
-def search_students(q: str = "", current=Depends(get_current_librarian)):
+def search_students(q: str = "", current=Depends(require_roles("librarian", "admin"))):
     """
     Search students by:
       - last name
@@ -1632,8 +1791,107 @@ def search_students(q: str = "", current=Depends(get_current_librarian)):
     finally:
         cur.close()
         conn.close()
+
+
+@app.post("/api/settings/display/reset")
+def reset_display_settings(current=Depends(require_roles("librarian", "admin"))):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        current_row = get_display_settings_row(cur)
+        cur.execute(
+            """
+            UPDATE display_settings
+            SET school_name = %s,
+                system_name = %s,
+                header_subtitle = %s,
+                librarian_portal_title = %s,
+                brand_primary = %s,
+                brand_secondary = %s,
+                theme_mode = %s,
+                logo_url = %s,
+                footer_title = %s,
+                footer_description = %s,
+                footer_address = %s,
+                footer_phone = %s,
+                footer_email = %s,
+                footer_website = %s,
+                footer_facebook = %s,
+                footer_copyright = %s,
+                updated_at = NOW()
+            WHERE display_id = %s
+            RETURNING *
+            """,
+            (
+                DISPLAY_SETTINGS_DEFAULTS["school_name"],
+                DISPLAY_SETTINGS_DEFAULTS["system_name"],
+                DISPLAY_SETTINGS_DEFAULTS["header_subtitle"],
+                DISPLAY_SETTINGS_DEFAULTS["librarian_portal_title"],
+                DISPLAY_SETTINGS_DEFAULTS["brand_primary"],
+                DISPLAY_SETTINGS_DEFAULTS["brand_secondary"],
+                DISPLAY_SETTINGS_DEFAULTS["theme_mode"],
+                DISPLAY_SETTINGS_DEFAULTS["logo_url"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_title"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_description"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_address"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_phone"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_email"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_website"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_facebook"],
+                DISPLAY_SETTINGS_DEFAULTS["footer_copyright"],
+                current_row["display_id"],
+            ),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return {"message": "Display settings reset to defaults", "settings": dict(row)}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to reset display settings: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.get("/api/cashier/students")
+def cashier_search_students(q: str = "", current=Depends(require_roles("cashier", "admin"))):
+    """
+    Cashier-only student search for fine payments.
+    Returns only lightweight identity fields needed for payment lookup.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        if q.strip() == "":
+            cur.execute(
+                """
+                SELECT student_id, student_code, last_name, first_name, grade, section, status
+                FROM student
+                ORDER BY last_name ASC, first_name ASC
+                LIMIT 30
+                """
+            )
+        else:
+            s = f"%{q}%"
+            cur.execute(
+                """
+                SELECT student_id, student_code, last_name, first_name, grade, section, status
+                FROM student
+                WHERE
+                    student_code ILIKE %s OR
+                    last_name ILIKE %s OR
+                    first_name ILIKE %s
+                ORDER BY last_name ASC, first_name ASC
+                LIMIT 30
+                """,
+                (s, s, s),
+            )
+
+        return cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
 @app.get("/api/students/meta")
-def get_student_meta(current=Depends(get_current_librarian)):
+def get_student_meta(current=Depends(require_roles("librarian", "admin"))):
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -1675,9 +1933,9 @@ def get_student_meta(current=Depends(get_current_librarian)):
         conn.close()
 
 @app.get("/api/students/{student_id}")
-def get_student(student_id: int, current=Depends(get_current_librarian)):
+def get_student(student_id: int, current=Depends(require_roles("librarian", "admin"))):
     """
-    Student profile basic info (we’ll add loans/fines/history next).
+    Student profile basic info (weâ€™ll add loans/fines/history next).
     """
     conn = get_connection()
     cur = conn.cursor()
@@ -1702,7 +1960,7 @@ def get_student(student_id: int, current=Depends(get_current_librarian)):
 # CIRCULATION: CHECK OUT (Librarian Only)
 # -----------------------------
 @app.post("/api/circulation/checkout")
-def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
+def checkout_book(req: CheckoutRequest, current=Depends(require_roles("librarian", "admin"))):
     barcode = req.barcode
     student_code = req.student_code
     """
@@ -1767,7 +2025,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
 
         student_id = student["student_id"]
         grade_raw = student["grade"]
-        grade = normalize_grade(grade_raw)   # <— normalize to "12"
+        grade = normalize_grade(grade_raw)   # <â€” normalize to "12"
 
         cur.execute("""
         SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
@@ -1815,7 +2073,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
                 status_code=400,
                 detail={
                     "type": "unpaid_fines",
-                    "message": f"Checkout failed: the student still has unpaid fines of ₱{outstanding:.2f}.",
+                    "message": f"Checkout failed: the student still has unpaid fines of â‚±{outstanding:.2f}.",
                     "outstanding": outstanding,
                 },
             )
@@ -1957,7 +2215,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(get_current_librarian)):
 @app.post("/api/circulation/renew")
 def renew_loan(
     loan_id: int,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Renews a borrowed book.
@@ -2083,7 +2341,7 @@ def renew_loan(
 @app.get("/api/circulation/checkin/lookup")
 def checkin_lookup(
     barcode: str,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -2234,7 +2492,7 @@ def checkin_lookup(
 # STUDENTS: PROFILE (Librarian Only)
 # -----------------------------
 @app.get("/api/students/{student_id}/profile")
-def student_profile(student_id: int, current=Depends(get_current_librarian)):
+def student_profile(student_id: int, current=Depends(require_roles("librarian", "admin"))):
     """
     Returns a student profile view:
       - basic info
@@ -2377,6 +2635,60 @@ def student_profile(student_id: int, current=Depends(get_current_librarian)):
         cur.close()
         conn.close()
 
+@app.get("/api/cashier/students/{student_id}/fines")
+def cashier_student_fines(student_id: int, current=Depends(require_roles("cashier", "admin"))):
+    """
+    Cashier-only payment lookup view.
+    Exposes student identity plus fine summary/history required for payments.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT student_id, student_code, last_name, first_name, grade, section, status
+            FROM student
+            WHERE student_id = %s
+            """,
+            (student_id,),
+        )
+        student = cur.fetchone()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        cur.execute(
+            """
+            SELECT COALESCE(SUM(amount - amount_paid), 0) AS outstanding
+            FROM fine
+            WHERE student_id = %s AND status = 'unpaid'
+            """,
+            (student_id,),
+        )
+        outstanding = float(cur.fetchone()["outstanding"] or 0)
+
+        cur.execute(
+            """
+            SELECT fine_id, amount, amount_paid, status, reason, assessed_at
+            FROM fine
+            WHERE student_id = %s
+            ORDER BY assessed_at DESC
+            LIMIT 200
+            """,
+            (student_id,),
+        )
+        fine_history = cur.fetchall()
+
+        return {
+            "student": student,
+            "summary": {
+                "outstanding_fines": outstanding,
+            },
+            "fine_history": fine_history,
+        }
+    finally:
+        cur.close()
+        conn.close()
+
 
 # -----------------------------
 # REPORTS: DASHBOARD (Librarian Only) - Upgraded
@@ -2395,7 +2707,7 @@ from datetime import datetime, timedelta
 def reports_dashboard(
     period: str = Query("monthly"),
     school_year: str | None = Query(default=None),
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -2684,7 +2996,7 @@ def generate_report(
     genre: str | None = None,
     book_section: str | None = None,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Returns a report preview based on filters.
@@ -2837,7 +3149,7 @@ def export_report_csv(
     genre: str | None = None,
     book_section: str | None = None,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Exports the same report data as CSV.
@@ -3226,7 +3538,7 @@ def export_report_pdf(
     genre: str | None = None,
     book_section: str | None = None,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Exports a PDF version of the report.
@@ -3266,7 +3578,7 @@ def export_report_pdf(
 @app.get("/api/fines/unpaid")
 def list_unpaid_fines(
     student_id: int,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Lists all unpaid fines for a student, including outstanding amount.
@@ -3298,7 +3610,7 @@ def list_unpaid_fines(
         conn.close()
 
 # -----------------------------
-# FINES: PAY (Partial or Full) (Librarian Only)
+# FINES: PAY (Partial or Full) (Cashier/Admin Only)
 # -----------------------------
 @app.post("/api/fines/pay")
 def pay_fine(
@@ -3306,7 +3618,7 @@ def pay_fine(
     amount: float,
     method: str = "cash",
     note: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("cashier", "admin")),
 ):
     """
     Records a fine payment and updates fine totals.
@@ -3326,6 +3638,8 @@ def pay_fine(
 
     try:
         librarian_id = current["librarian_id"]
+        receipt_number = generate_receipt_number()
+        payment_method = (method or "cash").strip().lower() or "cash"
 
         # 1) Load fine
         cur.execute(
@@ -3361,11 +3675,11 @@ def pay_fine(
         # 3) Insert payment record
         cur.execute(
             """
-            INSERT INTO fine_payment (fine_id, student_id, received_by, amount, method, paid_at, note)
-            VALUES (%s, %s, %s, %s, %s, NOW(), %s)
-            RETURNING payment_id, paid_at
+            INSERT INTO fine_payment (fine_id, student_id, received_by, amount, method, paid_at, note, receipt_number)
+            VALUES (%s, %s, %s, %s, %s, NOW(), %s, %s)
+            RETURNING payment_id, paid_at, receipt_number
             """,
-            (fine_id, fine["student_id"], librarian_id, amount, method, note),
+            (fine_id, fine["student_id"], librarian_id, amount, payment_method, note, receipt_number),
         )
         payment_row = cur.fetchone()
 
@@ -3391,6 +3705,8 @@ def pay_fine(
             "fine_id": fine_id,
             "payment_id": payment_row["payment_id"],
             "paid_at": str(payment_row["paid_at"]),
+            "receipt_number": payment_row["receipt_number"],
+            "receipt_download_url": f"/api/fines/payments/{payment_row['payment_id']}/receipt",
             "amount_paid_now": amount,
             "fine_total": total_amount,
             "fine_amount_paid_total": new_paid,
@@ -3409,12 +3725,63 @@ def pay_fine(
         conn.close()
 
 # -----------------------------
+# FINES: RECEIPT PDF (Cashier/Admin Only)
+# -----------------------------
+@app.get("/api/fines/payments/{payment_id}/receipt")
+def fine_payment_receipt(
+    payment_id: int,
+    current=Depends(require_roles("cashier", "admin")),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT
+                fp.payment_id,
+                fp.fine_id,
+                fp.amount,
+                fp.method,
+                fp.paid_at,
+                fp.note,
+                fp.receipt_number,
+                s.student_code,
+                s.first_name,
+                s.last_name,
+                l.username AS cashier_username,
+                TRIM(CONCAT(COALESCE(l.first_name, ''), ' ', COALESCE(l.last_name, ''))) AS cashier_name
+            FROM fine_payment fp
+            JOIN student s ON s.student_id = fp.student_id
+            LEFT JOIN librarian l ON l.librarian_id = fp.received_by
+            WHERE fp.payment_id = %s
+            """,
+            (payment_id,),
+        )
+        payment = cur.fetchone()
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment receipt not found")
+
+        payment["student_name"] = f"{(payment.get('last_name') or '').strip()}, {(payment.get('first_name') or '').strip()}".strip(", ").strip()
+        display = get_display_settings_row(cur)
+        pdf_bytes = build_payment_receipt_pdf(payment, display)
+        filename = f"{payment['receipt_number'] or f'payment-{payment_id}'}.pdf"
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        )
+    finally:
+        cur.close()
+        conn.close()
+
+# -----------------------------
 # FINES: PAYMENT HISTORY (Librarian Only)
 # -----------------------------
 @app.get("/api/fines/{fine_id}/payments")
 def fine_payment_history(
     fine_id: int,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Shows payment history for a fine (audit trail).
@@ -3455,7 +3822,7 @@ def mark_book_lost(
     barcode: str,
     student_code: str,
     note: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Marks a borrowed copy as LOST and creates a fine.
@@ -3633,7 +4000,7 @@ from fastapi import Body
 def update_student(
     student_id: int,
     payload: dict = Body(...),
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Updates a student.
@@ -3685,7 +4052,7 @@ def update_student(
 async def import_students_csv(
     file: UploadFile = File(...),
     default_status: str = "active",
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Imports students from a CSV file.
@@ -3791,7 +4158,7 @@ async def import_students_csv(
 # CIRCULATION: LOOKUP BY COPY BARCODE (Librarian Only)
 # -----------------------------
 @app.get("/api/circulation/lookup")
-def circulation_lookup(barcode: str, current=Depends(get_current_librarian)):
+def circulation_lookup(barcode: str, current=Depends(require_roles("librarian", "admin"))):
     barcode_clean = (barcode or "").strip()
     if not barcode_clean:
         raise HTTPException(status_code=400, detail="barcode is required")
@@ -3886,7 +4253,7 @@ def bulk_promote_students(
     from_section: str | None = None,
     to_section: str | None = None,
     only_status: str | None = "active",
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Mass change students from one grade to another.
@@ -3970,7 +4337,7 @@ def bulk_change_status(
     to_status: str,
     grade: str | None = None,
     section: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Mass change student statuses.
@@ -4044,7 +4411,7 @@ def bulk_change_status(
 # SETTINGS: PERSONAL INFO (Librarian Only)
 # -----------------------------
 @app.get("/api/settings/me")
-def get_my_profile(current=Depends(get_current_librarian)):
+def get_my_profile(current=Depends(require_roles("librarian", "admin"))):
     """
     Returns the logged-in librarian profile.
     Used by Settings -> Personal Information.
@@ -4067,7 +4434,7 @@ def update_my_profile(
     first_name: str | None = None,
     last_name: str | None = None,
     email: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Updates the logged-in librarian profile fields.
@@ -4119,7 +4486,7 @@ def update_my_profile(
 # SETTINGS: CIRCULATION DEFAULTS (Librarian Only)
 # -----------------------------
 @app.get("/api/settings/circulation")
-def get_circulation_settings(current=Depends(get_current_librarian)):
+def get_circulation_settings(current=Depends(require_roles("librarian", "admin"))):
     """
     Returns the single global circulation settings row.
     Auto-creates a default row if missing.
@@ -4211,7 +4578,7 @@ def update_circulation_settings(
     lost_book_fine: float,
     block_renew_if_overdue: bool,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Updates the single global circulation settings row.
@@ -4327,7 +4694,7 @@ def update_circulation_settings(
     lost_book_fine: float,
     block_renew_if_overdue: bool,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Updates the single global circulation settings row.
@@ -4504,7 +4871,7 @@ def _get_settings_for_grade(cur, grade: str | None):
 def mark_loan_lost(
     loan_id: int,
     note: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -4588,7 +4955,7 @@ def mark_damage_and_fine(
     loan_id: int,
     severity: str,
     notes: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     sev = (severity or "").strip().lower()
     if sev not in ("minor", "major"):
@@ -4681,7 +5048,7 @@ def mark_damage_and_fine(
         conn.close()
 
 @app.get("/api/circulation/precheck")
-def circulation_precheck(student_code: str, current=Depends(get_current_librarian)):
+def circulation_precheck(student_code: str, current=Depends(require_roles("librarian", "admin"))):
     code = (student_code or "").strip()
     if not code:
         raise HTTPException(status_code=400, detail="student_code is required")
@@ -4846,7 +5213,7 @@ def circulation_precheck(student_code: str, current=Depends(get_current_libraria
         conn.close()
 
 @app.get("/api/circulation/overdue")
-def overdue_list(student_code: str, current=Depends(get_current_librarian)):
+def overdue_list(student_code: str, current=Depends(require_roles("librarian", "admin"))):
     code = (student_code or "").strip()
     if not code:
         raise HTTPException(status_code=400, detail="student_code is required")
@@ -4890,7 +5257,7 @@ def update_circulation_settings(
     max_borrow_limit: int | None = None,
     max_renewals: int | None = None,
     block_renew_if_overdue: bool | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -4988,7 +5355,7 @@ def create_librarian_profile(
     password: str,
     first_name: str | None = None,
     last_name: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if not username.strip():
         raise HTTPException(status_code=400, detail="username is required")
@@ -5060,7 +5427,7 @@ def validate_new_password(password: str) -> None:
 def change_password(
     current_password: str,
     new_password: str,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Changes the password for the logged-in librarian.
@@ -5128,7 +5495,7 @@ def create_librarian_profile(
     password: str,
     first_name: str | None = None,
     last_name: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if not username.strip():
         raise HTTPException(status_code=400, detail="username is required")
@@ -5183,7 +5550,7 @@ def enroll_librarian(
     password: str,
     first_name: str | None = None,
     last_name: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Creates a new librarian account.
@@ -5248,7 +5615,7 @@ def enroll_librarian(
 # SETTINGS: LIST LIBRARIANS (Librarian Only)
 # -----------------------------
 @app.get("/api/settings/librarians")
-def list_librarians(current=Depends(get_current_librarian)):
+def list_librarians(current=Depends(require_roles("librarian", "admin"))):
     """
     Lists librarian profiles (no password hash).
     Useful for Settings -> New Profile page to show existing accounts.
@@ -5279,7 +5646,7 @@ def librarian_advanced_search(
     sort: str = "title_asc",   # relevance|title_asc|title_desc|newest|oldest|updated_desc|updated_asc|most_borrowed
     page: int = 1,
     page_size: int = 20,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Advanced search for librarians:
@@ -5449,7 +5816,7 @@ def opac_search(
     """
     Public OPAC list/search:
       - filters: genre/subject/section
-      - sorts: A–Z, Newest, Most Borrowed
+      - sorts: Aâ€“Z, Newest, Most Borrowed
       - includes availability: available/total
     """
 
@@ -5606,7 +5973,7 @@ def opac_book_details(book_id: int):
 # 4. Include normalized_section in responses if section naming varies across records.
 # 5. Add lightweight server logs for q/genre/subject/section combinations to trace public OPAC search issues faster.
 # 6. Consider returning total_count via COUNT(*) OVER() later if you add pagination controls to the public results grid.
-# — by Malvin in Team SAISys
+# â€” by Malvin in Team SAISys
 def opac_filters():
     conn = get_connection()
     cur = conn.cursor()
@@ -5731,7 +6098,7 @@ def build_title_barcode_labels_pdf(
         # Title truncation to avoid overflow
         title = raw_title
         if len(title) > 48:
-            title = title[:48].rstrip() + "…"
+            title = title[:48].rstrip() + "â€¦"
 
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
@@ -5802,7 +6169,7 @@ def build_title_barcode_labels_pdf(
     return pdf_bytes
 
 # -----------------------------
-# CIRCULATION: CHECK IN (Librarian Only)  ✅ NEW ENDPOINT
+# CIRCULATION: CHECK IN (Librarian Only)  âœ… NEW ENDPOINT
 # -----------------------------
 @app.post("/api/circulation/checkin")
 def checkin_book(
@@ -5811,7 +6178,7 @@ def checkin_book(
     is_damaged: bool = False,
     severity: str | None = None,
     notes: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -5949,8 +6316,12 @@ def checkin_book(
 
         full_name = f"{(loan.get('last_name') or '').strip()}, {(loan.get('first_name') or '').strip()}".strip(", ").strip()
 
+        checkin_message = "Check-in successful"
+        if fine_created:
+            checkin_message = "Fine generated. Please proceed to the cashier for payment."
+
         return {
-            "message": "Check-in successful",
+            "message": checkin_message,
             "barcode": copy_row["barcode"],
             "copy_status": new_copy_status,
             "book": {
@@ -5996,7 +6367,7 @@ def barcode_labels_pdf(
     copy_ids: list[int] = Body(..., embed=True),
     paper: str = "A4",      # A4 | LEGAL | SHORT
     columns: int = 3,       # 2 or 3
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Generates a label PDF containing ONLY:
@@ -6045,7 +6416,7 @@ def barcode_labels_pdf(
 def update_book(
     book_id: int,
     payload: BookUpdate,
-    current=Depends(get_current_librarian),  # ✅ librarian-only
+    current=Depends(require_roles("librarian", "admin")),  # âœ… librarian-only
 ):
     # Basic validation
     if not payload.title or not payload.title.strip():
@@ -6122,7 +6493,7 @@ from typing import Optional
 @app.get("/api/books/{book_id}/damaged-copies")
 def list_damaged_copies(
     book_id: int,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -6193,7 +6564,7 @@ def list_damaged_copies(
 def restore_damaged_copy(
     copy_id: int,
     note: Optional[str] = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -6259,7 +6630,7 @@ def _delete_copy_dependencies(cur, copy_ids: list[int]):
 @app.delete("/api/books/{book_id}")
 def delete_book(
     book_id: int,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -6342,7 +6713,7 @@ class MarkPrintedRequest(BaseModel):
 @app.post("/api/printing/mark-printed")
 def mark_printed_json(
     payload: MarkPrintedRequest,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     copy_ids = payload.copy_ids or []
     if not copy_ids:
@@ -6445,7 +6816,7 @@ from fastapi import Query
 @app.get("/api/reports/filters")
 def reports_filter_options(
     grade: str | None = Query(default=None),
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -6508,7 +6879,7 @@ def reports_filter_options(
         conn.close()
 
 @app.get("/api/reports/activity")
-def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
+def reports_activity(limit: int = 30, current=Depends(require_roles("librarian", "admin"))):
     """
     Returns recent activity logs for the Reports dashboard.
 
@@ -6532,7 +6903,7 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
                 SELECT
                     l.borrowed_at AS ts,
                     'checkout' AS type,
-                    ('Checked out: ' || b.title || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Checked out: ' || b.title || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
                     b.book_id,
                     s.student_id
                 FROM loan l
@@ -6546,7 +6917,7 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
                 SELECT
                     l.returned_at AS ts,
                     'return' AS type,
-                    ('Returned: ' || b.title || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Returned: ' || b.title || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
                     b.book_id,
                     s.student_id
                 FROM loan l
@@ -6561,7 +6932,7 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
                 SELECT
                     fp.paid_at AS ts,
                     'fine_payment' AS type,
-                    ('Fine payment: ₱' || fp.amount || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Fine payment: â‚±' || fp.amount || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
                     NULL::int AS book_id,
                     s.student_id
                 FROM fine_payment fp
@@ -6573,7 +6944,7 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
                 SELECT
                     pl.printed_at AS ts,
                     'barcode_print' AS type,
-                    ('Barcode ' || pl.action || ': ' || bc.barcode || ' — ' || b.title) AS message,
+                    ('Barcode ' || pl.action || ': ' || bc.barcode || ' â€” ' || b.title) AS message,
                     b.book_id,
                     NULL::int AS student_id
                 FROM print_log pl
@@ -6586,7 +6957,7 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
                 SELECT
                     d.reported_at AS ts,
                     'damage' AS type,
-                    ('Damage report (' || d.severity || '): ' || b.title || ' — ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Damage report (' || d.severity || '): ' || b.title || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
                     b.book_id,
                     s.student_id
                 FROM damage_report d
@@ -6607,7 +6978,7 @@ def reports_activity(limit: int = 30, current=Depends(get_current_librarian)):
         conn.close()
 
 @app.get("/api/cataloging/preview/{isbn}")
-def cataloging_preview(isbn: str, current=Depends(get_current_librarian)):
+def cataloging_preview(isbn: str, current=Depends(require_roles("librarian", "admin"))):
     """
     Unified preview lookup:
     1. Always check local DB first
@@ -6710,7 +7081,7 @@ from fastapi import HTTPException, Depends
 @app.delete("/api/book-copies/{copy_id}")
 def delete_book_copy(
     copy_id: int,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     conn = get_connection()
     cur = conn.cursor()
@@ -6786,9 +7157,9 @@ def delete_book_copy(
         cur.close()
         conn.close()
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: MOST BORROWED BOOKS (ranked, filterable)
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/most-borrowed")
 def report_most_borrowed(
     date_from: str | None = None,
@@ -6797,7 +7168,7 @@ def report_most_borrowed(
     section: str | None = None,
     limit: int = 20,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if date_to is None:
         dt_to = date.today()
@@ -6859,14 +7230,14 @@ def report_most_borrowed(
         cur.close()
         conn.close()
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: GRADE SUMMARY
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/grade-summary")
 def report_grade_summary(
     date_from: str | None = None,
     date_to: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if date_to is None:
         dt_to = date.today()
@@ -6936,14 +7307,14 @@ def report_grade_summary(
         cur.close()
         conn.close()
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: OVERDUE REPORT
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/overdue")
 def report_overdue(
     grade: str | None = None,
     section: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     where = ["l.returned_at IS NULL", "l.due_at < NOW()", "COALESCE(l.status,'') NOT IN ('lost','returned')"]
     params: list = []
@@ -7002,9 +7373,9 @@ def report_overdue(
         conn.close()
 
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: FINES REPORT
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/fines")
 def report_fines(
     date_from: str | None = None,
@@ -7012,7 +7383,7 @@ def report_fines(
     status: str | None = None,
     grade: str | None = None,
     school_year: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if date_to is None:
         dt_to = date.today()
@@ -7088,16 +7459,16 @@ def report_fines(
         conn.close()
 
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: ACTIVITY LOG REPORT (full, date-filtered)
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/activity-log")
 def report_activity_log(
     date_from: str | None = None,
     date_to: str | None = None,
     event_type: str | None = None,  # checkout|return|fine_payment|damage|all
     limit: int = 500,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     if date_to is None:
         dt_to = date.today()
@@ -7189,13 +7560,13 @@ def report_activity_log(
         conn.close()
 
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: INVENTORY SNAPSHOT
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/inventory")
 def report_inventory(
     book_section: str | None = None,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     where = []
     params: list = []
@@ -7252,9 +7623,9 @@ def report_inventory(
         cur.close()
         conn.close()
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # REPORTS: EXPORT ANY REPORT AS CSV
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.get("/api/reports/export-typed/csv")
 def export_typed_csv(
     report_type: str,
@@ -7266,7 +7637,7 @@ def export_typed_csv(
     event_type: str | None = None,
     book_section: str | None = None,
     limit: int = 2000,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     rt = (report_type or "").strip().lower()
 
@@ -7314,13 +7685,13 @@ def export_typed_csv(
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # SETTINGS: DELETE OWN LIBRARIAN PROFILE (Librarian Only)
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @app.delete("/api/settings/me")
 def delete_my_profile(
     password: str,
-    current=Depends(get_current_librarian),
+    current=Depends(require_roles("librarian", "admin")),
 ):
     """
     Permanently deletes the currently logged-in librarian account.
@@ -7382,7 +7753,7 @@ def delete_my_profile(
         conn.close()
 
 @app.delete("/api/settings/grade-rules")
-def delete_grade_rule(grade: str, current=Depends(get_current_librarian)):
+def delete_grade_rule(grade: str, current=Depends(require_roles("librarian", "admin"))):
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -7397,7 +7768,7 @@ def delete_grade_rule(grade: str, current=Depends(get_current_librarian)):
         conn.close()
 
 @app.get("/api/reports/school-years")
-def reports_school_years(current=Depends(get_current_librarian)):
+def reports_school_years(current=Depends(require_roles("librarian", "admin"))):
     """
     Returns distinct school years found in the loan table,
     plus the currently configured school year from system_settings.
@@ -7424,7 +7795,7 @@ def reports_school_years(current=Depends(get_current_librarian)):
         conn.close()
 
 @app.delete("/api/students/{student_id}")
-def delete_student(student_id: int, current=Depends(get_current_librarian)):  # int, not str
+def delete_student(student_id: int, current=Depends(require_roles("librarian", "admin"))):  # int, not str
     conn = get_connection()
     cur = conn.cursor()
     try:

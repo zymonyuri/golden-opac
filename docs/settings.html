@@ -510,7 +510,7 @@ document.documentElement.classList.add("branding-loading");
 
     .successBox.show{ display:block; }
 
-    /* ── Danger Zone card ── */
+    
     .dangerZone{
       border:1px solid rgba(220,38,38,0.28);
       background: rgba(254,242,242,0.70);
@@ -545,8 +545,7 @@ document.documentElement.classList.add("branding-loading");
       color: #b91c1c;
     }
 
-    /* ── Delete confirmation modal ── */
-    .deleteModal{
+        .deleteModal{
       position:fixed;
       inset:0;
       z-index:3000;
@@ -691,7 +690,6 @@ document.documentElement.classList.add("branding-loading");
       color: #dc2626;
     }
 
-    /* ── Grade Rules Table ── */
     .rulesWrap{
       border:1px solid rgba(0,0,0,0.08);
       background: rgba(255,255,255,0.92);
@@ -763,7 +761,6 @@ document.documentElement.classList.add("branding-loading");
     .rulesTable--libs col:nth-child(3){ width:34%; }
     .rulesTable--libs col:nth-child(4){ width:18%; }
 
-    /* ── Delete Rule Button ── */
     .deleteRuleBtn{
       width:26px; height:26px; min-width:26px;
       border-radius:999px;
@@ -1141,9 +1138,6 @@ document.documentElement.classList.add("branding-loading");
     }
     .logoImageModalClose:hover{ background:rgba(0,0,0,0.8); transform:scale(1.08); }
 
-    /* ══════════════════════════════════════════════
-       DELETE GRADE RULE MODAL
-    ══════════════════════════════════════════════ */
     .deleteRuleModal {
       position: fixed;
       inset: 0;
@@ -1174,7 +1168,6 @@ document.documentElement.classList.add("branding-loading");
       to   { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    /* ── Header ── */
     .deleteRuleModalHead {
       display: flex;
       align-items: stretch;
@@ -1215,7 +1208,6 @@ document.documentElement.classList.add("branding-loading");
       line-height: 1.45;
     }
 
-    /* ── Body ── */
     .deleteRuleModalBody {
       padding: 22px 24px;
       display: flex;
@@ -1312,7 +1304,6 @@ document.documentElement.classList.add("branding-loading");
       line-height: 1.4;
     }
 
-    /* ── Footer ── */
     .deleteRuleModalFooter {
       display: flex;
       gap: 10px;
@@ -1378,12 +1369,13 @@ document.documentElement.classList.add("branding-loading");
   </style>
 </head>
 
-<body>
+<body data-role-guard="staff-only">
+  <script src="auth.js"></script>
   <script src="branding.js"></script>
   <script>
   const API_ORIGIN =
   window.location.protocol === "file:"
-    ? "http://127.0.0.1:8000"
+    ? "https://golden-opac-backend.onrender.com"
     : window.location.origin;
   </script>
 
@@ -1533,12 +1525,12 @@ document.documentElement.classList.add("branding-loading");
                     <div class="cardBody">
                       <div class="formGrid" id="defaultViewMode">
                         <div class="field"><label>Loan Period (Days)</label><div class="valueBox" id="viewLoanDays">7</div></div>
-                        <div class="field"><label>Fine Per Day</label><div class="valueBox" id="viewFinePerDay">₱5.00</div></div>
+                        <div class="field"><label>Fine Per Day</label><div class="valueBox" id="viewFinePerDay">±5.00</div></div>
                         <div class="field"><label>Max Borrow Limit</label><div class="valueBox" id="viewBorrowLimit">3</div></div>
                         <div class="field"><label>Max Renewals</label><div class="valueBox" id="viewRenewals">1</div></div>
-                        <div class="field"><label>Damage Fine (Minor)</label><div class="valueBox" id="viewDamageMinor">₱50.00</div></div>
-                        <div class="field"><label>Damage Fine (Major)</label><div class="valueBox" id="viewDamageMajor">₱200.00</div></div>
-                        <div class="field"><label>Lost Book Fine</label><div class="valueBox" id="viewLostFine">₱500.00</div></div>
+                        <div class="field"><label>Damage Fine (Minor)</label><div class="valueBox" id="viewDamageMinor">±50.00</div></div>
+                        <div class="field"><label>Damage Fine (Major)</label><div class="valueBox" id="viewDamageMajor">±200.00</div></div>
+                        <div class="field"><label>Lost Book Fine</label><div class="valueBox" id="viewLostFine">±500.00</div></div>
                         <div class="field"><label>School Year</label><div class="valueBox" id="viewSchoolYear">2025-2026</div></div>
                         <div class="field"><label>Block Renew If Overdue</label><div class="valueBox" id="viewBlockRenew">Yes</div></div>
                       </div>
@@ -1725,6 +1717,7 @@ document.documentElement.classList.add("branding-loading");
                     <div class="cardTitle">Display Settings</div>
                     <div class="actions" style="margin-top:0;">
                       <button class="btnGhost" id="reloadDisplayBtn" type="button">Reload</button>
+                      <button class="btnGhost" id="setDefaultDisplayBtn" type="button">Set to Default</button>
                       <button class="btnGreen" id="editDisplayBtn" type="button">Edit</button>
                     </div>
                   </div>
@@ -1766,8 +1759,8 @@ document.documentElement.classList.add("branding-loading");
                             </a>
                             <div class="logoThumbInfo">
                               <div class="logoThumbTitle">Current Logo</div>
-                              <div class="logoThumbText">Click the X to remove, or click the image to view in full size</div>
-                              <button class="logoDeleteBtn" id="logoDeleteBtn" type="button" title="Remove logo">✕</button>
+                              <div class="logoThumbText">Click × to remove, or click the image to view in full size</div>
+                              <button class="logoDeleteBtn" id="logoDeleteBtn" type="button" title="Remove logo">×</button>
                             </div>
                           </div>
                           <div class="hint">Upload an image for the school logo. The current saved logo will stay unless you choose a new file.</div>
@@ -1873,7 +1866,7 @@ document.documentElement.classList.add("branding-loading");
   <div class="deleteModal" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
     <div class="deleteModalBox">
       <div class="deleteModalHead">
-        <div class="deleteModalIcon">⚠️</div>
+        <div class="deleteModalIcon">⚠</div>
         <div>
           <div class="deleteModalTitle" id="deleteModalTitle">Delete Account</div>
           <div class="deleteModalSubtitle">This action is permanent and cannot be undone.</div>
@@ -1912,9 +1905,6 @@ document.documentElement.classList.add("branding-loading");
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════
-       DELETE GRADE RULE CONFIRMATION MODAL
-  ══════════════════════════════════════════════ -->
   <div class="deleteRuleModal" id="deleteRuleModal" role="dialog" aria-modal="true" aria-labelledby="deleteRuleModalTitle">
     <div class="deleteRuleModalBox">
 
@@ -1949,7 +1939,7 @@ document.documentElement.classList.add("branding-loading");
           <div class="deleteRuleLoadingDot"></div>
           <div class="deleteRuleLoadingDot"></div>
           <div class="deleteRuleLoadingDot"></div>
-          <span class="deleteRuleLoadingText">Deleting rule…</span>
+          <span class="deleteRuleLoadingText">Deleting rule...</span>
         </div>
 
         <div class="deleteRuleStatus" id="deleteRuleStatus"></div>
@@ -2079,7 +2069,6 @@ document.documentElement.classList.add("branding-loading");
       });
     });
 
-    // ── DELETE ACCOUNT MODAL ──
     let _currentUsername = "";
 
     function openDeleteModal(){
@@ -2131,7 +2120,7 @@ document.documentElement.classList.add("branding-loading");
       if (!password){ statusEl.textContent = "Please enter your password."; return; }
 
       btn.disabled = true;
-      btn.textContent = "Deleting…";
+      btn.textContent = "Deleting...";
       statusEl.textContent = "";
 
       try {
@@ -2143,7 +2132,7 @@ document.documentElement.classList.add("branding-loading");
         });
 
         document.getElementById("deleteModal").classList.remove("show");
-        document.getElementById("loadingModal").querySelector(".loadingText").textContent = "Account deleted. Redirecting…";
+        document.getElementById("loadingModal").querySelector(".loadingText").textContent = "Account deleted. Redirecting...";
         document.getElementById("loadingModal").classList.add("show");
 
         setTimeout(() => { window.location.href = "login.html"; }, 1600);
@@ -2155,7 +2144,6 @@ document.documentElement.classList.add("branding-loading");
       }
     });
 
-    // ── STATE ──
     let currentDefaults = null;
     let latestGradeRules = {};
     let studentMeta = { grades: [], sections_by_grade: {} };
@@ -2471,7 +2459,7 @@ document.documentElement.classList.add("branding-loading");
               onclick="deleteGradeRule('${esc(r.grade ?? '')}', this)"
               type="button"
               title="Delete rule for Grade ${esc(r.grade ?? '')}"
-            >✕</button>
+            >✖</button>
           </td>
         </tr>`).join("");
       }
@@ -2487,7 +2475,7 @@ document.documentElement.classList.add("branding-loading");
       await loadGradeRules();
     }
 
-    // ── DELETE GRADE RULE MODAL ──
+   
     let _deleteRuleGrade = "";
     let _deleteRuleBtn = null;
 
@@ -2517,7 +2505,7 @@ document.documentElement.classList.add("branding-loading");
       btn.disabled = on;
       cancelBtn.disabled = on;
       dotsWrap.style.display = on ? "flex" : "none";
-      btnText.textContent = on ? "Deleting…" : "Yes, Delete Rule";
+      btnText.textContent = on ? "Deleting..." : "Yes, Delete Rule";
     }
 
     document.getElementById("cancelDeleteRuleBtn").addEventListener("click", closeDeleteRuleModal);
@@ -2607,7 +2595,7 @@ document.documentElement.classList.add("branding-loading");
         if (!Array.isArray(rows) || !rows.length){ tbody.innerHTML = `<tr><td colspan="4">No librarian accounts found.</td></tr>`; return; }
         const active = rows.filter(r => r.is_active !== false);
         if (!active.length){ tbody.innerHTML = `<tr><td colspan="4">No active librarian accounts found.</td></tr>`; return; }
-        tbody.innerHTML = active.map(r => `<tr><td>${esc(r.username??'—')}</td><td>${esc([r.first_name,r.last_name].filter(Boolean).join(" ")||'—')}</td><td>${esc(r.email??'—')}</td><td>Active</td></tr>`).join("");
+        tbody.innerHTML = active.map(r => `<tr><td>${esc(r.username ?? '—')}</td><td>${esc([r.first_name, r.last_name].filter(Boolean).join(" ") || '—')}</td><td>${esc(r.email ?? '—')}</td><td>Active</td></tr>`).join("");
       } catch { document.getElementById("librariansTableBody").innerHTML = `<tr><td colspan="4">Unable to load librarians.</td></tr>`; }
     }
 
@@ -2634,24 +2622,42 @@ document.documentElement.classList.add("branding-loading");
       await loadLibrarians();
     }
 
-    // ── Display Settings ──
+    const DEFAULT_DISPLAY_SETTINGS = {
+      school_name: "Your School Name",
+      system_name: "Library Management System",
+      header_subtitle: "Online Public Access Catalogue",
+      librarian_portal_title: "Librarian Portal",
+      brand_primary: "#d4af37",
+      brand_secondary: "#6aa84f",
+      logo_url: "assets/default-school-logo.png",
+      footer_title: "Library Management System",
+      footer_description: "Customize your school branding, contact details, and interface appearance in Display Settings.",
+      footer_address: "School Address",
+      footer_phone: "School Contact Number",
+      footer_email: "library@school.edu",
+      footer_website: "",
+      footer_facebook: "",
+      footer_copyright: "Your School Name — All Rights Reserved."
+    };
+
+    // Display Settings
     function normalizeDisplaySettings(row){
       return {
-        school_name: row?.school_name || "Your School Name",
-        system_name: row?.system_name || "Library Management System",
-        header_subtitle: row?.header_subtitle || "Online Public Access Catalogue",
-        librarian_portal_title: row?.librarian_portal_title || "Librarian Portal",
-        brand_primary: row?.brand_primary || "#2563eb",
-        brand_secondary: row?.brand_secondary || "#94a3b8",
-        logo_url: row?.logo_url || "",
-        footer_title: row?.footer_title || "Library Management System",
-        footer_description: row?.footer_description || "Customize your school branding.",
-        footer_address: row?.footer_address || "",
-        footer_phone: row?.footer_phone || "",
-        footer_email: row?.footer_email || "",
-        footer_website: row?.footer_website || "",
-        footer_facebook: row?.footer_facebook || "",
-        footer_copyright: row?.footer_copyright || "Your School Name — All Rights Reserved."
+        school_name: row?.school_name || DEFAULT_DISPLAY_SETTINGS.school_name,
+        system_name: row?.system_name || DEFAULT_DISPLAY_SETTINGS.system_name,
+        header_subtitle: row?.header_subtitle || DEFAULT_DISPLAY_SETTINGS.header_subtitle,
+        librarian_portal_title: row?.librarian_portal_title || DEFAULT_DISPLAY_SETTINGS.librarian_portal_title,
+        brand_primary: row?.brand_primary || DEFAULT_DISPLAY_SETTINGS.brand_primary,
+        brand_secondary: row?.brand_secondary || DEFAULT_DISPLAY_SETTINGS.brand_secondary,
+        logo_url: row?.logo_url || DEFAULT_DISPLAY_SETTINGS.logo_url,
+        footer_title: row?.footer_title || DEFAULT_DISPLAY_SETTINGS.footer_title,
+        footer_description: row?.footer_description || DEFAULT_DISPLAY_SETTINGS.footer_description,
+        footer_address: row?.footer_address || DEFAULT_DISPLAY_SETTINGS.footer_address,
+        footer_phone: row?.footer_phone || DEFAULT_DISPLAY_SETTINGS.footer_phone,
+        footer_email: row?.footer_email || DEFAULT_DISPLAY_SETTINGS.footer_email,
+        footer_website: row?.footer_website || DEFAULT_DISPLAY_SETTINGS.footer_website,
+        footer_facebook: row?.footer_facebook || DEFAULT_DISPLAY_SETTINGS.footer_facebook,
+        footer_copyright: row?.footer_copyright || DEFAULT_DISPLAY_SETTINGS.footer_copyright
       };
     }
 
@@ -2702,7 +2708,9 @@ document.documentElement.classList.add("branding-loading");
     function getDisplayFormData(){
       return {
         school_name: document.getElementById("displaySchoolName").value.trim(),
+        system_name: currentDisplaySettings?.system_name || DEFAULT_DISPLAY_SETTINGS.system_name,
         header_subtitle: document.getElementById("displayHeaderSubtitle").value.trim(),
+        librarian_portal_title: currentDisplaySettings?.librarian_portal_title || DEFAULT_DISPLAY_SETTINGS.librarian_portal_title,
         brand_primary: document.getElementById("displayBrandPrimary").value.trim(),
         brand_secondary: document.getElementById("displayBrandSecondary").value.trim(),
         logo_url: pendingLogoFileUrl || currentDisplaySettings?.logo_url || "",
@@ -2755,7 +2763,27 @@ document.documentElement.classList.add("branding-loading");
 
     function previewDisplaySettings(){ applyDisplayPreview(normalizeDisplaySettings(getDisplayFormData())); }
 
-    // ── Event Listeners ──
+    async function resetDisplaySettings(){
+      document.getElementById("loadingModal").classList.add("show");
+      try {
+        const result = await apiFetch("/api/settings/display/reset", { method: "POST" });
+        const nextSettings = normalizeDisplaySettings(result?.settings || DEFAULT_DISPLAY_SETTINGS);
+        currentDisplaySettings = nextSettings;
+        pendingLogoData = "";
+        pendingLogoFileUrl = nextSettings.logo_url || "";
+        setDisplayForm(nextSettings);
+        applyDisplayPreview(nextSettings);
+        if (window.saveBrandingCache) window.saveBrandingCache(nextSettings);
+        if (window.applyBranding) window.applyBranding(nextSettings);
+        setDisplayEditMode(false);
+        document.getElementById("displayStatus").textContent = "Display settings restored to default branding.";
+        showToast("Display settings reset to default");
+      } finally {
+        document.getElementById("loadingModal").classList.remove("show");
+      }
+    }
+
+    // Event Listeners
     document.getElementById("reloadMeBtn").addEventListener("click", async () => { try { setProgress(true,20); await loadMe(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Reload failed"); } });
     document.getElementById("saveProfileBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveProfile(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Profile save failed"); } });
     document.getElementById("changePasswordBtn").addEventListener("click", async () => { try { setProgress(true,20); await changePassword(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Password change failed"); } });
@@ -2800,6 +2828,18 @@ document.documentElement.classList.add("branding-loading");
     document.getElementById("newLibPassword").addEventListener("input", syncLibPasswordMatch);
     document.getElementById("newLibConfirmPassword").addEventListener("input", syncLibPasswordMatch);
     document.getElementById("reloadDisplayBtn").addEventListener("click", async () => { try { setProgress(true,20); await loadDisplaySettings(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Reload display settings failed"); } });
+    document.getElementById("setDefaultDisplayBtn").addEventListener("click", async () => {
+      if (!confirm("Restore the default display branding for the whole system?")) return;
+      try {
+        setProgress(true, 20);
+        await resetDisplaySettings();
+        setProgress(true, 100);
+        setTimeout(() => setProgress(false), 180);
+      } catch (err) {
+        setProgress(false);
+        showToast(err.message || "Reset display settings failed");
+      }
+    });
     document.getElementById("editDisplayBtn").addEventListener("click", () => { setDisplayEditMode(true); document.getElementById("displayStatus").textContent = "Editing enabled. Input fields are now highlighted."; });
     document.getElementById("cancelDisplayBtn").addEventListener("click", () => { pendingLogoData = null; pendingLogoFileUrl = null; if (currentDisplaySettings){ setDisplayForm(currentDisplaySettings); applyDisplayPreview(currentDisplaySettings); } setDisplayEditMode(false); document.getElementById("displayStatus").textContent = "Changes discarded."; });
     document.getElementById("previewDisplayBtn").addEventListener("click", () => { previewDisplaySettings(); showToast("Preview updated"); });
@@ -2863,7 +2903,7 @@ document.documentElement.classList.add("branding-loading");
       el.addEventListener("input", () => { if (displayEditing) previewDisplaySettings(); });
     });
 
-    // ── Init ──
+    // Init
     async function init(){
       try {
         setProgress(true, 15);

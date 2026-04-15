@@ -391,7 +391,7 @@
         </form>
 
         <div class="hint">
-          For librarian access only. If you don’t have an account, contact the library administrator.
+          For librarian access only. If you don't have an account, contact the library administrator.
         </div>
       </section>
     </div>
@@ -518,11 +518,12 @@
         sessionStorage.setItem("access_token", token);
         sessionStorage.setItem("gk_token", token);
 
-        await fetchMe(token);
+        const me = await fetchMe(token);
+        const role = String(me?.role || "librarian").toLowerCase();
 
         finishProgress();
         setTimeout(() => {
-          window.location.href = "home.html";
+          window.location.href = role === "cashier" ? "cashier.html" : "home.html";
         }, 220);
 
       } catch (e2) {
