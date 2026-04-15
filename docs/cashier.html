@@ -315,8 +315,8 @@
 
     .mainGrid{
       display:grid;
-      grid-template-columns:420px 1fr;
-      gap:18px;
+      grid-template-columns:minmax(320px, 0.92fr) minmax(0, 1.08fr);
+      gap:20px;
       align-items:start;
       min-width:0;
       max-width:100%;
@@ -325,7 +325,7 @@
     .stack{
       display:flex;
       flex-direction:column;
-      gap:18px;
+      gap:16px;
       min-width:0;
       width:100%;
     }
@@ -489,10 +489,11 @@
 
     .summaryGrid{
       display:grid;
-      grid-template-columns:repeat(3, minmax(140px, 1fr));
-      gap:16px;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:18px;
       align-items:stretch;
       width:100%;
+      min-width:0;
     }
 
     .summaryCard,
@@ -500,9 +501,11 @@
       border-radius:16px;
       border:1px solid rgba(0,0,0,0.08);
       background: rgba(0,0,0,0.03);
-      padding:14px 16px;
+      padding:18px 20px;
       display:grid;
-      gap:6px;
+      gap:10px;
+      min-width:0;
+      overflow:hidden;
     }
 
     .summaryLabel,
@@ -523,10 +526,11 @@
 
     .metaGrid{
       display:grid;
-      grid-template-columns:repeat(2, minmax(140px, 1fr));
-      gap:16px;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:18px;
       align-items:stretch;
       width:100%;
+      min-width:0;
     }
 
     .metaValue{
@@ -541,17 +545,20 @@
       border:1px solid rgba(0,0,0,0.10);
       overflow:auto;
       background: rgba(255,255,255,0.84);
-      margin-top:0;
+      margin-top:4px;
+      width:100%;
+      min-width:0;
     }
 
     table{
       width:100%;
       min-width:0;
       border-collapse:collapse;
+      table-layout:fixed;
     }
 
     th, td{
-      padding:14px 14px;
+      padding:18px 16px;
       text-align:left;
       vertical-align:middle;
       border-bottom:1px solid rgba(0,0,0,0.08);
@@ -587,24 +594,68 @@
 
     .paymentGrid{
       display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:12px;
+      grid-template-columns:repeat(6, minmax(0, 1fr));
+      gap:16px;
       align-items:start;
+      min-width:0;
+      margin-top:8px;
     }
+
+    .field--span-2{ grid-column:span 2; }
+    .field--span-3{ grid-column:span 3; }
+    .field--compact{ gap:6px; }
+
+    .moneyValue{
+      display:flex;
+      align-items:center;
+      min-height:46px;
+      padding:0 14px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.03);
+      color:#111;
+      font-weight:900;
+      font-size:15px;
+    }
+
+    .moneyValue.is-positive{
+      background: color-mix(in srgb, var(--brand-green) 10%, rgba(255,255,255,0.88));
+      border-color: color-mix(in srgb, var(--brand-green) 22%, rgba(0,0,0,0.12));
+      color:#166534;
+    }
+
+    .moneyValue.is-warning{
+      background: color-mix(in srgb, #f59e0b 10%, rgba(255,255,255,0.88));
+      border-color: rgba(217,119,6,0.22);
+      color:#b45309;
+    }
+
+    .fieldHint{
+      min-height:18px;
+      font-size:12px;
+      font-weight:900;
+      color:rgba(0,0,0,0.55);
+      line-height:1.4;
+    }
+
+    .fieldHint.is-error{ color:rgba(150,0,0,0.82); }
+    .fieldHint.is-success{ color:#166534; }
 
     .actions{
       display:flex;
       justify-content:flex-end;
-      gap:10px;
+      gap:12px;
       flex-wrap:wrap;
       margin-top:0;
-      padding-top:2px;
+      padding-top:4px;
       align-items:center;
     }
 
     #studentDetails{
       display:grid;
-      gap:14px;
+      gap:20px;
+      min-width:0;
+      width:100%;
     }
 
     .site-footer{
@@ -617,6 +668,11 @@
       .summaryGrid,
       .paymentGrid{
         grid-template-columns:1fr;
+      }
+
+      .field--span-2,
+      .field--span-3{
+        grid-column:auto;
       }
 
       .results,
@@ -746,7 +802,11 @@
     .surfaceCard--search,
     .surfaceCard--details{ min-height:auto; }
 
-    .surfaceCard--details{ align-content:start; }
+    .surfaceCard--details{
+      align-content:start;
+      gap:18px;
+      min-width:0;
+    }
 
     #searchBtn{ align-self:end; }
 
@@ -755,14 +815,17 @@
 
     #studentDetails{ align-content:start; }
 
-    .tableWrap table{ table-layout:auto; width:100%; }
-    .tableWrap th:nth-child(1), .tableWrap td:nth-child(1){ width:60px; flex-shrink:0; }
-    .tableWrap th:nth-child(2), .tableWrap td:nth-child(2){ width:70px; flex-shrink:0; }
+    .tableWrap table{ table-layout:fixed; width:100%; }
+    .tableWrap th:nth-child(1), .tableWrap td:nth-child(1){ width:56px; }
+    .tableWrap th:nth-child(2), .tableWrap td:nth-child(2){ width:70px; }
     .tableWrap th:nth-child(4), .tableWrap td:nth-child(4),
-    .tableWrap th:nth-child(5), .tableWrap td:nth-child(5),
-    .tableWrap th:nth-child(6), .tableWrap td:nth-child(6){ width:80px; flex-shrink:0; }
-    .tableWrap th:nth-child(7), .tableWrap td:nth-child(7){ width:85px; flex-shrink:0; }
-    .tableWrap td:nth-child(3){ min-width:180px; word-break:break-word; line-height:1.45; }
+    .tableWrap th:nth-child(5), .tableWrap td:nth-child(5){ width:88px; }
+    .tableWrap th:nth-child(6), .tableWrap td:nth-child(6){ width:110px; }
+    .tableWrap th:nth-child(7), .tableWrap td:nth-child(7){ width:96px; }
+    .tableWrap td:nth-child(3){
+      word-break:break-word;
+      line-height:1.45;
+    }
 
     .actions{ margin-top:4px; justify-content:space-between; }
     .actionGroup{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -996,17 +1059,28 @@
                       </div>
 
                       <div class="paymentGrid">
-                        <label class="field">
-                          <span class="label">Selected Fine</span>
+                        <label class="field field--full">
+                          <span class="label">Selected Fine(s)</span>
                           <input class="input" id="selectedFineLabel" type="text" readonly />
                         </label>
 
-                        <label class="field">
-                          <span class="label">Amount to Pay</span>
+                        <label class="field field--span-2">
+                          <span class="label">Total Due / Amount to Pay</span>
                           <input class="input" id="paymentAmount" type="number" min="0.01" step="0.01" />
                         </label>
 
-                        <label class="field">
+                        <label class="field field--span-2">
+                          <span class="label">Cash Received</span>
+                          <input class="input" id="cashReceived" type="number" min="0.00" step="0.01" inputmode="decimal" placeholder="0.00" />
+                        </label>
+
+                        <div class="field field--span-2 field--compact">
+                          <span class="label">Change</span>
+                          <div class="moneyValue" id="changeDisplay">PHP 0.00</div>
+                          <div class="fieldHint" id="cashValidationText">Enter the cash received to calculate change.</div>
+                        </div>
+
+                        <label class="field field--span-3">
                           <span class="label">Payment Method</span>
                           <select class="select" id="paymentMethod">
                             <option value="cash">Cash</option>
@@ -1014,7 +1088,7 @@
                                                       </select>
                         </label>
 
-                        <label class="field">
+                        <label class="field field--span-3">
                           <span class="label">Receipt Preview</span>
                           <input class="input" id="receiptPreview" type="text" readonly placeholder="Generated after payment" />
                         </label>
@@ -1186,7 +1260,7 @@
       me: null,
       results: [],
       student: null,
-      selectedFineId: null,
+      selectedFineIds: [],
       recentPayments: [],
       pendingPayment: null,
       lastReceipt: null
@@ -1212,6 +1286,9 @@
     const finesTableBody = document.getElementById("finesTableBody");
     const selectedFineLabel = document.getElementById("selectedFineLabel");
     const paymentAmount = document.getElementById("paymentAmount");
+    const cashReceived = document.getElementById("cashReceived");
+    const changeDisplay = document.getElementById("changeDisplay");
+    const cashValidationText = document.getElementById("cashValidationText");
     const paymentMethod = document.getElementById("paymentMethod");
     const receiptPreview = document.getElementById("receiptPreview");
     const paymentNote = document.getElementById("paymentNote");
@@ -1254,6 +1331,12 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })}`;
+    }
+
+    function toMoneyNumber(value){
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return 0;
+      return Number(parsed.toFixed(2));
     }
 
     function fmtDateTime(value){
@@ -1341,18 +1424,161 @@
 
     function clearStudentView(emptyText = "Select a student to view unpaid fines and payment details."){
       state.student = null;
-      state.selectedFineId = null;
+      state.selectedFineIds = [];
       studentDetails.style.display = "none";
       studentEmpty.style.display = "block";
       studentEmpty.textContent = emptyText;
       finesTableBody.innerHTML = "";
       selectedFineLabel.value = "";
       paymentAmount.value = "";
+      paymentAmount.readOnly = false;
+      cashReceived.value = "";
       paymentNote.value = "";
       receiptPreview.value = "";
+      renderCashSummary();
       payFineBtn.disabled = true;
       setPaymentStatus("Ready to process payment.");
       [...searchResults.querySelectorAll(".resultCard")].forEach(card => card.classList.remove("is-active"));
+    }
+
+    function setCashValidationMessage(message, type = "neutral"){
+      if (!cashValidationText) return;
+      cashValidationText.textContent = message || "";
+      cashValidationText.classList.remove("is-error", "is-success");
+      if (type === "error") cashValidationText.classList.add("is-error");
+      if (type === "success") cashValidationText.classList.add("is-success");
+    }
+
+    function syncCashFieldState(){
+      const method = paymentMethod.value || "cash";
+      const requiresCash = method === "cash";
+      cashReceived.disabled = !requiresCash;
+      cashReceived.placeholder = requiresCash ? "0.00" : "Not required";
+      if (!requiresCash){
+        cashReceived.value = paymentAmount.value ? String(toMoneyNumber(paymentAmount.value)) : "";
+      }
+      return requiresCash;
+    }
+
+    function getSelectedFines(){
+      const selectedIds = new Set((state.selectedFineIds || []).map(Number));
+      return getUnpaidFines(state.student).filter(item => selectedIds.has(Number(item.fine_id)));
+    }
+
+    function getSelectedOutstandingTotal(){
+      return getSelectedFines().reduce((sum, fine) => sum + getOutstanding(fine), 0);
+    }
+
+    function syncSelectedFinesUI(){
+      const selectedFines = getSelectedFines();
+      const totalOutstanding = toMoneyNumber(getSelectedOutstandingTotal());
+
+      if (!selectedFines.length){
+        selectedFineLabel.value = "";
+        paymentAmount.value = "";
+        paymentAmount.max = "";
+        paymentAmount.readOnly = false;
+        return { selectedFines, totalOutstanding };
+      }
+
+      if (selectedFines.length === 1){
+        const fine = selectedFines[0];
+        const outstanding = getOutstanding(fine);
+        selectedFineLabel.value = `Fine #${fine.fine_id} • ${fine.reason || "Fine"} • ${peso(outstanding)} outstanding`;
+        paymentAmount.readOnly = false;
+        paymentAmount.value = outstanding ? String(outstanding.toFixed(2)) : "";
+        paymentAmount.max = outstanding ? String(outstanding.toFixed(2)) : "";
+        return { selectedFines, totalOutstanding: outstanding };
+      }
+
+      const labels = selectedFines.slice(0, 2).map(fine => `#${fine.fine_id}`).join(", ");
+      const extraLabel = selectedFines.length > 2 ? ` +${selectedFines.length - 2} more` : "";
+      selectedFineLabel.value = `${selectedFines.length} fines selected • ${labels}${extraLabel} • ${peso(totalOutstanding)} total outstanding`;
+      paymentAmount.readOnly = true;
+      paymentAmount.value = totalOutstanding ? String(totalOutstanding.toFixed(2)) : "";
+      paymentAmount.max = totalOutstanding ? String(totalOutstanding.toFixed(2)) : "";
+      return { selectedFines, totalOutstanding };
+    }
+
+    function toggleFineSelection(fineId, checked){
+      const normalizedId = Number(fineId);
+      const next = new Set((state.selectedFineIds || []).map(Number));
+      if (checked){
+        next.add(normalizedId);
+      }else{
+        next.delete(normalizedId);
+      }
+      state.selectedFineIds = [...next];
+
+      const { selectedFines, totalOutstanding } = syncSelectedFinesUI();
+      cashReceived.value = "";
+
+      if (!selectedFines.length){
+        setPaymentStatus("Select at least one fine to continue.");
+      }else if (selectedFines.length === 1){
+        setPaymentStatus(`Selected fine #${selectedFines[0].fine_id}. Outstanding balance: ${peso(totalOutstanding)}.`);
+      }else{
+        setPaymentStatus(`${selectedFines.length} fines selected. Total amount due: ${peso(totalOutstanding)}.`);
+      }
+
+      syncPaymentActionState();
+    }
+
+    function renderCashSummary(){
+      const requiresCash = syncCashFieldState();
+      const amount = toMoneyNumber(paymentAmount.value || 0);
+      const received = toMoneyNumber(cashReceived.value || 0);
+      const change = !requiresCash ? 0 : received >= amount ? toMoneyNumber(received - amount) : 0;
+
+      changeDisplay.textContent = peso(change);
+      changeDisplay.classList.toggle("is-positive", (requiresCash ? received >= amount : amount > 0) && amount > 0);
+      changeDisplay.classList.toggle("is-warning", requiresCash && received > 0 && received < amount);
+
+      if (!getSelectedFines().length){
+        setCashValidationMessage("Select at least one fine to prepare the payment summary.");
+        return { amount, received, change, isValid: false, reason: "no_fine" };
+      }
+
+      if (!Number.isFinite(amount) || amount <= 0){
+        setCashValidationMessage("Enter a valid amount to pay.", "error");
+        return { amount, received, change, isValid: false, reason: "invalid_amount" };
+      }
+
+      if (!requiresCash){
+        setCashValidationMessage("Cash received is not required for this payment method.", "success");
+        return { amount, received: amount, change: 0, shortage: 0, isValid: true, reason: "ok" };
+      }
+
+      if (!String(cashReceived.value || "").trim()){
+        setCashValidationMessage("Enter the cash received to calculate change.");
+        return { amount, received, change, isValid: false, reason: "missing_cash" };
+      }
+
+      if (received < amount){
+        const shortage = toMoneyNumber(amount - received);
+        setCashValidationMessage(`Insufficient cash. Short by ${peso(shortage)}.`, "error");
+        return { amount, received, change: 0, shortage, isValid: false, reason: "insufficient_cash" };
+      }
+
+      setCashValidationMessage(`Change ready: ${peso(change)}.`, "success");
+      return { amount, received, change, shortage: 0, isValid: true, reason: "ok" };
+    }
+
+    function syncPaymentActionState(){
+      const selectedFines = getSelectedFines();
+      const outstanding = toMoneyNumber(getSelectedOutstandingTotal());
+      const amount = toMoneyNumber(paymentAmount.value || 0);
+      const cashState = renderCashSummary();
+      const isMultiFine = selectedFines.length > 1;
+      if (selectedFines.length && amount > outstanding){
+        setCashValidationMessage(`Amount to pay cannot exceed ${peso(outstanding)}.`, "error");
+      }
+      if (isMultiFine && amount !== outstanding){
+        setCashValidationMessage(`Multiple fine payments must match the selected total of ${peso(outstanding)}.`, "error");
+      }
+      const amountOk = !!selectedFines.length && Number.isFinite(amount) && amount > 0 && amount <= outstanding && (!isMultiFine || amount === outstanding);
+      payFineBtn.disabled = !(amountOk && cashState.isValid);
+      return { selectedFines, outstanding, amount, cashState };
     }
 
     function getOutstanding(fine){
@@ -1425,7 +1651,8 @@
       setPaymentStatus(`Selected fine #${fine.fine_id}. Outstanding balance: ${peso(outstanding)}.`);
       paymentAmount.value = outstanding ? String(outstanding.toFixed(2)) : "";
       paymentAmount.max = outstanding ? String(outstanding.toFixed(2)) : "";
-      payFineBtn.disabled = outstanding <= 0;
+      cashReceived.value = "";
+      syncPaymentActionState();
     }
 
     function renderResults(results){
@@ -1480,17 +1707,21 @@
         finesTableBody.appendChild(row);
         selectedFineLabel.value = "";
         paymentAmount.value = "";
+        paymentAmount.readOnly = false;
+        cashReceived.value = "";
+        renderCashSummary();
         payFineBtn.disabled = true;
         return;
       }
 
+      state.selectedFineIds = [];
       fines.forEach((fine, index) => {
         const outstanding = getOutstanding(fine);
         const row = document.createElement("tr");
         row.innerHTML = `
           <td class="tableRadio" data-label="Select">
             <input
-              type="radio"
+              type="checkbox"
               name="selectedFine"
               value="${fine.fine_id}"
               ${outstanding <= 0 ? "disabled" : ""}
@@ -1509,12 +1740,23 @@
             </span>
           </td>
         `;
-        const radio = row.querySelector('input[name="selectedFine"]');
-        radio?.addEventListener("change", () => selectFine(fine.fine_id));
+        const checkbox = row.querySelector('input[name="selectedFine"]');
+        if (index === 0 && outstanding > 0){
+          state.selectedFineIds.push(Number(fine.fine_id));
+        }
+        checkbox?.addEventListener("change", () => {
+          toggleFineSelection(fine.fine_id, checkbox.checked);
+        });
         finesTableBody.appendChild(row);
       });
 
-      selectFine(fines[0].fine_id);
+      const { selectedFines, totalOutstanding } = syncSelectedFinesUI();
+      setPaymentStatus(
+        selectedFines.length
+          ? `${selectedFines.length} fine${selectedFines.length === 1 ? "" : "s"} selected. Total amount due: ${peso(totalOutstanding)}.`
+          : "Select at least one fine to continue."
+      );
+      syncPaymentActionState();
     }
 
     function renderStudent(payload){
@@ -1536,6 +1778,8 @@
       studentStatus.textContent = student.status || "--";
 
       receiptPreview.value = "";
+      cashReceived.value = "";
+      renderCashSummary();
       setPaymentStatus(unpaid.length ? `Loaded ${unpaid.length} unpaid fine${unpaid.length === 1 ? "" : "s"} for this student.` : "No unpaid fines found for this student.");
       renderFines(unpaid);
     }
@@ -1625,8 +1869,19 @@
       }
     }
 
-    function buildReceiptData(serverData = {}, fine, amount, method, note){
+    function buildReceiptData(serverData = {}, fineOrItems, amount, method, note){
       const student = state.student?.student || {};
+      const items = Array.isArray(fineOrItems)
+        ? fineOrItems.map(item => ({
+            fine_id: item?.fine?.fine_id || item?.fine_id || "--",
+            reason: item?.fine?.reason || item?.reason || "Fine payment",
+            amount: Number(item?.amount || getOutstanding(item?.fine || item) || 0)
+          }))
+        : [{
+            fine_id: fineOrItems?.fine_id || "--",
+            reason: fineOrItems?.reason || "Fine payment",
+            amount: Number(amount || 0)
+          }];
       return {
         receipt_number: serverData.receipt_number || receiptPreview.value || `RCPT-${Date.now()}`,
         paid_at: serverData.paid_at || new Date().toISOString(),
@@ -1634,9 +1889,14 @@
         student_name: [student.last_name, student.first_name].filter(Boolean).join(", ") || studentName.textContent || "Student",
         student_code: student.student_code || studentCode.textContent || "--",
         grade_section: studentGradeSection.textContent || "--",
-        fine_id: fine?.fine_id || "--",
-        reason: fine?.reason || "Fine payment",
+        fine_id: items.length === 1 ? items[0].fine_id : `${items.length} fines`,
+        reason: items.length === 1 ? items[0].reason : `${items.length} fines paid`,
+        items,
         amount: Number(amount || 0),
+        total_due: Number(amount || 0),
+        cash_received: Number(serverData.cash_received || 0),
+        change: Number(serverData.change || 0),
+        receipt_numbers: Array.isArray(serverData.receipt_numbers) ? serverData.receipt_numbers : [serverData.receipt_number].filter(Boolean),
         method: method || "cash",
         note: note || "",
         status: serverData.status || "Paid"
@@ -1644,16 +1904,19 @@
     }
 
     function openConfirmPayment(){
-      const fine = getUnpaidFines(state.student).find(item => Number(item.fine_id) === Number(state.selectedFineId));
-      if (!fine){
-        setPaymentStatus("Please select a fine to pay.", "error");
+      const selectedFines = getSelectedFines();
+      if (!selectedFines.length){
+        setPaymentStatus("Please select at least one fine to pay.", "error");
         return;
       }
+      const fine = selectedFines[0];
 
-      const outstanding = getOutstanding(fine);
-      const amount = Number(paymentAmount.value || 0);
+      const outstanding = toMoneyNumber(getSelectedOutstandingTotal());
+      const amount = toMoneyNumber(paymentAmount.value || 0);
+      const cashState = renderCashSummary();
       const method = paymentMethod.value || "cash";
       const note = paymentNote.value.trim();
+      const isMultiFine = selectedFines.length > 1;
 
       if (!Number.isFinite(amount) || amount <= 0){
         setPaymentStatus("Enter a valid payment amount.", "error");
@@ -1665,11 +1928,45 @@
         return;
       }
 
-      state.pendingPayment = { fine, outstanding, amount, method, note };
+      if (isMultiFine && amount !== outstanding){
+        setPaymentStatus(`Multiple fine payments must match the selected total of ${peso(outstanding)}.`, "error");
+        return;
+      }
+
+      if (!cashState.isValid){
+        setPaymentStatus(
+          cashState.reason === "missing_cash"
+            ? "Enter the cash received before continuing."
+            : cashState.reason === "insufficient_cash"
+              ? `Cash received is not enough for ${peso(amount)}.`
+              : "Please review the payment details before continuing.",
+          "error"
+        );
+        return;
+      }
+
+      const items = selectedFines.map((fine) => ({
+        fine,
+        outstanding: getOutstanding(fine),
+        amount: isMultiFine ? getOutstanding(fine) : amount
+      }));
+
+      state.pendingPayment = {
+        fines: selectedFines,
+        items,
+        outstanding,
+        amount,
+        method,
+        note,
+        cash_received: cashState.received,
+        change: cashState.change
+      };
       confirmMeta.innerHTML = [
         buildMetaCard("Student", escapeHtml(studentName.textContent || "Student")),
         buildMetaCard("Fine", `#${escapeHtml(fine.fine_id)} • ${escapeHtml(fine.reason || "Fine")}`),
         buildMetaCard("Amount to Pay", escapeHtml(peso(amount))),
+        buildMetaCard("Cash Received", escapeHtml(peso(cashState.received))),
+        buildMetaCard("Change", escapeHtml(peso(cashState.change))),
         buildMetaCard("Method", escapeHtml(method.toUpperCase()))
       ].join("");
       setModalOpen(confirmModal, true);
@@ -1679,7 +1976,8 @@
       const receipt = state.lastReceipt;
       if (!receipt) return;
 
-      const win = window.open("", "_blank", "width=760,height=880,noopener");
+      const printName = `receipt-preview-${Date.now()}`;
+      const win = window.open("about:blank", printName, "width=760,height=880,resizable=yes,scrollbars=yes");
       if (!win){
         setPaymentStatus("Pop-up blocked. Allow pop-ups to print the receipt.", "error");
         return;
@@ -1691,36 +1989,110 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Receipt ${escapeHtml(receipt.receipt_number)}</title>
 <style>
-body{font-family:Arial,sans-serif;margin:0;padding:24px;background:#f5f5f5;color:#111}
-.sheet{max-width:700px;margin:0 auto;background:#fff;border:1px solid #ddd;border-radius:18px;padding:28px;box-shadow:0 12px 28px rgba(0,0,0,.08)}
-.head{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom:18px}
-.title{font-size:28px;font-weight:700;letter-spacing:.04em}.sub{font-size:13px;color:#555;font-weight:700;line-height:1.6}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}.card{border:1px solid #ddd;border-radius:14px;padding:12px 14px;background:#fafafa}
-.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#666;font-weight:700;margin-bottom:6px}.value{font-size:16px;font-weight:700;line-height:1.45;word-break:break-word}
-.line{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px dashed #ccc;font-size:15px}.line strong{font-size:20px}
-.note{margin-top:18px;border:1px solid #ddd;border-radius:14px;padding:12px 14px;background:#fafafa}.foot{margin-top:22px;font-size:12px;color:#666;line-height:1.6;text-align:center}
-@media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border:none;max-width:none;border-radius:0}}
+body{font-family:"Courier New",monospace;margin:0;padding:18px;background:#ececec;color:#111}
+.preview{max-width:420px;margin:0 auto;display:grid;gap:12px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:#fff;border:1px solid #d9d9d9;border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.08)}
+.toolbar__copy{display:grid;gap:2px}
+.toolbar__title{font-size:15px;font-weight:700}
+.toolbar__text{font-size:11px;color:#555;line-height:1.4}
+.toolbar__actions{display:flex;gap:8px;flex-wrap:wrap}
+.toolbar__btn{appearance:none;border:0;border-radius:999px;padding:10px 14px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.toolbar__btn--print{background:#111;color:#fff}
+.toolbar__btn--close{background:#ececec;color:#111}
+.sheet{width:100%;margin:0 auto;background:#fff;border:1px solid #d9d9d9;border-radius:12px;padding:16px 14px;box-shadow:0 10px 26px rgba(0,0,0,.08)}
+.receipt-top{display:grid;gap:4px;text-align:center;border-bottom:1px dashed #999;padding-bottom:10px;margin-bottom:10px}
+.receipt-title{font-size:20px;font-weight:700;letter-spacing:.04em}
+.receipt-school{font-size:13px;font-weight:700}
+.receipt-sub{font-size:11px;line-height:1.45;color:#444}
+.receipt-meta{display:grid;gap:2px;font-size:11px;line-height:1.45;text-align:left;padding-bottom:10px;margin-bottom:10px;border-bottom:1px dashed #bbb}
+.section{display:grid;gap:6px;margin-bottom:10px}
+.items{display:grid;gap:6px;padding-top:6px;margin-top:6px;border-top:1px dashed #bbb}
+.items .row__label{max-width:60%}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-size:12px;line-height:1.45}
+.row__label{color:#444}
+.row__value{text-align:right;font-weight:700;word-break:break-word}
+.totals{display:grid;gap:0;border-top:1px dashed #999;border-bottom:1px dashed #999;padding:8px 0;margin:10px 0}
+.totals .row{padding:5px 0}
+.totals .row--strong{font-size:14px}
+.note{border-top:1px dashed #bbb;padding-top:10px;margin-top:10px;font-size:11px;line-height:1.5}
+.note strong{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.08em}
+.foot{margin-top:12px;font-size:10px;color:#555;line-height:1.5;text-align:center}
+@media (max-width:480px){
+body{padding:10px;background:#f2f2f2}
+.preview{max-width:none}
+}
+@media print{
+body{background:#fff;padding:0}
+.preview{max-width:none}
+.toolbar{display:none}
+.sheet{box-shadow:none;border:none;border-radius:0;padding:10px 0;max-width:none}
+}
 </style>
 </head>
 <body>
+<div class="preview">
+<div class="toolbar">
+<div class="toolbar__copy">
+<div class="toolbar__title">Receipt Preview</div>
+<div class="toolbar__text">Review the generated receipt, then click Print when you are ready.</div>
+</div>
+<div class="toolbar__actions">
+<button class="toolbar__btn toolbar__btn--print" type="button" onclick="window.print()">Print Receipt</button>
+<button class="toolbar__btn toolbar__btn--close" type="button" onclick="window.close()">Close</button>
+</div>
+</div>
 <div class="sheet">
-<div class="head"><div><div class="title">Payment Receipt</div><div class="sub">${escapeHtml(schoolName)}<br>${escapeHtml(subtitle)}</div></div><div class="sub" style="text-align:right;">Receipt No.: <strong>${escapeHtml(receipt.receipt_number)}</strong><br>Paid At: ${escapeHtml(fmtDateTime(receipt.paid_at))}<br>Cashier: ${escapeHtml(receipt.cashier_name)}</div></div>
-<div class="grid">
-<div class="card"><div class="label">Student</div><div class="value">${escapeHtml(receipt.student_name)}</div></div>
-<div class="card"><div class="label">Student ID</div><div class="value">${escapeHtml(receipt.student_code)}</div></div>
-<div class="card"><div class="label">Grade and Section</div><div class="value">${escapeHtml(receipt.grade_section)}</div></div>
-<div class="card"><div class="label">Payment Method</div><div class="value">${escapeHtml(String(receipt.method || "cash").toUpperCase())}</div></div>
+<div class="receipt-top">
+<div class="receipt-title">PAYMENT RECEIPT</div>
+<div class="receipt-school">${escapeHtml(schoolName)}</div>
+<div class="receipt-sub">${escapeHtml(subtitle)}</div>
 </div>
-<div class="line"><span>Fine Reference</span><span>#${escapeHtml(receipt.fine_id)}</span></div>
-<div class="line"><span>Reason</span><span>${escapeHtml(receipt.reason)}</span></div>
-<div class="line"><span>Status</span><span>${escapeHtml(receipt.status)}</span></div>
-<div class="line"><span><strong>Total Paid</strong></span><span><strong>${escapeHtml(peso(receipt.amount))}</strong></span></div>
-<div class="note"><div class="label">Cashier Note</div><div class="value">${escapeHtml(receipt.note || "No additional note.")}</div></div>
-<div class="foot">This receipt serves as proof of fine payment. Please keep a copy for your records.</div>
+<div class="receipt-meta">
+<div>Receipt No: ${escapeHtml(receipt.receipt_number)}</div>
+<div>Date: ${escapeHtml(fmtDateTime(receipt.paid_at))}</div>
+<div>Cashier: ${escapeHtml(receipt.cashier_name)}</div>
+${receipt.receipt_numbers?.length > 1 ? `<div>Refs: ${escapeHtml(receipt.receipt_numbers.join(", "))}</div>` : ""}
 </div>
-<script>window.onload=function(){window.print();setTimeout(function(){window.close();},200);};<\/script>
+<div class="section">
+<div class="row"><span class="row__label">Student</span><span class="row__value">${escapeHtml(receipt.student_name)}</span></div>
+<div class="row"><span class="row__label">Student ID</span><span class="row__value">${escapeHtml(receipt.student_code)}</span></div>
+<div class="row"><span class="row__label">Grade/Section</span><span class="row__value">${escapeHtml(receipt.grade_section)}</span></div>
+<div class="row"><span class="row__label">Method</span><span class="row__value">${escapeHtml(String(receipt.method || "cash").toUpperCase())}</span></div>
+<div class="row"><span class="row__label">Fine Count</span><span class="row__value">${escapeHtml(String(receipt.items?.length || 1))}</span></div>
+<div class="row"><span class="row__label">Status</span><span class="row__value">${escapeHtml(receipt.status)}</span></div>
+<div class="items">
+${(receipt.items || []).map(item => `<div class="row"><span class="row__label">#${escapeHtml(item.fine_id)} • ${escapeHtml(item.reason)}</span><span class="row__value">${escapeHtml(peso(item.amount))}</span></div>`).join("")}
+</div>
+</div>
+<div class="totals">
+<div class="row"><span class="row__label">Total Due</span><span class="row__value">${escapeHtml(peso(receipt.total_due || receipt.amount))}</span></div>
+<div class="row"><span class="row__label">Cash Received</span><span class="row__value">${escapeHtml(peso(receipt.cash_received))}</span></div>
+<div class="row row--strong"><span class="row__label"><strong>Change</strong></span><span class="row__value"><strong>${escapeHtml(peso(receipt.change))}</strong></span></div>
+<div class="row row--strong"><span class="row__label"><strong>Total Paid</strong></span><span class="row__value"><strong>${escapeHtml(peso(receipt.amount))}</strong></span></div>
+</div>
+<div class="note"><strong>CASHIER NOTE</strong>${escapeHtml(receipt.note || "No additional note.")}</div>
+<div class="foot">This receipt serves as proof of fine payment. Please keep it for your records.</div>
+</div>
+</div>
+<script>
+window.addEventListener("load", function(){
+  var triggerPrint = function(){
+    window.focus();
+    setTimeout(function(){
+      window.print();
+    }, 120);
+  };
+
+  if (document.fonts && document.fonts.ready){
+    document.fonts.ready.then(triggerPrint).catch(triggerPrint);
+  }else{
+    triggerPrint();
+  }
+});
+<\/script>
   <!--
     Not-mentioned feature recommendations
     1. Add a cashier shift summary card with total collections for the day.
@@ -1735,9 +2107,15 @@ body{font-family:Arial,sans-serif;margin:0;padding:24px;background:#f5f5f5;color
 </body>
 </html>`;
 
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
+      try{
+        win.document.open("text/html", "replace");
+        win.document.write(html);
+        win.document.close();
+        win.focus();
+      }catch(error){
+        win.close();
+        setPaymentStatus("Unable to open the receipt preview. Please try again.", "error");
+      }
     }
 
     async function processPayment(){
@@ -1752,37 +2130,59 @@ body{font-family:Arial,sans-serif;margin:0;padding:24px;background:#f5f5f5;color
       state.lastReceipt = null;
 
       try{
-        const params = new URLSearchParams({
-          fine_id: String(pending.fine.fine_id),
-          amount: String(pending.amount),
-          method: pending.method,
-          note: pending.note
-        });
+        const paymentResults = [];
 
-        const data = await fetchJSON(`${BASE_URL}/api/fines/pay?${params.toString()}`, {
-          method: "POST",
-          headers: authHeaders()
-        });
+        for (const item of pending.items){
+          const params = new URLSearchParams({
+            fine_id: String(item.fine.fine_id),
+            amount: String(item.amount),
+            method: pending.method,
+            note: pending.note
+          });
 
-        receiptPreview.value = data.receipt_number || "";
-        state.lastReceipt = buildReceiptData(data, pending.fine, pending.amount, pending.method, pending.note);
+          const data = await fetchJSON(`${BASE_URL}/api/fines/pay?${params.toString()}`, {
+            method: "POST",
+            headers: authHeaders()
+          });
 
-        addRecentPayment({
-          fine_id: pending.fine.fine_id,
-          reason: pending.fine.reason || "Fine",
-          amount: pending.amount,
-          method: pending.method,
-          receipt_number: data.receipt_number || "",
-          paid_at: data.paid_at || new Date().toISOString(),
-          student_name: studentName.textContent,
-          student_code: studentCode.textContent
-        });
+          paymentResults.push({ item, data });
 
-        successMessage.textContent = `Payment for fine #${pending.fine.fine_id} was saved successfully.`;
+          addRecentPayment({
+            fine_id: item.fine.fine_id,
+            reason: item.fine.reason || "Fine",
+            amount: item.amount,
+            method: pending.method,
+            receipt_number: data.receipt_number || "",
+            paid_at: data.paid_at || new Date().toISOString(),
+            student_name: studentName.textContent,
+            student_code: studentCode.textContent
+          });
+        }
+
+        const latestResult = paymentResults[paymentResults.length - 1];
+        const receiptNumbers = paymentResults.map(entry => entry.data.receipt_number).filter(Boolean);
+        const displayReceiptNumber = receiptNumbers.length <= 1
+          ? (receiptNumbers[0] || "")
+          : `${receiptNumbers.length} receipts`;
+
+        receiptPreview.value = displayReceiptNumber;
+        state.lastReceipt = buildReceiptData({
+          ...latestResult?.data,
+          receipt_number: displayReceiptNumber || latestResult?.data?.receipt_number || "",
+          receipt_numbers: receiptNumbers,
+          cash_received: pending.cash_received,
+          change: pending.change
+        }, pending.items, pending.amount, pending.method, pending.note);
+
+        successMessage.textContent = pending.items.length === 1
+          ? `Payment for fine #${pending.items[0].fine.fine_id} was saved successfully.`
+          : `${pending.items.length} fines were saved successfully in one cashier transaction.`;
         successMeta.innerHTML = [
           buildMetaCard("Receipt Number", escapeHtml(state.lastReceipt.receipt_number)),
           buildMetaCard("Student", escapeHtml(state.lastReceipt.student_name)),
           buildMetaCard("Amount Paid", escapeHtml(peso(state.lastReceipt.amount))),
+          buildMetaCard("Cash Received", escapeHtml(peso(state.lastReceipt.cash_received))),
+          buildMetaCard("Change", escapeHtml(peso(state.lastReceipt.change))),
           buildMetaCard("Method", escapeHtml(String(state.lastReceipt.method).toUpperCase()))
         ].join("");
 
@@ -1800,7 +2200,7 @@ body{font-family:Arial,sans-serif;margin:0;padding:24px;background:#f5f5f5;color
       }finally{
         state.pendingPayment = null;
         setModalOpen(loadingModal, false);
-        payFineBtn.disabled = false;
+        syncPaymentActionState();
         reloadStudentBtn.disabled = false;
       }
 
@@ -1858,6 +2258,18 @@ body{font-family:Arial,sans-serif;margin:0;padding:24px;background:#f5f5f5;color
       }
     });
 
+    paymentAmount.addEventListener("input", () => {
+      syncPaymentActionState();
+    });
+
+    cashReceived.addEventListener("input", () => {
+      syncPaymentActionState();
+    });
+
+    paymentMethod.addEventListener("change", () => {
+      syncPaymentActionState();
+    });
+
     payFineBtn.addEventListener("click", handlePayment);
 
     confirmCancelBtn?.addEventListener("click", () => {
@@ -1904,6 +2316,7 @@ body{font-family:Arial,sans-serif;margin:0;padding:24px;background:#f5f5f5;color
       window.location.href = "login.html";
     });
 
+    renderCashSummary();
     window.addEventListener("scroll", syncHeader, { passive:true });
     syncHeader();
     init();
