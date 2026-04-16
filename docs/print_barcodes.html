@@ -640,6 +640,67 @@
       font-weight:900;
     }
 
+    .listFooter,
+    .copiesFooter{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .listFooter{
+      margin-top:4px;
+    }
+
+    .resultsMeta,
+    .copiesMeta{
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.58);
+    }
+
+    .pagination{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .pageBtn{
+      height:40px;
+      min-width:102px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      font-family:inherit;
+      font-size:13px;
+      font-weight:1000;
+      cursor:pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    .pageBtn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+    }
+
+    .pageBtn:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+      transform:none;
+      box-shadow:none;
+    }
+
+    .pageStatus{
+      min-width:118px;
+      text-align:center;
+      font-size:13px;
+      font-weight:1000;
+      color: rgba(0,0,0,0.66);
+    }
+
     .field{
       display:grid;
       gap:8px;
@@ -1028,7 +1089,7 @@
                     </button>
 
                     <button class="btn small ghost" id="selectAllResultsBtn" type="button">
-                      Select all results
+                      Select visible copies
                     </button>
                   </div>
 
@@ -1041,6 +1102,15 @@
                       <div class="dots">
                         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
                       </div>
+                    </div>
+                  </div>
+
+                  <div class="listFooter">
+                    <div class="resultsMeta" id="booksMeta">Showing 0 results</div>
+                    <div class="pagination" aria-label="Book pagination">
+                      <button class="pageBtn" id="booksPrevBtn" type="button">Previous</button>
+                      <div class="pageStatus" id="booksPageStatus">Page 1 of 1</div>
+                      <button class="pageBtn" id="booksNextBtn" type="button">Next</button>
                     </div>
                   </div>
                 </div>
@@ -1317,9 +1387,28 @@
       return Array.isArray(a) ? a : [];
     }
 
+    function normalizePage(payload, fallbackLimit){
+      if (!payload || typeof payload !== "object"){
+        const items = Array.isArray(payload) ? payload : [];
+        return { items, page: 1, limit: fallbackLimit, total: items.length, total_pages: 1 };
+      }
+      const items = normalizeArray(payload);
+      return {
+        items,
+        page: Number(payload.page || 1) || 1,
+        limit: Number(payload.limit || payload.page_size || fallbackLimit) || fallbackLimit,
+        total: Number(payload.total || items.length || 0) || 0,
+        total_pages: Number(payload.total_pages || 1) || 1
+      };
+    }
+
     const qEl = document.getElementById("q");
     const resultsChip = document.getElementById("resultsChip");
     const bookListEl = document.getElementById("bookList");
+    const booksMeta = document.getElementById("booksMeta");
+    const booksPrevBtn = document.getElementById("booksPrevBtn");
+    const booksNextBtn = document.getElementById("booksNextBtn");
+    const booksPageStatus = document.getElementById("booksPageStatus");
 
     const reprintModeBtn = document.getElementById("reprintModeBtn");
     const reprintLabel = document.getElementById("reprintLabel");
@@ -1342,9 +1431,12 @@
     const pdfFrame = document.getElementById("pdfFrame");
     const closePdfModalBtn = document.getElementById("closePdfModalBtn");
 
+    const BOOK_PAGE_LIMIT = 50;
+    const COPY_PAGE_LIMIT = 50;
     let reprintMode = false;
     let currentBooks = [];
     let copiesCache = new Map();
+    let booksState = { page: 1, limit: BOOK_PAGE_LIMIT, total: 0, totalPages: 1 };
     const selected = new Map();
     let lastPdfBlobUrl = null;
 
@@ -1356,6 +1448,22 @@
           </div>
         </div>
       `;
+    }
+
+    function updateBooksPagination(){
+      const total = Number(booksState.total || 0);
+      const totalPages = Math.max(1, Number(booksState.totalPages || 1));
+      const page = Math.min(Math.max(1, Number(booksState.page || 1)), totalPages);
+      const start = total ? ((page - 1) * booksState.limit) + 1 : 0;
+      const end = total ? Math.min(total, start + booksState.limit - 1) : 0;
+
+      resultsChip.textContent = `Results: ${total}`;
+      booksMeta.textContent = total
+        ? `Showing ${start}-${end} of ${total} books`
+        : "Showing 0 results";
+      booksPageStatus.textContent = `Page ${page} of ${totalPages}`;
+      booksPrevBtn.disabled = page <= 1;
+      booksNextBtn.disabled = page >= totalPages || total === 0;
     }
 
     function updateSelectedUI(){
@@ -1414,24 +1522,34 @@
       updateSelectedUI();
     }
 
-    function cacheKey(bookId){
-      return `${String(bookId)}:${reprintMode ? "ALL" : "UNPRINTED"}`;
+    function cacheKey(bookId, page){
+      return `${String(bookId)}:${reprintMode ? "ALL" : "UNPRINTED"}:${Number(page) || 1}`;
     }
 
-    async function loadCopies(bookId, bookTitle){
-      const key = cacheKey(bookId);
+    async function loadCopies(bookId, bookTitle, page = 1){
+      const key = cacheKey(bookId, page);
       if (copiesCache.has(key)) return copiesCache.get(key);
 
       const onlyUnprinted = reprintMode ? "false" : "true";
-      const rows = await apiGet(`/api/librarian/books/${bookId}/copies?only_unprinted=${onlyUnprinted}`);
-      const copies = normalizeArray(rows).map(r=>({
+      const payload = await apiGet(
+        `/api/librarian/books/${bookId}/copies?only_unprinted=${onlyUnprinted}&page=${encodeURIComponent(page)}&limit=${COPY_PAGE_LIMIT}`
+      );
+      const normalized = normalizePage(payload, COPY_PAGE_LIMIT);
+      const items = normalized.items.map(r=>({
         copy_id: r.copy_id,
         barcode: r.barcode,
         is_printed: !!r.is_printed,
         title: bookTitle || ""
       }));
-      copiesCache.set(key, copies);
-      return copies;
+      const result = {
+        items,
+        page: normalized.page,
+        limit: normalized.limit,
+        total: normalized.total,
+        total_pages: normalized.total_pages
+      };
+      copiesCache.set(key, result);
+      return result;
     }
 
     function renderCopies(copies, targetEl){
@@ -1471,7 +1589,7 @@
     }
 
     function renderBooks(){
-      resultsChip.textContent = `Results: ${currentBooks.length}`;
+      updateBooksPagination();
 
       if(!currentBooks.length){
         bookListEl.innerHTML = `<div class="empty">No books found.</div>`;
@@ -1509,10 +1627,18 @@
 
             <div class="copiesWrap">
               <div class="copiesActions">
-                <button class="btn ghost small selectAllDropdownBtn" type="button">Select all</button>
+                <button class="btn ghost small selectAllDropdownBtn" type="button">Select page</button>
                 <button class="btn ghost small clearDropdownBtn" type="button">Clear</button>
               </div>
               <div class="copies"></div>
+              <div class="copiesFooter">
+                <div class="copiesMeta">Showing 0 results</div>
+                <div class="pagination" aria-label="Copy pagination">
+                  <button class="pageBtn copiesPrevBtn" type="button">Previous</button>
+                  <div class="pageStatus copiesPageStatus">Page 1 of 1</div>
+                  <button class="pageBtn copiesNextBtn" type="button">Next</button>
+                </div>
+              </div>
             </div>
           </div>
         `;
@@ -1521,28 +1647,30 @@
         const copiesEl = wrap.querySelector(".copies");
         const selectAllDropdownBtn = wrap.querySelector(".selectAllDropdownBtn");
         const clearDropdownBtn = wrap.querySelector(".clearDropdownBtn");
+        const copiesMeta = wrap.querySelector(".copiesMeta");
+        const copiesPrevBtn = wrap.querySelector(".copiesPrevBtn");
+        const copiesNextBtn = wrap.querySelector(".copiesNextBtn");
+        const copiesPageStatus = wrap.querySelector(".copiesPageStatus");
 
         let loadedCopies = [];
+        let copiesState = { page: 1, limit: COPY_PAGE_LIMIT, total: 0, totalPages: 1 };
 
-        selectAllDropdownBtn.addEventListener("click", () => {
-          if (!loadedCopies.length) return;
-          applySelectAllInWrap(wrap, loadedCopies, true);
-          showToast("Selected all copies in this dropdown.");
-        });
+        function updateCopiesFooter(){
+          const total = Number(copiesState.total || 0);
+          const totalPages = Math.max(1, Number(copiesState.totalPages || 1));
+          const page = Math.min(Math.max(1, Number(copiesState.page || 1)), totalPages);
+          const start = total ? ((page - 1) * copiesState.limit) + 1 : 0;
+          const end = total ? Math.min(total, start + copiesState.limit - 1) : 0;
 
-        clearDropdownBtn.addEventListener("click", () => {
-          if (!loadedCopies.length) return;
-          applySelectAllInWrap(wrap, loadedCopies, false);
-          showToast("Cleared copies in this dropdown.");
-        });
+          copiesMeta.textContent = total
+            ? `Showing ${start}-${end} of ${total} copies`
+            : "Showing 0 results";
+          copiesPageStatus.textContent = `Page ${page} of ${totalPages}`;
+          copiesPrevBtn.disabled = page <= 1;
+          copiesNextBtn.disabled = page >= totalPages || total === 0;
+        }
 
-        expandBtn.addEventListener("click", async ()=>{
-          if (wrap.classList.contains("is-open")){
-            wrap.classList.remove("is-open");
-            return;
-          }
-
-          wrap.classList.add("is-open");
+        async function refreshCopiesPage(targetPage = 1){
           copiesEl.innerHTML = `
             <div class="list-loader" aria-label="Loading copies">
               <div class="dots">
@@ -1554,34 +1682,83 @@
           showProgress();
           setPreviewLoading(true);
           try{
-            loadedCopies = await loadCopies(bookId, title);
+            const payload = await loadCopies(bookId, title, targetPage);
+            loadedCopies = payload.items;
+            copiesState = {
+              page: payload.page,
+              limit: payload.limit,
+              total: payload.total,
+              totalPages: payload.total_pages
+            };
+            updateCopiesFooter();
             renderCopies(loadedCopies, copiesEl);
           }catch(err){
+            copiesState = { page: 1, limit: COPY_PAGE_LIMIT, total: 0, totalPages: 1 };
+            updateCopiesFooter();
             copiesEl.innerHTML = `<div class="empty">Failed to load copies.</div>`;
             showToast(err.message || "Failed to load copies");
           }finally{
             hideProgress(true);
             setPreviewLoading(false);
           }
+        }
+
+        selectAllDropdownBtn.addEventListener("click", () => {
+          if (!loadedCopies.length) return;
+          applySelectAllInWrap(wrap, loadedCopies, true);
+          showToast("Selected the current copy page.");
+        });
+
+        clearDropdownBtn.addEventListener("click", () => {
+          if (!loadedCopies.length) return;
+          applySelectAllInWrap(wrap, loadedCopies, false);
+          showToast("Cleared the current copy page.");
+        });
+        copiesPrevBtn.addEventListener("click", () => {
+          if (copiesState.page > 1) refreshCopiesPage(copiesState.page - 1);
+        });
+        copiesNextBtn.addEventListener("click", () => {
+          if (copiesState.page < copiesState.totalPages) refreshCopiesPage(copiesState.page + 1);
+        });
+        updateCopiesFooter();
+
+        expandBtn.addEventListener("click", async ()=>{
+          if (wrap.classList.contains("is-open")){
+            wrap.classList.remove("is-open");
+            return;
+          }
+
+          wrap.classList.add("is-open");
+          refreshCopiesPage(1);
         });
 
         bookListEl.appendChild(wrap);
       });
     }
 
-    async function loadBooks(){
+    async function loadBooks(page = 1){
       const q = (qEl.value || "").trim();
 
       showBooksLoader();
       showProgress();
 
       try{
-        const payload = await apiGet(`/api/librarian/books?q=${encodeURIComponent(q)}`);
-        currentBooks = normalizeArray(payload);
+        const payload = normalizePage(
+          await apiGet(`/api/librarian/books?q=${encodeURIComponent(q)}&page=${encodeURIComponent(page)}&limit=${BOOK_PAGE_LIMIT}`),
+          BOOK_PAGE_LIMIT
+        );
+        currentBooks = payload.items;
+        booksState = {
+          page: payload.page,
+          limit: payload.limit,
+          total: payload.total,
+          totalPages: payload.total_pages
+        };
         renderBooks();
       }catch(err){
         console.error(err);
-        resultsChip.textContent = "Results: 0";
+        booksState = { page: 1, limit: BOOK_PAGE_LIMIT, total: 0, totalPages: 1 };
+        updateBooksPagination();
         bookListEl.innerHTML = `<div class="empty">Failed to load books. (${esc(err.message || "Error")})</div>`;
         showToast(err.message || "Failed to load books");
       }finally{
@@ -1589,30 +1766,17 @@
       }
     }
 
-    selectAllResultsBtn.addEventListener("click", async ()=>{
-      if(!currentBooks.length) return;
-
-      showProgress();
-      setPreviewLoading(true);
-      try{
-        for(const b of currentBooks){
-          const bid = b.book_id ?? b.id ?? b.bookId ?? b.bookID;
-          const title = b.title || "";
-          const copies = await loadCopies(bid, title);
-          for(const c of copies) selected.set(c.copy_id, c);
-        }
-        document.querySelectorAll("input[data-copy-id]").forEach(cb=>{
-          const id = cb.getAttribute("data-copy-id");
-          cb.checked = selected.has(Number(id) || id);
-        });
-        updateSelectedUI();
-        showToast("Selected all copies in current results.");
-      }catch(err){
-        showToast(err.message || "Select all failed");
-      }finally{
-        hideProgress(true);
-        setPreviewLoading(false);
+    selectAllResultsBtn.addEventListener("click", ()=>{
+      const checkboxes = Array.from(document.querySelectorAll(".bwrap.is-open .copiesWrap input[data-copy-id]"));
+      if(!checkboxes.length){
+        showToast("Open a book to select visible copies.");
+        return;
       }
+      checkboxes.forEach(cb => {
+        cb.checked = true;
+        cb.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      showToast("Selected all visible copies.");
     });
 
     reprintModeBtn.addEventListener("click", ()=>{
@@ -1621,6 +1785,7 @@
       reprintLabel.textContent = reprintMode ? "ON" : "OFF";
       copiesCache = new Map();
       document.querySelectorAll(".bwrap.is-open").forEach(x=>x.classList.remove("is-open"));
+      loadBooks(1);
       showToast(reprintMode ? "Reprint mode ON." : "Reprint mode OFF.");
     });
 
@@ -1748,14 +1913,22 @@
     let t = null;
     qEl.addEventListener("input", ()=>{
       clearTimeout(t);
-      t = setTimeout(loadBooks, 240);
+      t = setTimeout(()=> loadBooks(1), 360);
     });
 
     qEl.addEventListener("keydown",(e)=>{
       if(e.key==="Enter"){
         e.preventDefault();
-        loadBooks();
+        loadBooks(1);
       }
+    });
+
+    booksPrevBtn.addEventListener("click", ()=>{
+      if (booksState.page > 1) loadBooks(booksState.page - 1);
+    });
+
+    booksNextBtn.addEventListener("click", ()=>{
+      if (booksState.page < booksState.totalPages) loadBooks(booksState.page + 1);
     });
 
     updateSelectedUI();

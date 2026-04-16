@@ -449,6 +449,62 @@
       font-weight:900;
     }
 
+    .listFooter{
+      margin-top:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .resultsMeta{
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.58);
+    }
+
+    .pagination{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .pageBtn{
+      height:42px;
+      min-width:112px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      font-family:inherit;
+      font-size:13px;
+      font-weight:1000;
+      cursor:pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    .pageBtn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+    }
+
+    .pageBtn:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+      transform:none;
+      box-shadow:none;
+    }
+
+    .pageStatus{
+      min-width:132px;
+      text-align:center;
+      font-size:13px;
+      font-weight:1000;
+      color: rgba(0,0,0,0.66);
+    }
+
     .nav__link:hover{
       color: rgba(255,255,255,0.78);
     }
@@ -562,6 +618,15 @@
                 </div>
               </div>
             </div>
+
+            <div class="listFooter">
+              <div class="resultsMeta" id="resultsMeta">Showing 0 results</div>
+              <div class="pagination" aria-label="Student pagination">
+                <button class="pageBtn" id="prevPageBtn" type="button">Previous</button>
+                <div class="pageStatus" id="pageStatus">Page 1 of 1</div>
+                <button class="pageBtn" id="nextPageBtn" type="button">Next</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -659,12 +724,22 @@
     const qEl = document.getElementById("q");
     const gradeFilterEl = document.getElementById("gradeFilter");
     const listEl = document.getElementById("list");
+    const resultsMeta = document.getElementById("resultsMeta");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const pageStatus = document.getElementById("pageStatus");
 
     const progressWrap = document.getElementById("progressWrap");
     const progressBar = document.getElementById("progressBar");
     let progressTimer = null;
 
-    let allStudents = [];
+    const STUDENT_PAGE_LIMIT = 50;
+    let studentsState = {
+      page: 1,
+      limit: STUDENT_PAGE_LIMIT,
+      total: 0,
+      totalPages: 1
+    };
 
     function showProgress(){
       progressWrap.classList.add("is-on");
@@ -709,13 +784,23 @@
       window.location.href = `student_details.html?student_id=${encodeURIComponent(student_id)}`;
     }
 
-    function getFilteredRows(){
-      const grade = String(gradeFilterEl.value || "").trim();
-      if (!grade) return allStudents;
-      return allStudents.filter(s => String(s.grade || "").trim() === grade);
+    function updatePagination(){
+      const total = Number(studentsState.total || 0);
+      const totalPages = Math.max(1, Number(studentsState.totalPages || 1));
+      const page = Math.min(Math.max(1, Number(studentsState.page || 1)), totalPages);
+      const start = total ? ((page - 1) * studentsState.limit) + 1 : 0;
+      const end = total ? Math.min(total, start + studentsState.limit - 1) : 0;
+
+      resultsMeta.textContent = total
+        ? `Showing ${start}-${end} of ${total} students`
+        : "Showing 0 results";
+      pageStatus.textContent = `Page ${page} of ${totalPages}`;
+      prevPageBtn.disabled = page <= 1;
+      nextPageBtn.disabled = page >= totalPages || total === 0;
     }
 
     async function renderStudents(rows){
+      updatePagination();
       if (!rows.length){
         listEl.innerHTML = `<div class="empty">No students found.</div>`;
         return;
@@ -742,12 +827,23 @@
       }).join("");
     }
 
-    async function applyGradeFilter(){
-      await renderStudents(getFilteredRows());
+    function normalizePage(payload){
+      if (!payload || typeof payload !== "object"){
+        return { items: Array.isArray(payload) ? payload : [], page: 1, limit: STUDENT_PAGE_LIMIT, total: 0, total_pages: 1 };
+      }
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      return {
+        items,
+        page: Number(payload.page || 1) || 1,
+        limit: Number(payload.limit || STUDENT_PAGE_LIMIT) || STUDENT_PAGE_LIMIT,
+        total: Number(payload.total || items.length || 0) || 0,
+        total_pages: Number(payload.total_pages || 1) || 1
+      };
     }
 
-    async function load(){
+    async function load(page = 1){
       const q = qEl.value.trim();
+      const grade = String(gradeFilterEl.value || "").trim();
 
       showListLoader();
       showProgress();
@@ -755,21 +851,34 @@
       try{
         const url = new URL(`${BASE_URL}/api/students`);
         url.searchParams.set("q", q);
+        url.searchParams.set("page", String(page));
+        url.searchParams.set("limit", String(STUDENT_PAGE_LIMIT));
+        if (grade) url.searchParams.set("grade", grade);
 
         const res = await fetch(url.toString(), { headers: authHeaders() });
-        const data = await res.json().catch(() => ([]));
+        const data = await res.json().catch(() => ({}));
 
         hideProgress(true);
 
         if (!res.ok){
+          studentsState = { page: 1, limit: STUDENT_PAGE_LIMIT, total: 0, totalPages: 1 };
+          updatePagination();
           listEl.innerHTML = `<div class="empty">Failed to load students.</div>`;
           return;
         }
 
-        allStudents = Array.isArray(data) ? data : [];
-        await applyGradeFilter();
+        const payload = normalizePage(data);
+        studentsState = {
+          page: payload.page,
+          limit: payload.limit,
+          total: payload.total,
+          totalPages: payload.total_pages
+        };
+        await renderStudents(payload.items);
       }catch(err){
         hideProgress(false);
+        studentsState = { page: 1, limit: STUDENT_PAGE_LIMIT, total: 0, totalPages: 1 };
+        updatePagination();
         listEl.innerHTML = `<div class="empty">Network error. Please try again.</div>`;
       }
     }
@@ -777,19 +886,25 @@
     let t = null;
     qEl.addEventListener("input", () => {
       clearTimeout(t);
-      t = setTimeout(load, 220);
+      t = setTimeout(() => load(1), 360);
     });
 
     qEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter"){
         e.preventDefault();
-        load();
+        load(1);
       }
     });
 
-    gradeFilterEl.addEventListener("change", applyGradeFilter);
+    gradeFilterEl.addEventListener("change", () => load(1));
+    prevPageBtn.addEventListener("click", () => {
+      if (studentsState.page > 1) load(studentsState.page - 1);
+    });
+    nextPageBtn.addEventListener("click", () => {
+      if (studentsState.page < studentsState.totalPages) load(studentsState.page + 1);
+    });
 
-    load();
+    load(1);
 
   </script>
  

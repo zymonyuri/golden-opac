@@ -457,6 +457,64 @@
       display:none;
     }
 
+    .listFooter{
+      margin-top:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      padding-top:6px;
+    }
+
+    .resultsMeta{
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.58);
+    }
+
+    .pagination{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .pageBtn{
+      height:42px;
+      min-width:112px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      color:#111;
+      font-family:inherit;
+      font-size:13px;
+      font-weight:1000;
+      cursor:pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease, border-color 160ms ease;
+    }
+
+    .pageBtn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.10);
+      border-color: color-mix(in srgb, var(--brand-yellow) 34%, rgba(0,0,0,0.12));
+    }
+
+    .pageBtn:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+      transform:none;
+      box-shadow:none;
+    }
+
+    .pageStatus{
+      min-width:132px;
+      text-align:center;
+      font-size:13px;
+      font-weight:1000;
+      color: rgba(0,0,0,0.66);
+    }
+
     .error{
       margin-top:8px;
       font-size:12px;
@@ -1361,6 +1419,15 @@
                 <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
               </div>
             </div>
+
+            <div class="listFooter">
+              <div class="resultsMeta" id="resultsMeta">Showing 0 results</div>
+              <div class="pagination" aria-label="Book pagination">
+                <button class="pageBtn" id="prevPageBtn" type="button">Previous</button>
+                <div class="pageStatus" id="pageStatus">Page 1 of 1</div>
+                <button class="pageBtn" id="nextPageBtn" type="button">Next</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -1685,9 +1752,21 @@
     const listLoader = document.getElementById("listLoader");
     const empty = document.getElementById("empty");
     const err = document.getElementById("err");
+    const resultsMeta = document.getElementById("resultsMeta");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const pageStatus = document.getElementById("pageStatus");
 
     const progressWrap = document.getElementById("progressWrap");
     const progressBar = document.getElementById("progressBar");
+
+    const BOOKS_PAGE_LIMIT = 50;
+    let listState = {
+      page: 1,
+      limit: BOOKS_PAGE_LIMIT,
+      total: 0,
+      totalPages: 1
+    };
 
     const detailsOverlay = document.getElementById("detailsOverlay");
     const closeDetails = document.getElementById("closeDetails");
@@ -1830,9 +1909,25 @@
       });
     }
 
+    function updatePagination(){
+      const total = Number(listState.total || 0);
+      const totalPages = Math.max(1, Number(listState.totalPages || 1));
+      const page = Math.min(Math.max(1, Number(listState.page || 1)), totalPages);
+      const start = total ? ((page - 1) * listState.limit) + 1 : 0;
+      const end = total ? Math.min(total, start + listState.limit - 1) : 0;
+
+      resultsMeta.textContent = total
+        ? `Showing ${start}-${end} of ${total} books`
+        : "Showing 0 results";
+      pageStatus.textContent = `Page ${page} of ${totalPages}`;
+      prevPageBtn.disabled = page <= 1;
+      nextPageBtn.disabled = page >= totalPages || total === 0;
+    }
+
     function renderList(results){
       clearListCards();
       empty.style.display = results.length ? "none" : "block";
+      updatePagination();
 
       for (const b of results){
         const card = document.createElement("div");
@@ -1864,43 +1959,42 @@
     }
 
     let t = null;
-    function extractResults(payload){
-      if (Array.isArray(payload)) return payload;
-      if (payload && Array.isArray(payload.results)) return payload.results;
-      return [];
-    }
-
-    async function fetchAllBooks(q, sort){
-      const pageSize = 100;
-      let page = 1;
-      const all = [];
-
-      while (true){
-        const params = new URLSearchParams({
-          q,
-          sort,
-          page: String(page),
-          page_size: String(pageSize)
-        });
-
-        const res = await fetch(`${BASE_URL}/api/librarian/books/search?${params.toString()}`, {
-          headers: authHeaders()
-        });
-        const data = await res.json().catch(()=> ({}));
-        if (!res.ok) throw new Error(data?.detail || `Search failed (${res.status})`);
-
-        const rows = extractResults(data);
-        all.push(...rows);
-        if (rows.length < pageSize) break;
-        page += 1;
+    function extractPage(payload){
+      if (!payload || typeof payload !== "object"){
+        return { items: Array.isArray(payload) ? payload : [], page: 1, limit: BOOKS_PAGE_LIMIT, total: 0, total_pages: 1 };
       }
-
-      return all;
+      const items = Array.isArray(payload.items)
+        ? payload.items
+        : (Array.isArray(payload.results) ? payload.results : []);
+      return {
+        items,
+        page: Number(payload.page || 1) || 1,
+        limit: Number(payload.limit || payload.page_size || BOOKS_PAGE_LIMIT) || BOOKS_PAGE_LIMIT,
+        total: Number(payload.total || items.length || 0) || 0,
+        total_pages: Number(payload.total_pages || 1) || 1,
+      };
     }
 
-    async function searchNow(){
+    async function fetchBooksPage(page = 1){
       const q = qEl.value.trim();
       const sort = String(sortEl?.value || "title_asc").trim() || "title_asc";
+      const params = new URLSearchParams({
+        q,
+        sort,
+        page: String(page),
+        limit: String(BOOKS_PAGE_LIMIT),
+        page_size: String(BOOKS_PAGE_LIMIT)
+      });
+
+      const res = await fetch(`${BASE_URL}/api/librarian/books/search?${params.toString()}`, {
+        headers: authHeaders()
+      });
+      const data = await res.json().catch(()=> ({}));
+      if (!res.ok) throw new Error(data?.detail || `Search failed (${res.status})`);
+      return extractPage(data);
+    }
+
+    async function searchNow(page = 1){
       clearErr();
       empty.style.display = "none";
 
@@ -1908,9 +2002,18 @@
       startProgress();
 
       try{
-        const results = await fetchAllBooks(q, sort);
-        renderList(results);
+        const payload = await fetchBooksPage(page);
+        listState = {
+          page: payload.page,
+          limit: payload.limit,
+          total: payload.total,
+          totalPages: payload.total_pages
+        };
+        renderList(payload.items);
       }catch(e){
+        listState = { page: 1, limit: BOOKS_PAGE_LIMIT, total: 0, totalPages: 1 };
+        updatePagination();
+        clearListCards();
         showErr(e?.message || "Search failed.");
       }finally{
         showListLoader(false);
@@ -1920,11 +2023,17 @@
 
     function scheduleSearch(){
       clearTimeout(t);
-      t = setTimeout(searchNow, 240);
+      t = setTimeout(() => searchNow(1), 360);
     }
 
     qEl.addEventListener("input", scheduleSearch);
-    sortEl.addEventListener("change", searchNow);
+    sortEl.addEventListener("change", () => searchNow(1));
+    prevPageBtn.addEventListener("click", () => {
+      if (listState.page > 1) searchNow(listState.page - 1);
+    });
+    nextPageBtn.addEventListener("click", () => {
+      if (listState.page < listState.totalPages) searchNow(listState.page + 1);
+    });
 
     function openModal(){
       detailsOverlay.style.display = "flex";
