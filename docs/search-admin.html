@@ -1758,7 +1758,7 @@
     const progressWrap = document.getElementById("progressWrap");
     const progressBar = document.getElementById("progressBar");
 
-    const BOOKS_PAGE_LIMIT = 50;
+    const BOOKS_PAGE_LIMIT = 30;
     const LIBRARIAN_BOOKS_STATE_KEY = "librarian:books-list-state:v1";
     let listState = {
       items: [],
@@ -1916,6 +1916,17 @@
       };
     }
 
+    function toStoredListItem(item){
+      return {
+        book_id: item?.book_id,
+        title: item?.title || "",
+        section: item?.section || "",
+        cover_url: item?.cover_url || "",
+        available_copies: Number(item?.available_copies || 0),
+        total_copies: Number(item?.total_copies || 0)
+      };
+    }
+
     function getListSignature(){
       return JSON.stringify(getListQuery());
     }
@@ -1924,12 +1935,25 @@
       const payload = {
         signature: getListSignature(),
         query: getListQuery(),
-        items: listState.items,
+        items: listState.items.map(toStoredListItem),
         nextCursor: listState.nextCursor,
         hasMore: listState.hasMore,
         scrollY: window.scrollY || 0
       };
-      sessionStorage.setItem(LIBRARIAN_BOOKS_STATE_KEY, JSON.stringify(payload));
+      try{
+        sessionStorage.setItem(LIBRARIAN_BOOKS_STATE_KEY, JSON.stringify(payload));
+      }catch(err){
+        const trimmed = {
+          ...payload,
+          items: payload.items.slice(-Math.max(BOOKS_PAGE_LIMIT, Math.floor(payload.items.length / 2)))
+        };
+        try{
+          sessionStorage.setItem(LIBRARIAN_BOOKS_STATE_KEY, JSON.stringify(trimmed));
+        }catch(storageErr){
+          console.warn("Unable to persist librarian books state:", storageErr);
+          sessionStorage.removeItem(LIBRARIAN_BOOKS_STATE_KEY);
+        }
+      }
     }
 
     function scheduleListStateSave(){
@@ -1999,14 +2023,14 @@
       };
     }
 
-    async function fetchBooksBatch(cursor = null){
+    async function fetchBooksBatch(cursor = "0"){
       const query = getListQuery();
       const params = new URLSearchParams({
         q: query.q,
         sort: query.sort,
-        page_size: String(BOOKS_PAGE_LIMIT)
+        page_size: String(BOOKS_PAGE_LIMIT),
+        cursor: String(cursor ?? "0")
       });
-      if (cursor) params.set("cursor", cursor);
 
       const res = await fetch(`${BASE_URL}/api/librarian/books/search?${params.toString()}`, {
         headers: authHeaders()
@@ -2058,7 +2082,7 @@
         if (sortEl) sortEl.value = saved.query.sort || "title_asc";
         if (saved.signature !== getListSignature()) return false;
         listState = {
-          items: Array.isArray(saved.items) ? saved.items : [],
+          items: Array.isArray(saved.items) ? saved.items.map(toStoredListItem) : [],
           nextCursor: saved.nextCursor ?? null,
           hasMore: !!saved.hasMore,
           loading: false

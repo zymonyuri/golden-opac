@@ -1429,7 +1429,7 @@
     const pdfFrame = document.getElementById("pdfFrame");
     const closePdfModalBtn = document.getElementById("closePdfModalBtn");
 
-    const BOOK_PAGE_LIMIT = 50;
+    const BOOK_PAGE_LIMIT = 30;
     const COPY_PAGE_LIMIT = 50;
     const BARCODE_PAGE_STATE_KEY = "barcodes:page-state:v1";
     let reprintMode = false;
@@ -1457,16 +1457,54 @@
       };
     }
 
+    function toStoredBookItem(item){
+      return {
+        book_id: item?.book_id ?? item?.id ?? item?.bookId ?? item?.bookID,
+        title: item?.title || "",
+        author: item?.author || "",
+        section: item?.section || "",
+        printed_copies: Number(item?.printed_copies ?? item?.printed ?? 0),
+        unprinted_copies: Number(item?.unprinted_copies ?? item?.unprinted ?? 0)
+      };
+    }
+
+    function toStoredSelectedItem(entry){
+      const [copyId, copy] = entry;
+      return [
+        copyId,
+        {
+          copy_id: copy?.copy_id ?? copyId,
+          barcode: copy?.barcode || "",
+          is_printed: !!copy?.is_printed,
+          title: copy?.title || ""
+        }
+      ];
+    }
+
     function saveBarcodePageState(){
       const payload = {
         query: getBarcodePageQuery(),
-        books: currentBooks,
+        books: currentBooks.map(toStoredBookItem),
         nextCursor: booksState.nextCursor,
         hasMore: booksState.hasMore,
-        selected: Array.from(selected.entries()),
+        selected: Array.from(selected.entries()).map(toStoredSelectedItem),
         scrollY: window.scrollY || 0
       };
-      sessionStorage.setItem(BARCODE_PAGE_STATE_KEY, JSON.stringify(payload));
+      try{
+        sessionStorage.setItem(BARCODE_PAGE_STATE_KEY, JSON.stringify(payload));
+      }catch(err){
+        const trimmed = {
+          ...payload,
+          books: payload.books.slice(-Math.max(BOOK_PAGE_LIMIT, Math.floor(payload.books.length / 2))),
+          selected: payload.selected.slice(-60)
+        };
+        try{
+          sessionStorage.setItem(BARCODE_PAGE_STATE_KEY, JSON.stringify(trimmed));
+        }catch(storageErr){
+          console.warn("Unable to persist barcode page state:", storageErr);
+          sessionStorage.removeItem(BARCODE_PAGE_STATE_KEY);
+        }
+      }
     }
 
     function scheduleBarcodePageSave(){
@@ -1557,9 +1595,9 @@
       const onlyUnprinted = reprintMode ? "false" : "true";
       const params = new URLSearchParams({
         only_unprinted: onlyUnprinted,
-        page_size: String(COPY_PAGE_LIMIT)
+        page_size: String(COPY_PAGE_LIMIT),
+        cursor: String(cursor ?? "0")
       });
-      if (cursor) params.set("cursor", cursor);
       const payload = await apiGet(
         `/api/librarian/books/${bookId}/copies?${params.toString()}`
       );
@@ -1614,7 +1652,7 @@
       updateSelectedUI();
     }
 
-    function renderBooks(){
+    function renderBooks(itemsToRender = currentBooks, { reset = true } = {}){
       updateBooksPagination();
 
       if(!currentBooks.length){
@@ -1622,9 +1660,9 @@
         return;
       }
 
-      bookListEl.innerHTML = "";
+      if (reset) bookListEl.innerHTML = "";
 
-      currentBooks.forEach((b, idx)=>{
+      itemsToRender.forEach((b, idx)=>{
         const bookId = b.book_id ?? b.id ?? b.bookId ?? b.bookID;
         const title = b.title || "Untitled";
         const author = b.author || "—";
@@ -1772,18 +1810,18 @@
         const currentQuery = getBarcodePageQuery();
         if (!saved || JSON.stringify(saved.query || {}) !== JSON.stringify(currentQuery)) return false;
 
-        currentBooks = Array.isArray(saved.books) ? saved.books : [];
+        currentBooks = Array.isArray(saved.books) ? saved.books.map(toStoredBookItem) : [];
         booksState = {
           nextCursor: saved.nextCursor ?? null,
           hasMore: !!saved.hasMore,
           loading: false
         };
         selected.clear();
-        for (const [copyId, copy] of (saved.selected || [])){
+        for (const [copyId, copy] of (saved.selected || []).map(toStoredSelectedItem)){
           selected.set(copyId, copy);
         }
         updateSelectedUI();
-        renderBooks();
+        renderBooks(currentBooks, { reset: true });
         requestAnimationFrame(() => {
           requestAnimationFrame(() => window.scrollTo(0, Number(saved.scrollY || 0)));
         });
@@ -1797,7 +1835,7 @@
     async function loadBooks({ reset = false } = {}){
       const q = (qEl.value || "").trim();
 
-      showBooksLoader();
+      if (reset) showBooksLoader();
       showProgress();
       booksState.loading = true;
       updateBooksPagination();
@@ -1805,9 +1843,9 @@
       try{
         const params = new URLSearchParams({
           q,
-          page_size: String(BOOK_PAGE_LIMIT)
+          page_size: String(BOOK_PAGE_LIMIT),
+          cursor: reset ? "0" : String(booksState.nextCursor ?? "0")
         });
-        if (!reset && booksState.nextCursor) params.set("cursor", booksState.nextCursor);
         const payload = await apiGet(`/api/librarian/books?${params.toString()}`);
         const items = normalizeArray(payload);
         currentBooks = reset ? items : [...currentBooks, ...items];
@@ -1816,7 +1854,7 @@
           hasMore: !!payload?.has_more,
           loading: false
         };
-        renderBooks();
+        renderBooks(items, { reset });
         saveBarcodePageState();
       }catch(err){
         console.error(err);

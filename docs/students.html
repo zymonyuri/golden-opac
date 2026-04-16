@@ -787,6 +787,18 @@
       };
     }
 
+    function toStoredStudentItem(item){
+      return {
+        student_id: item?.student_id,
+        student_code: item?.student_code || "",
+        last_name: item?.last_name || "",
+        first_name: item?.first_name || "",
+        grade: item?.grade || "",
+        section: item?.section || "",
+        status: item?.status || ""
+      };
+    }
+
     function getQuerySignature(){
       return JSON.stringify(getQueryState());
     }
@@ -801,12 +813,25 @@
       const payload = {
         signature: getQuerySignature(),
         query: getQueryState(),
-        items: studentsState.items,
+        items: studentsState.items.map(toStoredStudentItem),
         nextCursor: studentsState.nextCursor,
         hasMore: studentsState.hasMore,
         scrollY: window.scrollY || 0
       };
-      sessionStorage.setItem(STUDENTS_STATE_KEY, JSON.stringify(payload));
+      try{
+        sessionStorage.setItem(STUDENTS_STATE_KEY, JSON.stringify(payload));
+      }catch(err){
+        const trimmed = {
+          ...payload,
+          items: payload.items.slice(-Math.max(STUDENT_PAGE_LIMIT, Math.floor(payload.items.length / 2)))
+        };
+        try{
+          sessionStorage.setItem(STUDENTS_STATE_KEY, JSON.stringify(trimmed));
+        }catch(storageErr){
+          console.warn("Unable to persist students state:", storageErr);
+          sessionStorage.removeItem(STUDENTS_STATE_KEY);
+        }
+      }
       history.replaceState({ studentsList: { signature: payload.signature, scrollY: payload.scrollY } }, "", `students.html?${new URLSearchParams(payload.query).toString()}`);
     }
 
@@ -889,7 +914,7 @@
         const url = new URL(`${BASE_URL}/api/students`);
         url.searchParams.set("q", state.q);
         url.searchParams.set("page_size", String(STUDENT_PAGE_LIMIT));
-        if (!reset && studentsState.nextCursor) url.searchParams.set("cursor", studentsState.nextCursor);
+        url.searchParams.set("cursor", reset ? "0" : String(studentsState.nextCursor ?? "0"));
         if (state.grade) url.searchParams.set("grade", state.grade);
 
         const res = await fetch(url.toString(), { headers: authHeaders() });
@@ -930,7 +955,7 @@
         gradeFilterEl.value = saved.query.grade || "";
         if (saved.signature !== getQuerySignature()) return false;
         studentsState = {
-          items: Array.isArray(saved.items) ? saved.items : [],
+          items: Array.isArray(saved.items) ? saved.items.map(toStoredStudentItem) : [],
           nextCursor: saved.nextCursor ?? null,
           hasMore: !!saved.hasMore,
           loading: false
