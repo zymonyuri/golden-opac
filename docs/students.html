@@ -621,10 +621,9 @@
 
             <div class="listFooter">
               <div class="resultsMeta" id="resultsMeta">Showing 0 results</div>
-              <div class="pagination" aria-label="Student pagination">
-                <button class="pageBtn" id="prevPageBtn" type="button">Previous</button>
-                <div class="pageStatus" id="pageStatus">Page 1 of 1</div>
-                <button class="pageBtn" id="nextPageBtn" type="button">Next</button>
+              <div class="pagination" aria-label="Student load more">
+                <div class="pageStatus" id="pageStatus">Ready to load students</div>
+                <button class="pageBtn" id="loadMoreBtn" type="button">Load More</button>
               </div>
             </div>
           </div>
@@ -725,8 +724,7 @@
     const gradeFilterEl = document.getElementById("gradeFilter");
     const listEl = document.getElementById("list");
     const resultsMeta = document.getElementById("resultsMeta");
-    const prevPageBtn = document.getElementById("prevPageBtn");
-    const nextPageBtn = document.getElementById("nextPageBtn");
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
     const pageStatus = document.getElementById("pageStatus");
 
     const progressWrap = document.getElementById("progressWrap");
@@ -734,12 +732,14 @@
     let progressTimer = null;
 
     const STUDENT_PAGE_LIMIT = 50;
+    const STUDENTS_STATE_KEY = "students:list-state:v1";
     let studentsState = {
-      page: 1,
-      limit: STUDENT_PAGE_LIMIT,
-      total: 0,
-      totalPages: 1
+      items: [],
+      nextCursor: null,
+      hasMore: false,
+      loading: false
     };
+    let scrollSaveTimer = null;
 
     function showProgress(){
       progressWrap.classList.add("is-on");
@@ -780,27 +780,62 @@
       window.location.href = "add_students.html";
     });
 
+    function getQueryState(){
+      return {
+        q: qEl.value.trim(),
+        grade: String(gradeFilterEl.value || "").trim()
+      };
+    }
+
+    function getQuerySignature(){
+      return JSON.stringify(getQueryState());
+    }
+
+    function buildStudentDetailsHref(studentId){
+      const params = new URLSearchParams({ student_id: String(studentId) });
+      params.set("return_to", `students.html?${new URLSearchParams(getQueryState()).toString()}`);
+      return `student_details.html?${params.toString()}`;
+    }
+
+    function saveStudentsState(){
+      const payload = {
+        signature: getQuerySignature(),
+        query: getQueryState(),
+        items: studentsState.items,
+        nextCursor: studentsState.nextCursor,
+        hasMore: studentsState.hasMore,
+        scrollY: window.scrollY || 0
+      };
+      sessionStorage.setItem(STUDENTS_STATE_KEY, JSON.stringify(payload));
+      history.replaceState({ studentsList: { signature: payload.signature, scrollY: payload.scrollY } }, "", `students.html?${new URLSearchParams(payload.query).toString()}`);
+    }
+
+    function scheduleStudentsStateSave(){
+      clearTimeout(scrollSaveTimer);
+      scrollSaveTimer = setTimeout(saveStudentsState, 120);
+    }
+
     function openStudent(student_id){
-      window.location.href = `student_details.html?student_id=${encodeURIComponent(student_id)}`;
+      saveStudentsState();
+      window.location.href = buildStudentDetailsHref(student_id);
     }
 
-    function updatePagination(){
-      const total = Number(studentsState.total || 0);
-      const totalPages = Math.max(1, Number(studentsState.totalPages || 1));
-      const page = Math.min(Math.max(1, Number(studentsState.page || 1)), totalPages);
-      const start = total ? ((page - 1) * studentsState.limit) + 1 : 0;
-      const end = total ? Math.min(total, start + studentsState.limit - 1) : 0;
-
-      resultsMeta.textContent = total
-        ? `Showing ${start}-${end} of ${total} students`
+    function updateLoadMoreState(){
+      const count = studentsState.items.length;
+      resultsMeta.textContent = count
+        ? `Showing ${count} student${count === 1 ? "" : "s"}`
         : "Showing 0 results";
-      pageStatus.textContent = `Page ${page} of ${totalPages}`;
-      prevPageBtn.disabled = page <= 1;
-      nextPageBtn.disabled = page >= totalPages || total === 0;
+      pageStatus.textContent = count
+        ? `${count} student${count === 1 ? "" : "s"} loaded`
+        : "No students loaded yet";
+      loadMoreBtn.hidden = !studentsState.hasMore && count === 0;
+      loadMoreBtn.style.display = studentsState.hasMore ? "" : "none";
+      loadMoreBtn.disabled = studentsState.loading;
+      loadMoreBtn.textContent = studentsState.loading ? "Loading..." : "Load More";
     }
 
-    async function renderStudents(rows){
-      updatePagination();
+    function renderStudents(rows){
+      updateLoadMoreState();
       if (!rows.length){
         listEl.innerHTML = `<div class="empty">No students found.</div>`;
         return;
@@ -815,7 +850,7 @@
                onclick="openStudent('${s.student_id}')"
                style="animation-delay:${Math.min(idx * 35, 280)}ms; cursor:pointer;">
             <div>
-              <a class="name" href="student_details.html?student_id=${encodeURIComponent(s.student_id)}">${esc(full || code || "Student")}</a>
+              <a class="name" href="${buildStudentDetailsHref(s.student_id)}" data-student-link="${esc(s.student_id)}">${esc(full || code || "Student")}</a>
               <div class="sub">${esc(gradeSec)}</div>
             </div>
             <div class="right">
@@ -825,86 +860,128 @@
           </div>
         `;
       }).join("");
+
+      listEl.querySelectorAll("[data-student-link]").forEach(link => {
+        link.addEventListener("click", () => saveStudentsState());
+      });
     }
 
-    function normalizePage(payload){
+    function normalizeBatch(payload){
       if (!payload || typeof payload !== "object"){
-        return { items: Array.isArray(payload) ? payload : [], page: 1, limit: STUDENT_PAGE_LIMIT, total: 0, total_pages: 1 };
+        return { items: Array.isArray(payload) ? payload : [], has_more: false, next_cursor: null };
       }
-      const items = Array.isArray(payload.items) ? payload.items : [];
+      const items = Array.isArray(payload.items) ? payload.items : (Array.isArray(payload.results) ? payload.results : []);
       return {
         items,
-        page: Number(payload.page || 1) || 1,
-        limit: Number(payload.limit || STUDENT_PAGE_LIMIT) || STUDENT_PAGE_LIMIT,
-        total: Number(payload.total || items.length || 0) || 0,
-        total_pages: Number(payload.total_pages || 1) || 1
+        has_more: !!payload.has_more,
+        next_cursor: payload.next_cursor ?? null
       };
     }
 
-    async function load(page = 1){
-      const q = qEl.value.trim();
-      const grade = String(gradeFilterEl.value || "").trim();
-
+    async function loadBatch({ reset = false } = {}){
+      const state = getQueryState();
       showListLoader();
       showProgress();
+      studentsState.loading = true;
+      updateLoadMoreState();
 
       try{
         const url = new URL(`${BASE_URL}/api/students`);
-        url.searchParams.set("q", q);
-        url.searchParams.set("page", String(page));
-        url.searchParams.set("limit", String(STUDENT_PAGE_LIMIT));
-        if (grade) url.searchParams.set("grade", grade);
+        url.searchParams.set("q", state.q);
+        url.searchParams.set("page_size", String(STUDENT_PAGE_LIMIT));
+        if (!reset && studentsState.nextCursor) url.searchParams.set("cursor", studentsState.nextCursor);
+        if (state.grade) url.searchParams.set("grade", state.grade);
 
         const res = await fetch(url.toString(), { headers: authHeaders() });
         const data = await res.json().catch(() => ({}));
 
-        hideProgress(true);
-
         if (!res.ok){
-          studentsState = { page: 1, limit: STUDENT_PAGE_LIMIT, total: 0, totalPages: 1 };
-          updatePagination();
+          studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
           listEl.innerHTML = `<div class="empty">Failed to load students.</div>`;
           return;
         }
 
-        const payload = normalizePage(data);
+        const payload = normalizeBatch(data);
         studentsState = {
-          page: payload.page,
-          limit: payload.limit,
-          total: payload.total,
-          totalPages: payload.total_pages
+          items: reset ? payload.items : [...studentsState.items, ...payload.items],
+          nextCursor: payload.next_cursor,
+          hasMore: payload.has_more,
+          loading: false
         };
-        await renderStudents(payload.items);
+        renderStudents(studentsState.items);
+        saveStudentsState();
       }catch(err){
-        hideProgress(false);
-        studentsState = { page: 1, limit: STUDENT_PAGE_LIMIT, total: 0, totalPages: 1 };
-        updatePagination();
+        studentsState.loading = false;
         listEl.innerHTML = `<div class="empty">Network error. Please try again.</div>`;
+      }finally{
+        hideProgress(true);
+        studentsState.loading = false;
+        updateLoadMoreState();
+      }
+    }
+
+    function restoreStudentsState(){
+      try{
+        const raw = sessionStorage.getItem(STUDENTS_STATE_KEY);
+        if (!raw) return false;
+        const saved = JSON.parse(raw);
+        if (!saved || !saved.query) return false;
+        qEl.value = saved.query.q || "";
+        gradeFilterEl.value = saved.query.grade || "";
+        if (saved.signature !== getQuerySignature()) return false;
+        studentsState = {
+          items: Array.isArray(saved.items) ? saved.items : [],
+          nextCursor: saved.nextCursor ?? null,
+          hasMore: !!saved.hasMore,
+          loading: false
+        };
+        renderStudents(studentsState.items);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo(0, Number(saved.scrollY || history.state?.studentsList?.scrollY || 0));
+          });
+        });
+        return studentsState.items.length > 0;
+      }catch(err){
+        console.warn("Failed to restore students state:", err);
+        return false;
       }
     }
 
     let t = null;
     qEl.addEventListener("input", () => {
       clearTimeout(t);
-      t = setTimeout(() => load(1), 360);
+      t = setTimeout(() => {
+        studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        loadBatch({ reset: true });
+      }, 360);
     });
 
     qEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter"){
         e.preventDefault();
-        load(1);
+        studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        loadBatch({ reset: true });
       }
     });
 
-    gradeFilterEl.addEventListener("change", () => load(1));
-    prevPageBtn.addEventListener("click", () => {
-      if (studentsState.page > 1) load(studentsState.page - 1);
+    gradeFilterEl.addEventListener("change", () => {
+      studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+      loadBatch({ reset: true });
     });
-    nextPageBtn.addEventListener("click", () => {
-      if (studentsState.page < studentsState.totalPages) load(studentsState.page + 1);
+    loadMoreBtn.addEventListener("click", () => {
+      if (!studentsState.hasMore || studentsState.loading) return;
+      loadBatch({ reset: false });
     });
 
-    load(1);
+    window.addEventListener("scroll", scheduleStudentsStateSave, { passive: true });
+    window.addEventListener("pagehide", saveStudentsState);
+
+    if (!restoreStudentsState()){
+      loadBatch({ reset: true });
+    } else {
+      updateLoadMoreState();
+    }
 
   </script>
  

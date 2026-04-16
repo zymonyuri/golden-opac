@@ -1315,6 +1315,8 @@ def librarian_search_books(
     q: str = "",
     page: int = 1,
     limit: int = 50,
+    cursor: str | None = None,
+    page_size: int | None = None,
     current=Depends(require_roles("librarian", "admin")),
 ):
     """
@@ -1334,9 +1336,95 @@ def librarian_search_books(
       - Returns the latest page of books
     """
 
-    page, limit, offset = normalize_pagination(page, limit, default_limit=50, max_limit=100)
     q_clean = (q or "").strip()
     like = f"%{q_clean}%"
+
+    if cursor is not None or page_size is not None:
+        effective_limit = page_size if page_size is not None else limit
+        try:
+            effective_limit = int(effective_limit)
+        except Exception:
+            effective_limit = 50
+        effective_limit = max(1, min(effective_limit, 100))
+
+        try:
+            offset = max(0, int(cursor or "0"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cursor")
+
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            where_params = [q_clean, like, like, like, like, like, like, like, like, like]
+
+            cur.execute(
+                """
+                SELECT
+                    b.book_id,
+                    b.title,
+                    b.author,
+                    b.publisher,
+                    b.genre,
+                    b.subject,
+                    b.section,
+                    b.catalog_key,
+                    b.cover_url,
+                    b.created_at,
+                    COUNT(bc.copy_id)::int AS total_copies,
+                    COALESCE(SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END), 0)::int AS available_copies,
+                    COALESCE(SUM(CASE WHEN bc.is_printed IS TRUE THEN 1 ELSE 0 END), 0)::int AS printed_copies,
+                    COALESCE(SUM(CASE WHEN bc.is_printed IS NOT TRUE THEN 1 ELSE 0 END), 0)::int AS unprinted_copies
+                FROM book b
+                LEFT JOIN book_copy bc ON bc.book_id = b.book_id
+                WHERE
+                    (%s = '' OR (
+                        b.title ILIKE %s OR
+                        b.author ILIKE %s OR
+                        COALESCE(b.publisher, '') ILIKE %s OR
+                        COALESCE(b.genre, '') ILIKE %s OR
+                        COALESCE(b.subject, '') ILIKE %s OR
+                        COALESCE(b.section, '') ILIKE %s OR
+                        COALESCE(b.catalog_key, '') ILIKE %s OR
+                        EXISTS (
+                            SELECT 1
+                            FROM book_identifier bi
+                            WHERE bi.book_id = b.book_id
+                              AND COALESCE(bi.id_value, '') ILIKE %s
+                        ) OR
+                        EXISTS (
+                            SELECT 1
+                            FROM book_copy bc3
+                            WHERE bc3.book_id = b.book_id
+                              AND COALESCE(bc3.barcode, '') ILIKE %s
+                        )
+                    ))
+                GROUP BY b.book_id
+                ORDER BY
+                    CASE WHEN %s = '' THEN 0 ELSE 1 END,
+                    CASE WHEN %s = '' THEN b.created_at END DESC,
+                    CASE WHEN %s <> '' THEN b.title END ASC,
+                    b.book_id DESC
+                LIMIT %s OFFSET %s
+                """,
+                tuple(where_params + [q_clean, q_clean, q_clean, effective_limit + 1, offset]),
+            )
+            rows = cur.fetchall()
+            has_more = len(rows) > effective_limit
+            items = rows[:effective_limit]
+
+            return {
+                "items": items,
+                "results": items,
+                "has_more": has_more,
+                "next_cursor": str(offset + effective_limit) if has_more else None,
+                "page_size": effective_limit,
+                "search": q_clean,
+            }
+        finally:
+            cur.close()
+            conn.close()
+
+    page, limit, offset = normalize_pagination(page, limit, default_limit=50, max_limit=100)
 
     conn = get_connection()
     cur = conn.cursor()
@@ -1453,11 +1541,82 @@ def librarian_get_copies(
     search: str = "",
     page: int = 1,
     limit: int = 50,
+    cursor: str | None = None,
+    page_size: int | None = None,
     current=Depends(require_roles("librarian", "admin")),
 ):
-    page, limit, offset = normalize_pagination(page, limit, default_limit=50, max_limit=100)
     q_clean = (search or "").strip()
     like = f"%{q_clean}%"
+
+    if cursor is not None or page_size is not None:
+        effective_limit = page_size if page_size is not None else limit
+        try:
+            effective_limit = int(effective_limit)
+        except Exception:
+            effective_limit = 50
+        effective_limit = max(1, min(effective_limit, 100))
+
+        try:
+            offset = max(0, int(cursor or "0"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cursor")
+
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            where_sql = """
+                WHERE bc.book_id = %s
+                  AND (%s = FALSE OR bc.is_printed = FALSE)
+                  AND (
+                      %s = '' OR
+                      COALESCE(bc.barcode, '') ILIKE %s OR
+                      COALESCE(s.student_code, '') ILIKE %s OR
+                      TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) ILIKE %s OR
+                      COALESCE(bc.status, '') ILIKE %s
+                  )
+            """
+            params = [book_id, only_unprinted, q_clean, like, like, like, like]
+
+            cur.execute(
+                f"""
+                SELECT
+                    bc.copy_id,
+                    bc.barcode,
+                    bc.status,
+                    bc.is_printed,
+                    bc.printed_at,
+                    bc.reprint_count,
+                    s.student_code AS borrower_code,
+                    TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) AS borrower_name
+                FROM book_copy bc
+                LEFT JOIN loan l
+                    ON l.copy_id = bc.copy_id
+                   AND l.returned_at IS NULL
+                LEFT JOIN student s
+                    ON s.student_id = l.student_id
+                {where_sql}
+                ORDER BY bc.copy_id ASC
+                LIMIT %s OFFSET %s
+                """,
+                tuple(params + [effective_limit + 1, offset]),
+            )
+            rows = cur.fetchall()
+            has_more = len(rows) > effective_limit
+            items = rows[:effective_limit]
+
+            return {
+                "items": items,
+                "results": items,
+                "has_more": has_more,
+                "next_cursor": str(offset + effective_limit) if has_more else None,
+                "page_size": effective_limit,
+                "search": q_clean,
+            }
+        finally:
+            cur.close()
+            conn.close()
+
+    page, limit, offset = normalize_pagination(page, limit, default_limit=50, max_limit=100)
 
     conn = get_connection()
     cur = conn.cursor()
@@ -1832,6 +1991,8 @@ def search_students(
     search: str | None = None,
     page: int = 1,
     limit: int = 50,
+    cursor: str | None = None,
+    page_size: int | None = None,
     grade: str = "",
     section: str = "",
     status: str = "",
@@ -1845,12 +2006,90 @@ def search_students(
       - grade
       - section
     """
-    page, limit, offset = normalize_pagination(page, limit, default_limit=50, max_limit=100)
     q_clean = (search if search is not None else q or "").strip()
     grade_clean = (grade or "").strip()
     section_clean = (section or "").strip()
     status_clean = (status or "").strip()
     like = f"%{q_clean}%"
+
+    if cursor is not None or page_size is not None:
+        effective_limit = page_size if page_size is not None else limit
+        try:
+            effective_limit = int(effective_limit)
+        except Exception:
+            effective_limit = 50
+        effective_limit = max(1, min(effective_limit, 100))
+
+        try:
+            offset = max(0, int(cursor or "0"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cursor")
+
+        conn = get_connection()
+        cur = conn.cursor()
+        try:
+            params = [
+                q_clean, like, like, like, like, like, like, like,
+                grade_clean, grade_clean,
+                section_clean, section_clean,
+                status_clean, status_clean,
+            ]
+
+            base_sql = """
+                FROM student s
+                WHERE
+                    (%s = '' OR (
+                        COALESCE(s.student_code, '') ILIKE %s OR
+                        COALESCE(s.last_name, '') ILIKE %s OR
+                        COALESCE(s.first_name, '') ILIKE %s OR
+                        TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) ILIKE %s OR
+                        TRIM(CONCAT(COALESCE(s.last_name, ''), ', ', COALESCE(s.first_name, ''))) ILIKE %s OR
+                        COALESCE(s.grade, '') ILIKE %s OR
+                        COALESCE(s.section, '') ILIKE %s
+                    ))
+                    AND (%s = '' OR COALESCE(s.grade, '') = %s)
+                    AND (%s = '' OR COALESCE(s.section, '') ILIKE %s)
+                    AND (%s = '' OR COALESCE(s.status, '') ILIKE %s)
+            """
+
+            cur.execute(
+                f"""
+                SELECT
+                    s.student_id,
+                    s.student_code,
+                    s.last_name,
+                    s.first_name,
+                    s.grade,
+                    s.section,
+                    s.status
+                {base_sql}
+                ORDER BY s.last_name ASC, s.first_name ASC, s.student_id ASC
+                LIMIT %s OFFSET %s
+                """,
+                tuple(params + [effective_limit + 1, offset]),
+            )
+            rows = cur.fetchall()
+            has_more = len(rows) > effective_limit
+            items = rows[:effective_limit]
+
+            return {
+                "items": items,
+                "results": items,
+                "has_more": has_more,
+                "next_cursor": str(offset + effective_limit) if has_more else None,
+                "page_size": effective_limit,
+                "search": q_clean,
+                "filters": {
+                    "grade": grade_clean,
+                    "section": section_clean,
+                    "status": status_clean,
+                },
+            }
+        finally:
+            cur.close()
+            conn.close()
+
+    page, limit, offset = normalize_pagination(page, limit, default_limit=50, max_limit=100)
 
     conn = get_connection()
     cur = conn.cursor()
@@ -5776,6 +6015,7 @@ def librarian_advanced_search(
     sort: str = "title_asc",   # relevance|title_asc|title_desc|newest|oldest|updated_desc|updated_asc|most_borrowed
     page: int = 1,
     page_size: int = 50,
+    cursor: str | None = None,
     limit: int | None = None,
     current=Depends(require_roles("librarian", "admin")),
 ):
@@ -5792,7 +6032,18 @@ def librarian_advanced_search(
     """
 
     effective_limit = limit if limit is not None else page_size
-    page, effective_limit, offset = normalize_pagination(page, effective_limit, default_limit=50, max_limit=100)
+    if cursor is not None:
+        try:
+            effective_limit = int(effective_limit)
+        except Exception:
+            effective_limit = 50
+        effective_limit = max(1, min(effective_limit, 100))
+        try:
+            offset = max(0, int(cursor or "0"))
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid cursor")
+    else:
+        page, effective_limit, offset = normalize_pagination(page, effective_limit, default_limit=50, max_limit=100)
 
     q_clean = (q or "").strip()
     like = f"%{q_clean}%"
@@ -5849,32 +6100,34 @@ def librarian_advanced_search(
     try:
         where_params = [q_clean, like, like, like, like, like, like, like, like, like]
 
-        cur.execute(
-            """
-            SELECT COUNT(*)::int AS total
-            FROM book b
-            WHERE
-                (%s = '' OR (
-                    b.title ILIKE %s OR
-                    b.author ILIKE %s OR
-                    COALESCE(b.publisher,'') ILIKE %s OR
-                    COALESCE(b.genre,'') ILIKE %s OR
-                    COALESCE(b.subject,'') ILIKE %s OR
-                    COALESCE(b.section,'') ILIKE %s OR
-                    COALESCE(b.catalog_key,'') ILIKE %s OR
-                    EXISTS (
-                        SELECT 1 FROM book_identifier bi
-                        WHERE bi.book_id = b.book_id AND bi.id_value ILIKE %s
-                    ) OR
-                    EXISTS (
-                        SELECT 1 FROM book_copy bc
-                        WHERE bc.book_id = b.book_id AND bc.barcode ILIKE %s
-                    )
-                ))
-            """,
-            tuple(where_params),
-        )
-        total = int((cur.fetchone() or {}).get("total", 0))
+        total = None
+        if cursor is None:
+            cur.execute(
+                """
+                SELECT COUNT(*)::int AS total
+                FROM book b
+                WHERE
+                    (%s = '' OR (
+                        b.title ILIKE %s OR
+                        b.author ILIKE %s OR
+                        COALESCE(b.publisher,'') ILIKE %s OR
+                        COALESCE(b.genre,'') ILIKE %s OR
+                        COALESCE(b.subject,'') ILIKE %s OR
+                        COALESCE(b.section,'') ILIKE %s OR
+                        COALESCE(b.catalog_key,'') ILIKE %s OR
+                        EXISTS (
+                            SELECT 1 FROM book_identifier bi
+                            WHERE bi.book_id = b.book_id AND bi.id_value ILIKE %s
+                        ) OR
+                        EXISTS (
+                            SELECT 1 FROM book_copy bc
+                            WHERE bc.book_id = b.book_id AND bc.barcode ILIKE %s
+                        )
+                    ))
+                """,
+                tuple(where_params),
+            )
+            total = int((cur.fetchone() or {}).get("total", 0))
 
         # Main query:
         # - aggregates copy counts + availability
@@ -5939,11 +6192,25 @@ def librarian_advanced_search(
                 # ORDER params (only for relevance)
                 + order_params
                 # paging
-                + [effective_limit, offset]
+                + [effective_limit + 1 if cursor is not None else effective_limit, offset]
             ),
         )
 
         rows = cur.fetchall()
+        if cursor is not None:
+            has_more = len(rows) > effective_limit
+            items = rows[:effective_limit]
+            return {
+                "items": items,
+                "results": items,
+                "has_more": has_more,
+                "next_cursor": str(offset + effective_limit) if has_more else None,
+                "page_size": effective_limit,
+                "sort": sort,
+                "q": q_clean,
+                "search": q_clean,
+            }
+
         total_pages = max(1, (total + effective_limit - 1) // effective_limit) if total else 1
 
         return {

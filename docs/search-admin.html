@@ -1422,10 +1422,9 @@
 
             <div class="listFooter">
               <div class="resultsMeta" id="resultsMeta">Showing 0 results</div>
-              <div class="pagination" aria-label="Book pagination">
-                <button class="pageBtn" id="prevPageBtn" type="button">Previous</button>
-                <div class="pageStatus" id="pageStatus">Page 1 of 1</div>
-                <button class="pageBtn" id="nextPageBtn" type="button">Next</button>
+              <div class="pagination" aria-label="Book load more">
+                <div class="pageStatus" id="pageStatus">Ready to load books</div>
+                <button class="pageBtn" id="loadMoreBtn" type="button">Load More</button>
               </div>
             </div>
           </div>
@@ -1753,20 +1752,21 @@
     const empty = document.getElementById("empty");
     const err = document.getElementById("err");
     const resultsMeta = document.getElementById("resultsMeta");
-    const prevPageBtn = document.getElementById("prevPageBtn");
-    const nextPageBtn = document.getElementById("nextPageBtn");
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
     const pageStatus = document.getElementById("pageStatus");
 
     const progressWrap = document.getElementById("progressWrap");
     const progressBar = document.getElementById("progressBar");
 
     const BOOKS_PAGE_LIMIT = 50;
+    const LIBRARIAN_BOOKS_STATE_KEY = "librarian:books-list-state:v1";
     let listState = {
-      page: 1,
-      limit: BOOKS_PAGE_LIMIT,
-      total: 0,
-      totalPages: 1
+      items: [],
+      nextCursor: null,
+      hasMore: false,
+      loading: false
     };
+    let listScrollSaveTimer = null;
 
     const detailsOverlay = document.getElementById("detailsOverlay");
     const closeDetails = document.getElementById("closeDetails");
@@ -1909,25 +1909,51 @@
       });
     }
 
-    function updatePagination(){
-      const total = Number(listState.total || 0);
-      const totalPages = Math.max(1, Number(listState.totalPages || 1));
-      const page = Math.min(Math.max(1, Number(listState.page || 1)), totalPages);
-      const start = total ? ((page - 1) * listState.limit) + 1 : 0;
-      const end = total ? Math.min(total, start + listState.limit - 1) : 0;
+    function getListQuery(){
+      return {
+        q: qEl.value.trim(),
+        sort: String(sortEl?.value || "title_asc").trim() || "title_asc"
+      };
+    }
 
-      resultsMeta.textContent = total
-        ? `Showing ${start}-${end} of ${total} books`
+    function getListSignature(){
+      return JSON.stringify(getListQuery());
+    }
+
+    function saveListState(){
+      const payload = {
+        signature: getListSignature(),
+        query: getListQuery(),
+        items: listState.items,
+        nextCursor: listState.nextCursor,
+        hasMore: listState.hasMore,
+        scrollY: window.scrollY || 0
+      };
+      sessionStorage.setItem(LIBRARIAN_BOOKS_STATE_KEY, JSON.stringify(payload));
+    }
+
+    function scheduleListStateSave(){
+      clearTimeout(listScrollSaveTimer);
+      listScrollSaveTimer = setTimeout(saveListState, 120);
+    }
+
+    function updateLoadMoreState(){
+      const count = listState.items.length;
+      resultsMeta.textContent = count
+        ? `Showing ${count} book${count === 1 ? "" : "s"}`
         : "Showing 0 results";
-      pageStatus.textContent = `Page ${page} of ${totalPages}`;
-      prevPageBtn.disabled = page <= 1;
-      nextPageBtn.disabled = page >= totalPages || total === 0;
+      pageStatus.textContent = count
+        ? `${count} book${count === 1 ? "" : "s"} loaded`
+        : "No books loaded yet";
+      loadMoreBtn.style.display = listState.hasMore ? "" : "none";
+      loadMoreBtn.disabled = listState.loading;
+      loadMoreBtn.textContent = listState.loading ? "Loading..." : "Load More";
     }
 
     function renderList(results){
       clearListCards();
       empty.style.display = results.length ? "none" : "block";
-      updatePagination();
+      updateLoadMoreState();
 
       for (const b of results){
         const card = document.createElement("div");
@@ -1959,81 +1985,116 @@
     }
 
     let t = null;
-    function extractPage(payload){
+    function extractBatch(payload){
       if (!payload || typeof payload !== "object"){
-        return { items: Array.isArray(payload) ? payload : [], page: 1, limit: BOOKS_PAGE_LIMIT, total: 0, total_pages: 1 };
+        return { items: Array.isArray(payload) ? payload : [], has_more: false, next_cursor: null };
       }
       const items = Array.isArray(payload.items)
         ? payload.items
         : (Array.isArray(payload.results) ? payload.results : []);
       return {
         items,
-        page: Number(payload.page || 1) || 1,
-        limit: Number(payload.limit || payload.page_size || BOOKS_PAGE_LIMIT) || BOOKS_PAGE_LIMIT,
-        total: Number(payload.total || items.length || 0) || 0,
-        total_pages: Number(payload.total_pages || 1) || 1,
+        has_more: !!payload.has_more,
+        next_cursor: payload.next_cursor ?? null,
       };
     }
 
-    async function fetchBooksPage(page = 1){
-      const q = qEl.value.trim();
-      const sort = String(sortEl?.value || "title_asc").trim() || "title_asc";
+    async function fetchBooksBatch(cursor = null){
+      const query = getListQuery();
       const params = new URLSearchParams({
-        q,
-        sort,
-        page: String(page),
-        limit: String(BOOKS_PAGE_LIMIT),
+        q: query.q,
+        sort: query.sort,
         page_size: String(BOOKS_PAGE_LIMIT)
       });
+      if (cursor) params.set("cursor", cursor);
 
       const res = await fetch(`${BASE_URL}/api/librarian/books/search?${params.toString()}`, {
         headers: authHeaders()
       });
       const data = await res.json().catch(()=> ({}));
       if (!res.ok) throw new Error(data?.detail || `Search failed (${res.status})`);
-      return extractPage(data);
+      return extractBatch(data);
     }
 
-    async function searchNow(page = 1){
+    async function searchNow({ reset = false } = {}){
       clearErr();
       empty.style.display = "none";
 
       showListLoader(true);
       startProgress();
+      listState.loading = true;
+      updateLoadMoreState();
 
       try{
-        const payload = await fetchBooksPage(page);
+        const payload = await fetchBooksBatch(reset ? null : listState.nextCursor);
         listState = {
-          page: payload.page,
-          limit: payload.limit,
-          total: payload.total,
-          totalPages: payload.total_pages
+          items: reset ? payload.items : [...listState.items, ...payload.items],
+          nextCursor: payload.next_cursor,
+          hasMore: payload.has_more,
+          loading: false
         };
-        renderList(payload.items);
+        renderList(listState.items);
+        saveListState();
       }catch(e){
-        listState = { page: 1, limit: BOOKS_PAGE_LIMIT, total: 0, totalPages: 1 };
-        updatePagination();
+        listState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        updateLoadMoreState();
         clearListCards();
         showErr(e?.message || "Search failed.");
       }finally{
+        listState.loading = false;
         showListLoader(false);
         endProgress();
+        updateLoadMoreState();
+      }
+    }
+
+    function restoreListState(){
+      try{
+        const raw = sessionStorage.getItem(LIBRARIAN_BOOKS_STATE_KEY);
+        if (!raw) return false;
+        const saved = JSON.parse(raw);
+        if (!saved || !saved.query) return false;
+        qEl.value = saved.query.q || "";
+        if (sortEl) sortEl.value = saved.query.sort || "title_asc";
+        if (saved.signature !== getListSignature()) return false;
+        listState = {
+          items: Array.isArray(saved.items) ? saved.items : [],
+          nextCursor: saved.nextCursor ?? null,
+          hasMore: !!saved.hasMore,
+          loading: false
+        };
+        renderList(listState.items);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo(0, Number(saved.scrollY || 0));
+          });
+        });
+        return listState.items.length > 0;
+      } catch (err){
+        console.warn("Failed to restore librarian books state:", err);
+        return false;
       }
     }
 
     function scheduleSearch(){
       clearTimeout(t);
-      t = setTimeout(() => searchNow(1), 360);
+      t = setTimeout(() => {
+        listState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        searchNow({ reset: true });
+      }, 360);
     }
 
     qEl.addEventListener("input", scheduleSearch);
-    sortEl.addEventListener("change", () => searchNow(1));
-    prevPageBtn.addEventListener("click", () => {
-      if (listState.page > 1) searchNow(listState.page - 1);
+    sortEl.addEventListener("change", () => {
+      listState = { items: [], nextCursor: null, hasMore: false, loading: false };
+      searchNow({ reset: true });
     });
-    nextPageBtn.addEventListener("click", () => {
-      if (listState.page < listState.totalPages) searchNow(listState.page + 1);
+    loadMoreBtn.addEventListener("click", () => {
+      if (!listState.hasMore || listState.loading) return;
+      searchNow({ reset: false });
     });
+    window.addEventListener("scroll", scheduleListStateSave, { passive: true });
+    window.addEventListener("pagehide", saveListState);
 
     function openModal(){
       detailsOverlay.style.display = "flex";
@@ -2585,8 +2646,13 @@
         const data = await res.json().catch(()=>({}));
         if (!res.ok) throw new Error(data?.detail || `Save failed (${res.status})`);
 
+        const idx = listState.items.findIndex(item => Number(item.book_id) === Number(activeBookId));
+        if (idx >= 0){
+          listState.items[idx] = { ...listState.items[idx], ...payload };
+          renderList(listState.items);
+          saveListState();
+        }
         showSaveResult("ok", "Changes saved!", "Book details have been updated successfully.");
-        scheduleSearch();
         await openDetails(activeBookId);
       }catch(e){
         showSaveResult("err", "Save failed", e?.message || "Something went wrong. Please try again.");
@@ -2649,9 +2715,11 @@
         // Show success flash before closing
         confirmSpinner.style.display = "none";
         confirmOverlay.style.display = "none";
+        listState.items = listState.items.filter(item => Number(item.book_id) !== Number(activeBookId));
+        renderList(listState.items);
+        saveListState();
         showSaveResult("ok", "Book deleted", "The book record and all associated data have been removed.");
         closeModal();
-        scheduleSearch();
       }catch(e){
         confirmSpinner.style.display = "none";
         confirmErr.style.display = "block";
@@ -2662,7 +2730,11 @@
       }
     });
 
-    searchNow();
+    if (!restoreListState()){
+      searchNow({ reset: true });
+    } else {
+      updateLoadMoreState();
+    }
   </script>
  
   <script src="branding.js"></script>

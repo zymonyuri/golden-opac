@@ -1107,10 +1107,9 @@
 
                   <div class="listFooter">
                     <div class="resultsMeta" id="booksMeta">Showing 0 results</div>
-                    <div class="pagination" aria-label="Book pagination">
-                      <button class="pageBtn" id="booksPrevBtn" type="button">Previous</button>
-                      <div class="pageStatus" id="booksPageStatus">Page 1 of 1</div>
-                      <button class="pageBtn" id="booksNextBtn" type="button">Next</button>
+                    <div class="pagination" aria-label="Book load more">
+                      <div class="pageStatus" id="booksPageStatus">Ready to load books</div>
+                      <button class="pageBtn" id="booksLoadMoreBtn" type="button">Load More</button>
                     </div>
                   </div>
                 </div>
@@ -1406,8 +1405,7 @@
     const resultsChip = document.getElementById("resultsChip");
     const bookListEl = document.getElementById("bookList");
     const booksMeta = document.getElementById("booksMeta");
-    const booksPrevBtn = document.getElementById("booksPrevBtn");
-    const booksNextBtn = document.getElementById("booksNextBtn");
+    const booksLoadMoreBtn = document.getElementById("booksLoadMoreBtn");
     const booksPageStatus = document.getElementById("booksPageStatus");
 
     const reprintModeBtn = document.getElementById("reprintModeBtn");
@@ -1433,12 +1431,14 @@
 
     const BOOK_PAGE_LIMIT = 50;
     const COPY_PAGE_LIMIT = 50;
+    const BARCODE_PAGE_STATE_KEY = "barcodes:page-state:v1";
     let reprintMode = false;
     let currentBooks = [];
     let copiesCache = new Map();
-    let booksState = { page: 1, limit: BOOK_PAGE_LIMIT, total: 0, totalPages: 1 };
+    let booksState = { nextCursor: null, hasMore: false, loading: false };
     const selected = new Map();
     let lastPdfBlobUrl = null;
+    let barcodePageSaveTimer = null;
 
     function showBooksLoader(){
       bookListEl.innerHTML = `
@@ -1450,20 +1450,42 @@
       `;
     }
 
-    function updateBooksPagination(){
-      const total = Number(booksState.total || 0);
-      const totalPages = Math.max(1, Number(booksState.totalPages || 1));
-      const page = Math.min(Math.max(1, Number(booksState.page || 1)), totalPages);
-      const start = total ? ((page - 1) * booksState.limit) + 1 : 0;
-      const end = total ? Math.min(total, start + booksState.limit - 1) : 0;
+    function getBarcodePageQuery(){
+      return {
+        q: (qEl.value || "").trim(),
+        reprintMode: reprintMode ? "1" : "0"
+      };
+    }
 
+    function saveBarcodePageState(){
+      const payload = {
+        query: getBarcodePageQuery(),
+        books: currentBooks,
+        nextCursor: booksState.nextCursor,
+        hasMore: booksState.hasMore,
+        selected: Array.from(selected.entries()),
+        scrollY: window.scrollY || 0
+      };
+      sessionStorage.setItem(BARCODE_PAGE_STATE_KEY, JSON.stringify(payload));
+    }
+
+    function scheduleBarcodePageSave(){
+      clearTimeout(barcodePageSaveTimer);
+      barcodePageSaveTimer = setTimeout(saveBarcodePageState, 120);
+    }
+
+    function updateBooksPagination(){
+      const total = currentBooks.length;
       resultsChip.textContent = `Results: ${total}`;
       booksMeta.textContent = total
-        ? `Showing ${start}-${end} of ${total} books`
+        ? `Showing ${total} book${total === 1 ? "" : "s"}`
         : "Showing 0 results";
-      booksPageStatus.textContent = `Page ${page} of ${totalPages}`;
-      booksPrevBtn.disabled = page <= 1;
-      booksNextBtn.disabled = page >= totalPages || total === 0;
+      booksPageStatus.textContent = total
+        ? `${total} book${total === 1 ? "" : "s"} loaded`
+        : "No books loaded yet";
+      booksLoadMoreBtn.style.display = booksState.hasMore ? "" : "none";
+      booksLoadMoreBtn.disabled = booksState.loading;
+      booksLoadMoreBtn.textContent = booksState.loading ? "Loading..." : "Load More";
     }
 
     function updateSelectedUI(){
@@ -1479,6 +1501,7 @@
       if (n===0){
         previewBox.appendChild(pvEmpty);
         pvEmpty.style.display = "block";
+        scheduleBarcodePageSave();
         return;
       }
       pvEmpty.style.display = "none";
@@ -1514,6 +1537,7 @@
         });
         previewBox.appendChild(row);
       }
+      scheduleBarcodePageSave();
     }
 
     function addOrRemoveSelection(copy, checked){
@@ -1522,20 +1546,24 @@
       updateSelectedUI();
     }
 
-    function cacheKey(bookId, page){
-      return `${String(bookId)}:${reprintMode ? "ALL" : "UNPRINTED"}:${Number(page) || 1}`;
+    function cacheKey(bookId, cursor = ""){
+      return `${String(bookId)}:${reprintMode ? "ALL" : "UNPRINTED"}:${cursor || "ROOT"}`;
     }
 
-    async function loadCopies(bookId, bookTitle, page = 1){
-      const key = cacheKey(bookId, page);
+    async function loadCopies(bookId, bookTitle, cursor = null){
+      const key = cacheKey(bookId, cursor || "");
       if (copiesCache.has(key)) return copiesCache.get(key);
 
       const onlyUnprinted = reprintMode ? "false" : "true";
+      const params = new URLSearchParams({
+        only_unprinted: onlyUnprinted,
+        page_size: String(COPY_PAGE_LIMIT)
+      });
+      if (cursor) params.set("cursor", cursor);
       const payload = await apiGet(
-        `/api/librarian/books/${bookId}/copies?only_unprinted=${onlyUnprinted}&page=${encodeURIComponent(page)}&limit=${COPY_PAGE_LIMIT}`
+        `/api/librarian/books/${bookId}/copies?${params.toString()}`
       );
-      const normalized = normalizePage(payload, COPY_PAGE_LIMIT);
-      const items = normalized.items.map(r=>({
+      const items = normalizeArray(payload).map(r=>({
         copy_id: r.copy_id,
         barcode: r.barcode,
         is_printed: !!r.is_printed,
@@ -1543,10 +1571,8 @@
       }));
       const result = {
         items,
-        page: normalized.page,
-        limit: normalized.limit,
-        total: normalized.total,
-        total_pages: normalized.total_pages
+        next_cursor: payload?.next_cursor ?? null,
+        has_more: !!payload?.has_more
       };
       copiesCache.set(key, result);
       return result;
@@ -1633,10 +1659,9 @@
               <div class="copies"></div>
               <div class="copiesFooter">
                 <div class="copiesMeta">Showing 0 results</div>
-                <div class="pagination" aria-label="Copy pagination">
-                  <button class="pageBtn copiesPrevBtn" type="button">Previous</button>
-                  <div class="pageStatus copiesPageStatus">Page 1 of 1</div>
-                  <button class="pageBtn copiesNextBtn" type="button">Next</button>
+                <div class="pagination" aria-label="Copy load more">
+                  <div class="pageStatus copiesPageStatus">No copies loaded yet</div>
+                  <button class="pageBtn copiesLoadMoreBtn" type="button">Load More</button>
                 </div>
               </div>
             </div>
@@ -1648,29 +1673,26 @@
         const selectAllDropdownBtn = wrap.querySelector(".selectAllDropdownBtn");
         const clearDropdownBtn = wrap.querySelector(".clearDropdownBtn");
         const copiesMeta = wrap.querySelector(".copiesMeta");
-        const copiesPrevBtn = wrap.querySelector(".copiesPrevBtn");
-        const copiesNextBtn = wrap.querySelector(".copiesNextBtn");
+        const copiesLoadMoreBtn = wrap.querySelector(".copiesLoadMoreBtn");
         const copiesPageStatus = wrap.querySelector(".copiesPageStatus");
 
         let loadedCopies = [];
-        let copiesState = { page: 1, limit: COPY_PAGE_LIMIT, total: 0, totalPages: 1 };
+        let copiesState = { nextCursor: null, hasMore: false, loading: false };
 
         function updateCopiesFooter(){
-          const total = Number(copiesState.total || 0);
-          const totalPages = Math.max(1, Number(copiesState.totalPages || 1));
-          const page = Math.min(Math.max(1, Number(copiesState.page || 1)), totalPages);
-          const start = total ? ((page - 1) * copiesState.limit) + 1 : 0;
-          const end = total ? Math.min(total, start + copiesState.limit - 1) : 0;
-
+          const total = loadedCopies.length;
           copiesMeta.textContent = total
-            ? `Showing ${start}-${end} of ${total} copies`
+            ? `Showing ${total} cop${total === 1 ? "y" : "ies"}`
             : "Showing 0 results";
-          copiesPageStatus.textContent = `Page ${page} of ${totalPages}`;
-          copiesPrevBtn.disabled = page <= 1;
-          copiesNextBtn.disabled = page >= totalPages || total === 0;
+          copiesPageStatus.textContent = total
+            ? `${total} cop${total === 1 ? "y" : "ies"} loaded`
+            : "No copies loaded yet";
+          copiesLoadMoreBtn.style.display = copiesState.hasMore ? "" : "none";
+          copiesLoadMoreBtn.disabled = copiesState.loading;
+          copiesLoadMoreBtn.textContent = copiesState.loading ? "Loading..." : "Load More";
         }
 
-        async function refreshCopiesPage(targetPage = 1){
+        async function refreshCopiesPage({ reset = false } = {}){
           copiesEl.innerHTML = `
             <div class="list-loader" aria-label="Loading copies">
               <div class="dots">
@@ -1681,44 +1703,45 @@
 
           showProgress();
           setPreviewLoading(true);
+          copiesState.loading = true;
+          updateCopiesFooter();
           try{
-            const payload = await loadCopies(bookId, title, targetPage);
-            loadedCopies = payload.items;
+            const payload = await loadCopies(bookId, title, reset ? null : copiesState.nextCursor);
+            loadedCopies = reset ? payload.items : [...loadedCopies, ...payload.items];
             copiesState = {
-              page: payload.page,
-              limit: payload.limit,
-              total: payload.total,
-              totalPages: payload.total_pages
+              nextCursor: payload.next_cursor,
+              hasMore: payload.has_more,
+              loading: false
             };
             updateCopiesFooter();
             renderCopies(loadedCopies, copiesEl);
           }catch(err){
-            copiesState = { page: 1, limit: COPY_PAGE_LIMIT, total: 0, totalPages: 1 };
+            copiesState = { nextCursor: null, hasMore: false, loading: false };
             updateCopiesFooter();
             copiesEl.innerHTML = `<div class="empty">Failed to load copies.</div>`;
             showToast(err.message || "Failed to load copies");
           }finally{
+            copiesState.loading = false;
             hideProgress(true);
             setPreviewLoading(false);
+            updateCopiesFooter();
           }
         }
 
         selectAllDropdownBtn.addEventListener("click", () => {
           if (!loadedCopies.length) return;
           applySelectAllInWrap(wrap, loadedCopies, true);
-          showToast("Selected the current copy page.");
+          showToast("Selected the loaded copies for this book.");
         });
 
         clearDropdownBtn.addEventListener("click", () => {
           if (!loadedCopies.length) return;
           applySelectAllInWrap(wrap, loadedCopies, false);
-          showToast("Cleared the current copy page.");
+          showToast("Cleared the loaded copies for this book.");
         });
-        copiesPrevBtn.addEventListener("click", () => {
-          if (copiesState.page > 1) refreshCopiesPage(copiesState.page - 1);
-        });
-        copiesNextBtn.addEventListener("click", () => {
-          if (copiesState.page < copiesState.totalPages) refreshCopiesPage(copiesState.page + 1);
+        copiesLoadMoreBtn.addEventListener("click", () => {
+          if (!copiesState.hasMore || copiesState.loading) return;
+          refreshCopiesPage({ reset: false });
         });
         updateCopiesFooter();
 
@@ -1729,40 +1752,82 @@
           }
 
           wrap.classList.add("is-open");
-          refreshCopiesPage(1);
+          refreshCopiesPage({ reset: true });
         });
 
         bookListEl.appendChild(wrap);
       });
     }
 
-    async function loadBooks(page = 1){
+    function restoreBarcodePageState(){
+      try{
+        const raw = sessionStorage.getItem(BARCODE_PAGE_STATE_KEY);
+        if (!raw) return false;
+        const saved = JSON.parse(raw);
+        if (!saved || !saved.query) return false;
+        qEl.value = saved.query.q || "";
+        reprintMode = saved.query.reprintMode === "1";
+        reprintModeBtn.classList.toggle("is-on", reprintMode);
+        reprintLabel.textContent = reprintMode ? "ON" : "OFF";
+        const currentQuery = getBarcodePageQuery();
+        if (!saved || JSON.stringify(saved.query || {}) !== JSON.stringify(currentQuery)) return false;
+
+        currentBooks = Array.isArray(saved.books) ? saved.books : [];
+        booksState = {
+          nextCursor: saved.nextCursor ?? null,
+          hasMore: !!saved.hasMore,
+          loading: false
+        };
+        selected.clear();
+        for (const [copyId, copy] of (saved.selected || [])){
+          selected.set(copyId, copy);
+        }
+        updateSelectedUI();
+        renderBooks();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => window.scrollTo(0, Number(saved.scrollY || 0)));
+        });
+        return currentBooks.length > 0;
+      } catch (err){
+        console.warn("Failed to restore barcode page state:", err);
+        return false;
+      }
+    }
+
+    async function loadBooks({ reset = false } = {}){
       const q = (qEl.value || "").trim();
 
       showBooksLoader();
       showProgress();
+      booksState.loading = true;
+      updateBooksPagination();
 
       try{
-        const payload = normalizePage(
-          await apiGet(`/api/librarian/books?q=${encodeURIComponent(q)}&page=${encodeURIComponent(page)}&limit=${BOOK_PAGE_LIMIT}`),
-          BOOK_PAGE_LIMIT
-        );
-        currentBooks = payload.items;
+        const params = new URLSearchParams({
+          q,
+          page_size: String(BOOK_PAGE_LIMIT)
+        });
+        if (!reset && booksState.nextCursor) params.set("cursor", booksState.nextCursor);
+        const payload = await apiGet(`/api/librarian/books?${params.toString()}`);
+        const items = normalizeArray(payload);
+        currentBooks = reset ? items : [...currentBooks, ...items];
         booksState = {
-          page: payload.page,
-          limit: payload.limit,
-          total: payload.total,
-          totalPages: payload.total_pages
+          nextCursor: payload?.next_cursor ?? null,
+          hasMore: !!payload?.has_more,
+          loading: false
         };
         renderBooks();
+        saveBarcodePageState();
       }catch(err){
         console.error(err);
-        booksState = { page: 1, limit: BOOK_PAGE_LIMIT, total: 0, totalPages: 1 };
+        booksState = { nextCursor: null, hasMore: false, loading: false };
         updateBooksPagination();
         bookListEl.innerHTML = `<div class="empty">Failed to load books. (${esc(err.message || "Error")})</div>`;
         showToast(err.message || "Failed to load books");
       }finally{
+        booksState.loading = false;
         hideProgress(true);
+        updateBooksPagination();
       }
     }
 
@@ -1785,7 +1850,9 @@
       reprintLabel.textContent = reprintMode ? "ON" : "OFF";
       copiesCache = new Map();
       document.querySelectorAll(".bwrap.is-open").forEach(x=>x.classList.remove("is-open"));
-      loadBooks(1);
+      currentBooks = [];
+      booksState = { nextCursor: null, hasMore: false, loading: false };
+      loadBooks({ reset: true });
       showToast(reprintMode ? "Reprint mode ON." : "Reprint mode OFF.");
     });
 
@@ -1901,7 +1968,9 @@
         selected.clear();
         updateSelectedUI();
         copiesCache = new Map();
-        await loadBooks();
+        currentBooks = [];
+        booksState = { nextCursor: null, hasMore: false, loading: false };
+        await loadBooks({ reset: true });
       }catch(err){
         showToast(err.message || "Mark printed failed");
       }finally{
@@ -1913,26 +1982,36 @@
     let t = null;
     qEl.addEventListener("input", ()=>{
       clearTimeout(t);
-      t = setTimeout(()=> loadBooks(1), 360);
+      t = setTimeout(()=>{
+        currentBooks = [];
+        booksState = { nextCursor: null, hasMore: false, loading: false };
+        loadBooks({ reset: true });
+      }, 360);
     });
 
     qEl.addEventListener("keydown",(e)=>{
       if(e.key==="Enter"){
         e.preventDefault();
-        loadBooks(1);
+        currentBooks = [];
+        booksState = { nextCursor: null, hasMore: false, loading: false };
+        loadBooks({ reset: true });
       }
     });
 
-    booksPrevBtn.addEventListener("click", ()=>{
-      if (booksState.page > 1) loadBooks(booksState.page - 1);
+    booksLoadMoreBtn.addEventListener("click", ()=>{
+      if (!booksState.hasMore || booksState.loading) return;
+      loadBooks({ reset: false });
     });
 
-    booksNextBtn.addEventListener("click", ()=>{
-      if (booksState.page < booksState.totalPages) loadBooks(booksState.page + 1);
-    });
+    window.addEventListener("scroll", scheduleBarcodePageSave, { passive: true });
+    window.addEventListener("pagehide", saveBarcodePageState);
 
     updateSelectedUI();
-    loadBooks();
+    if (!restoreBarcodePageState()){
+      loadBooks({ reset: true });
+    } else {
+      updateBooksPagination();
+    }
 
     
   </script>
