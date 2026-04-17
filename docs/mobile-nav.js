@@ -8,8 +8,14 @@
     toggle.type = "button";
     toggle.className = "mobile-nav-toggle";
     toggle.setAttribute("aria-label", "Toggle navigation menu");
+    toggle.setAttribute("aria-haspopup", "menu");
     toggle.setAttribute("aria-expanded", "false");
     toggle.innerHTML = '<span class="mobile-nav-toggle__bars" aria-hidden="true"></span>';
+
+    if (!nav.id) {
+      nav.id = "mobile-nav-menu";
+    }
+    toggle.setAttribute("aria-controls", nav.id);
 
     function isMobile() {
       return window.matchMedia("(max-width: 980px)").matches;
@@ -48,6 +54,11 @@
       if (!isMobile()) return;
       if (!header.classList.contains("is-nav-open")) return;
       if (header.contains(event.target)) return;
+      closeNav();
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape") return;
       closeNav();
     });
 
