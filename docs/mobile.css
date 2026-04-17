@@ -1,0 +1,473 @@
+@media (max-width: 980px) {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  img,
+  svg,
+  canvas,
+  video,
+  iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  iframe {
+    width: 100%;
+  }
+
+  .topbar {
+    padding: 12px 16px !important;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .brand__logo {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .brand__text {
+    min-width: 0;
+  }
+
+  .brand__name,
+  .brand__sub,
+  .brand__school,
+  .brand__subtitle {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .nav {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px 14px;
+    flex-wrap: wrap;
+  }
+
+  .nav__link {
+    margin-left: 0 !important;
+    font-size: 14px;
+  }
+
+  .wrap,
+  .hero__content {
+    padding-top: 108px !important;
+  }
+
+  .wrap {
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+  }
+
+  .shell {
+    width: min(100%, 94vw) !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: calc(100vh - 82px);
+    z-index: 20;
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(64px, 1fr);
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-radius: 16px;
+    padding: 0;
+    scrollbar-width: none;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .side-item {
+    min-width: 64px;
+    height: 64px !important;
+    border-bottom: 0 !important;
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .side-item:last-child {
+    border-right: 0;
+  }
+
+  .side-item.is-active {
+    border-left: 0 !important;
+    box-shadow: inset 0 -3px 0 var(--brand-yellow) !important;
+  }
+
+  .side-item img {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .panel {
+    width: 100%;
+    min-width: 0;
+    height: auto !important;
+    min-height: 0;
+  }
+
+  .content {
+    padding: 16px !important;
+    overflow: visible !important;
+  }
+
+  .titleRow {
+    align-items: flex-start !important;
+  }
+
+  .titleRow h1,
+  h1 {
+    font-size: clamp(22px, 5vw, 28px) !important;
+  }
+
+  .tools,
+  .grid2,
+  .formGrid,
+  .detailsGrid,
+  .editorGrid,
+  .previewGrid,
+  .isbnRow,
+  .modalFieldGrid,
+  .cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card,
+  .cardBody,
+  .cardHead,
+  .cardTitle {
+    min-width: 0;
+  }
+
+  .cardHead,
+  .previewActions,
+  .modalActions,
+  .actionsLeft,
+  .actionsRight,
+  .listFooter,
+  .pagination {
+    gap: 10px !important;
+  }
+
+  .previewActions,
+  .modalActions,
+  .listFooter {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .actionsLeft,
+  .actionsRight {
+    width: 100%;
+    justify-content: stretch !important;
+  }
+
+  .btn,
+  .btnGhost,
+  .btnDanger,
+  .pageBtn,
+  .login-btn,
+  button,
+  [type="button"],
+  [type="submit"] {
+    min-height: 44px;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  .searchWrap,
+  .sortBlock select,
+  .filterBlock select,
+  .copiesBox,
+  .field input,
+  .field select,
+  .field textarea {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .search__bar {
+    grid-template-columns: 44px 1fr;
+    row-gap: 10px;
+    border-radius: 24px;
+  }
+
+  #searchBtn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .hero__title {
+    margin-bottom: 28px;
+  }
+
+  .list,
+  .results {
+    padding-right: 0 !important;
+  }
+
+  .card,
+  .result-card {
+    min-width: 0;
+  }
+
+  .right {
+    min-width: 0 !important;
+  }
+
+  .tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .modalOverlay,
+  .confirmOverlay,
+  .restoreOverlay,
+  .saveResultOverlay,
+  .modal {
+    padding: 12px !important;
+  }
+
+  .modal,
+  .confirmModal,
+  .restoreModal,
+  .actionModal,
+  .saveResultModal,
+  .modal__card {
+    width: min(100%, 96vw) !important;
+    max-width: 96vw !important;
+    max-height: calc(100vh - 24px) !important;
+  }
+
+  .modalBody,
+  .confirmBody,
+  .restoreBody,
+  .modal__body {
+    overflow: auto;
+    max-height: calc(100vh - 190px);
+  }
+
+  .toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+  }
+
+  .site-footer__inner {
+    gap: 24px;
+  }
+
+  .site-footer__row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .wrap,
+  .hero__content {
+    padding-top: 100px !important;
+  }
+
+  .wrap {
+    padding-bottom: 94px !important;
+  }
+
+  .brand__text {
+    display: block !important;
+  }
+
+  .brand__name {
+    font-size: 14px;
+  }
+
+  .brand__sub {
+    font-size: 11px;
+  }
+
+  .nav {
+    justify-content: flex-start;
+  }
+
+  .panel {
+    border-radius: 16px;
+  }
+
+  .content {
+    padding: 14px !important;
+  }
+
+  .tools {
+    gap: 10px !important;
+  }
+
+  .copiesBox {
+    height: auto !important;
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .result-card {
+    grid-template-columns: 44px 1fr;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .result-cover {
+    width: 44px;
+    height: 60px;
+  }
+
+  .book-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .listFooter,
+  .pagination {
+    align-items: stretch !important;
+  }
+
+  .pageStatus {
+    min-width: 0 !important;
+    width: 100%;
+    text-align: left !important;
+  }
+
+  table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    border-collapse: collapse;
+  }
+
+  table thead,
+  table tbody,
+  table tr {
+    width: max-content;
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 10px 12px !important;
+  }
+
+  .wrap,
+  .hero__content {
+    padding-top: 94px !important;
+  }
+
+  .wrap {
+    padding-right: 10px !important;
+    padding-left: 10px !important;
+    padding-bottom: 90px !important;
+  }
+
+  .content {
+    padding: 12px !important;
+  }
+
+  .sidebar {
+    top: calc(100vh - 74px);
+    border-radius: 14px;
+  }
+
+  .side-item {
+    min-width: 58px;
+    height: 58px !important;
+  }
+
+  .side-item img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .titleRow h1,
+  h1 {
+    font-size: 22px !important;
+  }
+
+  .tab {
+    padding: 10px 14px !important;
+    font-size: 12px !important;
+  }
+
+  .btn,
+  .btnGhost,
+  .btnDanger,
+  .pageBtn,
+  #searchBtn,
+  .login-btn {
+    width: 100%;
+  }
+
+  .modalTop,
+  .confirmTop,
+  .restoreTop,
+  .modal__top {
+    padding: 14px 14px 10px !important;
+  }
+
+  .modalBody,
+  .confirmBody,
+  .restoreBody,
+  .modal__body {
+    padding: 12px 14px !important;
+  }
+
+  .modalActions,
+  .confirmActions,
+  .restoreActions,
+  .modal__actions {
+    padding: 10px 14px 14px !important;
+  }
+
+  .site-footer__inner {
+    padding: 24px 16px !important;
+  }
+}
