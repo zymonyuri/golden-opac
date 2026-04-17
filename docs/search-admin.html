@@ -1214,6 +1214,166 @@
 
     .actionModal .modalActions{ padding:12px 16px 16px; }
 
+    .copyPanel{
+      margin-top:10px;
+      display:grid;
+      gap:8px;
+    }
+
+    .copyPanelBar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(0,0,0,0.035);
+    }
+
+    .copyPanelInfo{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+      flex:1 1 260px;
+    }
+
+    .copyPanelIcon{
+      width:32px;
+      height:32px;
+      border-radius:10px;
+      display:grid;
+      place-items:center;
+      background: color-mix(in srgb, var(--brand-yellow) 18%, white);
+      color:#111;
+      font-size:15px;
+      font-weight:1000;
+      flex:0 0 auto;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+
+    .copyPanelText{
+      min-width:0;
+    }
+
+    .copyPanelTitle{
+      margin:0;
+      font-size:13px;
+      font-weight:1000;
+      color:#111;
+      line-height:1.2;
+    }
+
+    .copyPanelHint{
+      margin:2px 0 0;
+      font-size:11px;
+      font-weight:900;
+      color: rgba(0,0,0,0.56);
+      line-height:1.35;
+    }
+
+    .copyPanelControls{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .copyQty{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .copyQty label{
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.62);
+      white-space:nowrap;
+    }
+
+    .copyQty input{
+      width:72px;
+      min-height:38px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(255,255,255,0.88);
+      color:#111;
+      outline:none;
+      font-size:13px;
+      font-weight:1000;
+      font-family:inherit;
+      text-align:center;
+    }
+
+    .copyQty input:focus{
+      border-color: color-mix(in srgb, var(--brand-yellow) 45%, rgba(0,0,0,0.16));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 18%, transparent);
+      background: rgba(255,255,255,0.98);
+    }
+
+    .copyPanelMsg{
+      display:none;
+      font-size:12px;
+      font-weight:1000;
+      line-height:1.45;
+    }
+
+    .copyPanelMsg.is-ok{ color: var(--okGreen); }
+    .copyPanelMsg.is-err{ color: rgba(176,0,0,0.88); }
+
+    .copyResults{
+      display:none;
+      padding:2px 4px 0;
+    }
+
+    .copyResultsTitle{
+      font-size:11px;
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.58);
+      margin-bottom:6px;
+    }
+
+    .copyResultsList{
+      display:grid;
+      gap:6px;
+      max-height:140px;
+      overflow:auto;
+      padding-right:4px;
+    }
+
+    .copyResultRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.06);
+      background: rgba(0,0,0,0.03);
+    }
+
+    .copyResultCode{
+      font-size:12px;
+      font-weight:1000;
+      color:#111;
+      word-break:break-all;
+    }
+
+    .copyResultMeta{
+      font-size:10px;
+      font-weight:900;
+      color: rgba(0,0,0,0.56);
+      white-space:nowrap;
+    }
+
     .site-footer{
       position: relative;
       z-index: 2;
@@ -1240,6 +1400,8 @@
       .bigCover{ width:100%; height:220px; }
       .detailsGrid{ grid-template-columns:1fr; }
       .damagedActions{ width:100%; justify-content:flex-end; }
+      .copyPanelBar{ align-items:flex-start; }
+      .copyPanelControls{ width:100%; justify-content:flex-start; }
     }
 
     /* Save result modal */
@@ -1552,6 +1714,30 @@
           </span>
         </div>
 
+        <div class="copyPanel" id="copyPanel" style="display:none;">
+          <div class="copyPanelBar">
+            <div class="copyPanelInfo">
+              <div class="copyPanelIcon" aria-hidden="true">+</div>
+              <div class="copyPanelText">
+                <h3 class="copyPanelTitle">Add copies from here</h3>
+                <p class="copyPanelHint">New copies get barcodes automatically.</p>
+              </div>
+            </div>
+            <div class="copyPanelControls">
+              <div class="copyQty">
+                <label for="addCopyQty">Copies</label>
+                <input id="addCopyQty" type="number" min="1" max="100" value="1" inputmode="numeric">
+              </div>
+              <button class="btn miniBtn" id="addCopyBtn" type="button">Add Copy</button>
+            </div>
+          </div>
+          <div class="copyPanelMsg" id="copyPanelMsg"></div>
+          <div class="copyResults" id="copyResults">
+            <div class="copyResultsTitle">Newest barcodes</div>
+            <div class="copyResultsList" id="copyResultsList"></div>
+          </div>
+        </div>
+
         <div class="availDrop" id="availDrop">
           <div class="damagedHead">
             <div>
@@ -1791,6 +1977,12 @@
     const pillAvailText = document.getElementById("pillAvailText");
     const pillTotal = document.getElementById("pillTotal");
     const pillAvail = document.getElementById("pillAvail");
+    const copyPanel = document.getElementById("copyPanel");
+    const addCopyQty = document.getElementById("addCopyQty");
+    const addCopyBtn = document.getElementById("addCopyBtn");
+    const copyPanelMsg = document.getElementById("copyPanelMsg");
+    const copyResults = document.getElementById("copyResults");
+    const copyResultsList = document.getElementById("copyResultsList");
 
     const availDrop = document.getElementById("availDrop");
     const refreshDamaged = document.getElementById("refreshDamaged");
@@ -1846,6 +2038,29 @@
     let pendingRestoreCopyId = null;
     let pendingDeleteCopy = null;
     let pendingLostCopy = null;
+
+    function showCopyPanelMessage(kind, msg){
+      copyPanelMsg.className = `copyPanelMsg ${kind === "err" ? "is-err" : "is-ok"}`;
+      copyPanelMsg.style.display = msg ? "block" : "none";
+      copyPanelMsg.textContent = msg || "";
+    }
+
+    function renderCreatedBarcodes(items){
+      const list = Array.isArray(items) ? items : [];
+      copyResultsList.innerHTML = "";
+      copyResults.style.display = list.length ? "block" : "none";
+      if (!list.length) return;
+
+      for (const item of list){
+        const row = document.createElement("div");
+        row.className = "copyResultRow";
+        row.innerHTML = `
+          <div class="copyResultCode">${escapeHtml(item?.barcode || "No barcode")}</div>
+          <div class="copyResultMeta">${escapeHtml(item?.copy_id ? `Copy ID ${item.copy_id}` : "")}</div>
+        `;
+        copyResultsList.appendChild(row);
+      }
+    }
 
     function escapeHtml(s){
       return String(s ?? "").replace(/[&<>"']/g, m => ({
@@ -2131,6 +2346,9 @@
       damagedErr.style.display = "none";
       damagedErr.textContent = "";
       damagedList.innerHTML = "";
+      addCopyQty.value = "1";
+      showCopyPanelMessage("ok", "");
+      renderCreatedBarcodes([]);
     }
 
     function closeModal(){
@@ -2183,6 +2401,7 @@
 
       editor.style.display = "none";
       countsRow.style.display = "none";
+      copyPanel.style.display = "none";
       setModalLoading(true);
 
       try{
@@ -2202,6 +2421,7 @@
         setBigCover(data.cover_url || "");
         editor.style.display = "grid";
         countsRow.style.display = "flex";
+        copyPanel.style.display = "grid";
 
         const total = Number.isFinite(Number(data.total_copies)) ? Number(data.total_copies) : null;
         const avail = Number.isFinite(Number(data.available_copies)) ? Number(data.available_copies) : null;
@@ -2620,6 +2840,52 @@
         showDamagedError(e?.message || "Failed to load copies.");
       }
     }
+
+    async function addCopiesForActiveBook(){
+      if (!activeBookId) return;
+
+      const copies = Math.max(1, Math.min(100, parseInt(addCopyQty.value || "1", 10) || 1));
+      addCopyQty.value = String(copies);
+      addCopyBtn.disabled = true;
+      showCopyPanelMessage("ok", "");
+      detailsErr.style.display = "none";
+      setModalLoading(true);
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/books/${activeBookId}/copies`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ copies })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Add copy failed (${res.status})`);
+        const created = Array.isArray(data?.barcodes) ? data.barcodes : [];
+        addCopyQty.value = "1";
+
+        if (activeBookId) await openDetails(activeBookId);
+        renderCreatedBarcodes(created);
+        showCopyPanelMessage(
+          "ok",
+          `${Number(data?.created_copies || 0)} new cop${Number(data?.created_copies || 0) === 1 ? "y" : "ies"} added. Barcodes are ready below.`
+        );
+        await loadBookCopies();
+        scheduleSearch();
+      }catch(e){
+        renderCreatedBarcodes([]);
+        showCopyPanelMessage("err", e?.message || "Failed to add copies.");
+      }finally{
+        setModalLoading(false);
+        addCopyBtn.disabled = false;
+      }
+    }
+
+    addCopyBtn.addEventListener("click", addCopiesForActiveBook);
+    addCopyQty.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        e.preventDefault();
+        addCopiesForActiveBook();
+      }
+    });
 
     function showSaveResult(state, title, msg){
       // state: "loading" | "ok" | "err"

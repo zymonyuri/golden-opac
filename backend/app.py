@@ -465,8 +465,166 @@ def generate_barcode(prefix: str = "GK") -> str:
     return f"{prefix}-{ts}-{rand}"
 
 
+def _find_book_by_title(cur, title: str, author: str | None = None):
+    title_clean = (title or "").strip()
+    author_clean = (author or "").strip()
+    if not title_clean:
+        return None
+
+    cur.execute(
+        """
+        SELECT
+            b.book_id,
+            b.title,
+            b.author,
+            b.publisher,
+            b.pub_year,
+            b.genre,
+            b.subject,
+            b.section,
+            b.cover_url,
+            COUNT(bc.copy_id)::int AS total_copies
+        FROM book b
+        LEFT JOIN book_copy bc
+            ON bc.book_id = b.book_id
+        WHERE LOWER(TRIM(COALESCE(b.title, ''))) = LOWER(TRIM(%s))
+          AND (
+                %s = '' OR
+                LOWER(TRIM(COALESCE(b.author, ''))) = LOWER(TRIM(%s))
+              )
+        GROUP BY
+            b.book_id, b.title, b.author, b.publisher, b.pub_year,
+            b.genre, b.subject, b.section, b.cover_url
+        ORDER BY
+            CASE
+                WHEN %s <> '' AND LOWER(TRIM(COALESCE(b.author, ''))) = LOWER(TRIM(%s)) THEN 0
+                ELSE 1
+            END,
+            b.updated_at DESC NULLS LAST,
+            b.book_id DESC
+        LIMIT 1
+        """,
+        (title_clean, author_clean, author_clean, author_clean, author_clean),
+    )
+    return cur.fetchone()
+
+
+def _resolve_existing_book(cur, *, provided_book_id: int | None = None, normalized_isbn: str | None = None, title: str | None = None, author: str | None = None):
+    if provided_book_id:
+        cur.execute(
+            """
+            SELECT book_id
+            FROM book
+            WHERE book_id = %s
+            """,
+            (provided_book_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Selected book was not found")
+        return row["book_id"]
+
+    if normalized_isbn:
+        cur.execute(
+            """
+            SELECT b.book_id
+            FROM book b
+            JOIN book_identifier bi ON bi.book_id = b.book_id
+            WHERE UPPER(COALESCE(bi.id_type, '')) = 'ISBN'
+              AND bi.id_value = %s
+            ORDER BY bi.is_primary DESC
+            LIMIT 1
+            """,
+            (normalized_isbn,),
+        )
+        row = cur.fetchone()
+        if row:
+            return row["book_id"]
+
+    matched = _find_book_by_title(cur, title or "", author)
+    return matched["book_id"] if matched else None
+
+
+def _ensure_isbn_identifier(cur, book_id: int, normalized_isbn: str | None):
+    if not normalized_isbn:
+        return
+
+    cur.execute(
+        """
+        SELECT identifier_id
+        FROM book_identifier
+        WHERE book_id = %s
+          AND LOWER(COALESCE(id_type, '')) = 'isbn'
+          AND id_value = %s
+        LIMIT 1
+        """,
+        (book_id, normalized_isbn),
+    )
+    if cur.fetchone():
+        return
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM book_identifier
+        WHERE book_id = %s
+          AND LOWER(COALESCE(id_type, '')) = 'isbn'
+          AND is_primary = TRUE
+        LIMIT 1
+        """,
+        (book_id,),
+    )
+    has_primary_isbn = cur.fetchone() is not None
+
+    cur.execute(
+        """
+        INSERT INTO book_identifier (book_id, id_type, id_value, is_primary, created_at)
+        VALUES (%s, 'isbn', %s, %s, NOW())
+        """,
+        (book_id, normalized_isbn, not has_primary_isbn),
+    )
+
+
+def _create_book_copies(cur, book_id: int, copies: int):
+    created = []
+    for _ in range(copies):
+        inserted = None
+        for _try in range(8):
+            barcode = generate_barcode("GK")
+            cur.execute("SAVEPOINT book_copy_insert_sp")
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO book_copy (book_id, barcode, status, is_printed, created_at)
+                    VALUES (%s, %s, 'available', FALSE, NOW())
+                    RETURNING copy_id, barcode
+                    """,
+                    (book_id, barcode),
+                )
+                inserted = cur.fetchone()
+                cur.execute("RELEASE SAVEPOINT book_copy_insert_sp")
+                break
+            except Exception:
+                cur.execute("ROLLBACK TO SAVEPOINT book_copy_insert_sp")
+                cur.execute("RELEASE SAVEPOINT book_copy_insert_sp")
+
+        if not inserted:
+            raise HTTPException(status_code=500, detail="Failed to generate a unique barcode for the new copy")
+
+        created.append({"copy_id": inserted["copy_id"], "barcode": inserted["barcode"]})
+
+    return created
+
+
 class AddCopiesRequest(BaseModel):
-    isbn: str
+    isbn: Optional[str] = None
+    title: Optional[str] = None
+    author: Optional[str] = None
+    book_id: Optional[int] = None
+    copies: int = 1
+
+
+class BookCopiesCreateRequest(BaseModel):
     copies: int = 1
 
 def normalize_grade(raw: str) -> str:
@@ -955,6 +1113,7 @@ from datetime import datetime
 @app.post("/api/cataloging/add-book")
 def add_book_by_isbn(
     isbn: str | None = Form(None),
+    book_id: int | None = Form(None),
     copies: int = Form(1),
 
     # Optional overrides / manual entry fields
@@ -1024,24 +1183,13 @@ def add_book_by_isbn(
     cur = conn.cursor()
 
     try:
-        existing_book_id = None
-
-        # Only try to match an existing book by ISBN if an ISBN was provided
-        if normalized_isbn:
-            cur.execute(
-                """
-                SELECT b.book_id
-                FROM book b
-                JOIN book_identifier bi ON bi.book_id = b.book_id
-                WHERE UPPER(COALESCE(bi.id_type, '')) = 'ISBN'
-                  AND bi.id_value = %s
-                ORDER BY bi.is_primary DESC
-                LIMIT 1
-                """,
-                (normalized_isbn,),
-            )
-            row = cur.fetchone()
-            existing_book_id = row["book_id"] if row else None
+        existing_book_id = _resolve_existing_book(
+            cur,
+            provided_book_id=book_id,
+            normalized_isbn=normalized_isbn,
+            title=final_title,
+            author=final_author,
+        )
 
         book_id = existing_book_id
 
@@ -1075,15 +1223,7 @@ def add_book_by_isbn(
             )
             book_id = cur.fetchone()["book_id"]
 
-            # Only create ISBN identifier if ISBN exists
-            if normalized_isbn:
-                cur.execute(
-                    """
-                    INSERT INTO book_identifier (book_id, id_type, id_value, is_primary, created_at)
-                    VALUES (%s, 'isbn', %s, TRUE, NOW())
-                    """,
-                    (book_id, normalized_isbn),
-                )
+            _ensure_isbn_identifier(cur, book_id, normalized_isbn)
         else:
             # Update existing record
             cur.execute(
@@ -1112,22 +1252,9 @@ def add_book_by_isbn(
                     book_id,
                 ),
             )
+            _ensure_isbn_identifier(cur, book_id, normalized_isbn)
 
-        created = []
-        unix_ts = int(datetime.utcnow().timestamp())
-
-        for i in range(1, copies + 1):
-            barcode = f"BK{book_id}-TS{unix_ts}-N{i}"
-            cur.execute(
-                """
-                INSERT INTO book_copy (book_id, barcode, status, is_printed, created_at)
-                VALUES (%s, %s, 'available', FALSE, NOW())
-                RETURNING copy_id, barcode
-                """,
-                (book_id, barcode),
-            )
-            c = cur.fetchone()
-            created.append({"copy_id": c["copy_id"], "barcode": c["barcode"]})
+        created = _create_book_copies(cur, book_id, copies)
 
         conn.commit()
 
@@ -1245,64 +1372,45 @@ def cataloging_isbn_info(
 
 @app.post("/api/cataloging/add-copies")
 def add_copies_only(req: AddCopiesRequest, current=Depends(require_roles("librarian", "admin"))):
-    isbn_n = normalize_isbn(req.isbn)
-    if not isbn_n:
-        raise HTTPException(status_code=400, detail="Invalid ISBN")
-
     copies = int(req.copies or 1)
     if copies < 1 or copies > 100:
         raise HTTPException(status_code=400, detail="copies must be between 1 and 100")
 
+    isbn_n = normalize_isbn(req.isbn) if req.isbn else None
+
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # Find existing book by ISBN identifier
-        cur.execute(
-            """
-            SELECT bi.book_id
-            FROM book_identifier bi
-            WHERE UPPER(COALESCE(bi.id_type,'')) = 'ISBN'
-              AND bi.id_value = %s
-            ORDER BY bi.is_primary DESC, bi.identifier_id ASC
-            LIMIT 1
-            """,
-            (isbn_n,),
+        book_id = _resolve_existing_book(
+            cur,
+            provided_book_id=req.book_id,
+            normalized_isbn=isbn_n,
+            title=req.title,
+            author=req.author,
         )
-        bi = cur.fetchone()
-        if not bi:
-            raise HTTPException(status_code=404, detail="ISBN not found in system. Use add-book first.")
+        if not book_id:
+            raise HTTPException(status_code=404, detail="Book not found in system. Use add-book first.")
 
-        book_id = bi["book_id"]
+        _ensure_isbn_identifier(cur, book_id, isbn_n)
+        created = _create_book_copies(cur, book_id, copies)
 
-        created = []
-        for _ in range(copies):
-            # retry a few times in case of barcode collision
-            for _try in range(8):
-                barcode = generate_barcode("GK")
-                try:
-                    cur.execute(
-                        """
-                        INSERT INTO book_copy (book_id, barcode, status)
-                        VALUES (%s, %s, 'available')
-                        RETURNING copy_id, barcode
-                        """,
-                        (book_id, barcode),
-                    )
-                    row = cur.fetchone()
-                    created.append({"copy_id": row["copy_id"], "barcode": row["barcode"]})
-                    break
-                except Exception:
-                    # possible UNIQUE collision; retry
-                    conn.rollback()
-                    continue
+        cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id=%s", (book_id,))
+        total = cur.fetchone()["total"]
 
         conn.commit()
 
         return {
             "book_id": book_id,
             "created_copies": len(created),
+            "total_copies": int(total or 0),
             "barcodes": created
         }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add copies: {str(e)}")
     finally:
         cur.close()
         conn.close()
@@ -6917,6 +7025,55 @@ def update_book(
         "updated_at": updated.get("updated_at"),
     }
 
+
+@app.post("/api/books/{book_id}/copies")
+def add_copies_to_book(
+    book_id: int,
+    payload: BookCopiesCreateRequest,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    copies = int(payload.copies or 1)
+    if copies < 1 or copies > 100:
+        raise HTTPException(status_code=400, detail="copies must be between 1 and 100")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT book_id, title
+            FROM book
+            WHERE book_id = %s
+            """,
+            (book_id,),
+        )
+        book = cur.fetchone()
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+        created = _create_book_copies(cur, book_id, copies)
+        cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id = %s", (book_id,))
+        total_row = cur.fetchone()
+
+        conn.commit()
+        return {
+            "message": "Copies added successfully",
+            "book_id": book_id,
+            "title": book["title"],
+            "created_copies": len(created),
+            "total_copies": int((total_row["total"] if total_row else 0) or 0),
+            "barcodes": created,
+        }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add copies: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
 from fastapi import HTTPException, Depends
 from typing import Optional
 
@@ -7502,6 +7659,47 @@ def cataloging_preview(isbn: str, current=Depends(require_roles("librarian", "ad
 
         return result
 
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/cataloging/search-by-title")
+def cataloging_search_by_title(
+    title: str,
+    author: str | None = None,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    title_clean = (title or "").strip()
+    if not title_clean:
+        raise HTTPException(status_code=400, detail="Title is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        row = _find_book_by_title(cur, title_clean, author)
+        if not row:
+            return {
+                "exists": False,
+                "found": False,
+                "message": "No matching book found in the local catalog.",
+            }
+
+        return {
+            "exists": True,
+            "found": True,
+            "book_id": row["book_id"],
+            "title": row["title"],
+            "author": row["author"],
+            "publisher": row["publisher"],
+            "pub_year": row["pub_year"],
+            "genre": row["genre"],
+            "subject": row["subject"],
+            "section": row["section"],
+            "cover_url": row["cover_url"],
+            "total_copies": int(row["total_copies"] or 0),
+            "matched_by": "title",
+        }
     finally:
         cur.close()
         conn.close()
