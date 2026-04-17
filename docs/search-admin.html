@@ -2024,25 +2024,33 @@
         el.src = src;
       });
 
-      const maxEdge = 1400;
-      const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth || img.width || 1, img.naturalHeight || img.height || 1));
-      const width = Math.max(1, Math.round((img.naturalWidth || img.width || 1) * scale));
-      const height = Math.max(1, Math.round((img.naturalHeight || img.height || 1) * scale));
+      const targetBytes = 320 * 1024;
+      const originalMaxEdge = Math.max(img.naturalWidth || img.width || 1, img.naturalHeight || img.height || 1);
+      let maxEdge = Math.min(1400, originalMaxEdge);
       const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to prepare image.");
-      ctx.drawImage(img, 0, 0, width, height);
-
-      let quality = 0.86;
       let blob = null;
-      while (quality >= 0.5){
-        blob = await new Promise((resolve) => {
-          canvas.toBlob(resolve, "image/webp", quality);
-        });
-        if (blob && blob.size <= 950 * 1024) break;
-        quality -= 0.08;
+
+      while (maxEdge >= 500){
+        const scale = Math.min(1, maxEdge / originalMaxEdge);
+        const width = Math.max(1, Math.round((img.naturalWidth || img.width || 1) * scale));
+        const height = Math.max(1, Math.round((img.naturalHeight || img.height || 1) * scale));
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.82;
+        while (quality >= 0.42){
+          blob = await new Promise((resolve) => {
+            canvas.toBlob(resolve, "image/webp", quality);
+          });
+          if (blob && blob.size <= targetBytes) break;
+          quality -= 0.08;
+        }
+        if (blob && blob.size <= targetBytes) break;
+        maxEdge = Math.round(maxEdge * 0.82);
       }
       if (!blob){
         throw new Error("Failed to compress image.");
