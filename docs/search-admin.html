@@ -1327,53 +1327,6 @@
     .copyPanelMsg.is-ok{ color: var(--okGreen); }
     .copyPanelMsg.is-err{ color: rgba(176,0,0,0.88); }
 
-    .copyResults{
-      display:none;
-      padding:2px 4px 0;
-    }
-
-    .copyResultsTitle{
-      font-size:11px;
-      font-weight:1000;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      color: rgba(0,0,0,0.58);
-      margin-bottom:6px;
-    }
-
-    .copyResultsList{
-      display:grid;
-      gap:6px;
-      max-height:140px;
-      overflow:auto;
-      padding-right:4px;
-    }
-
-    .copyResultRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid rgba(0,0,0,0.06);
-      background: rgba(0,0,0,0.03);
-    }
-
-    .copyResultCode{
-      font-size:12px;
-      font-weight:1000;
-      color:#111;
-      word-break:break-all;
-    }
-
-    .copyResultMeta{
-      font-size:10px;
-      font-weight:900;
-      color: rgba(0,0,0,0.56);
-      white-space:nowrap;
-    }
-
     .site-footer{
       position: relative;
       z-index: 2;
@@ -1732,10 +1685,6 @@
             </div>
           </div>
           <div class="copyPanelMsg" id="copyPanelMsg"></div>
-          <div class="copyResults" id="copyResults">
-            <div class="copyResultsTitle">Newest barcodes</div>
-            <div class="copyResultsList" id="copyResultsList"></div>
-          </div>
         </div>
 
         <div class="availDrop" id="availDrop">
@@ -1981,8 +1930,6 @@
     const addCopyQty = document.getElementById("addCopyQty");
     const addCopyBtn = document.getElementById("addCopyBtn");
     const copyPanelMsg = document.getElementById("copyPanelMsg");
-    const copyResults = document.getElementById("copyResults");
-    const copyResultsList = document.getElementById("copyResultsList");
 
     const availDrop = document.getElementById("availDrop");
     const refreshDamaged = document.getElementById("refreshDamaged");
@@ -2043,23 +1990,6 @@
       copyPanelMsg.className = `copyPanelMsg ${kind === "err" ? "is-err" : "is-ok"}`;
       copyPanelMsg.style.display = msg ? "block" : "none";
       copyPanelMsg.textContent = msg || "";
-    }
-
-    function renderCreatedBarcodes(items){
-      const list = Array.isArray(items) ? items : [];
-      copyResultsList.innerHTML = "";
-      copyResults.style.display = list.length ? "block" : "none";
-      if (!list.length) return;
-
-      for (const item of list){
-        const row = document.createElement("div");
-        row.className = "copyResultRow";
-        row.innerHTML = `
-          <div class="copyResultCode">${escapeHtml(item?.barcode || "No barcode")}</div>
-          <div class="copyResultMeta">${escapeHtml(item?.copy_id ? `Copy ID ${item.copy_id}` : "")}</div>
-        `;
-        copyResultsList.appendChild(row);
-      }
     }
 
     function escapeHtml(s){
@@ -2348,7 +2278,6 @@
       damagedList.innerHTML = "";
       addCopyQty.value = "1";
       showCopyPanelMessage("ok", "");
-      renderCreatedBarcodes([]);
     }
 
     function closeModal(){
@@ -2739,7 +2668,13 @@
         const data = await res.json().catch(()=>({}));
         if (!res.ok) throw new Error(data?.detail || `Failed to load copies (${res.status})`);
 
-        const copies = Array.isArray(data) ? data : (Array.isArray(data.copies) ? data.copies : []);
+        const copies = Array.isArray(data)
+          ? data
+          : (Array.isArray(data.items)
+              ? data.items
+              : (Array.isArray(data.results)
+                  ? data.results
+                  : (Array.isArray(data.copies) ? data.copies : [])));
         damagedList.innerHTML = "";
 
         if (!copies.length){
@@ -2859,19 +2794,16 @@
         });
         const data = await res.json().catch(()=>({}));
         if (!res.ok) throw new Error(data?.detail || `Add copy failed (${res.status})`);
-        const created = Array.isArray(data?.barcodes) ? data.barcodes : [];
         addCopyQty.value = "1";
 
         if (activeBookId) await openDetails(activeBookId);
-        renderCreatedBarcodes(created);
         showCopyPanelMessage(
           "ok",
-          `${Number(data?.created_copies || 0)} new cop${Number(data?.created_copies || 0) === 1 ? "y" : "ies"} added. Barcodes are ready below.`
+          `${Number(data?.created_copies || 0)} new cop${Number(data?.created_copies || 0) === 1 ? "y" : "ies"} added successfully.`
         );
         await loadBookCopies();
         scheduleSearch();
       }catch(e){
-        renderCreatedBarcodes([]);
         showCopyPanelMessage("err", e?.message || "Failed to add copies.");
       }finally{
         setModalLoading(false);
