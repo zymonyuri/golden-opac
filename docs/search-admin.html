@@ -1999,6 +1999,58 @@
       }[m]));
     }
 
+    async function fileToDataUrl(file){
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Failed to read image."));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function compressCoverFile(file){
+      if (!file || !String(file.type || "").startsWith("image/")){
+        throw new Error("Please choose an image file.");
+      }
+      if (file.type === "image/svg+xml"){
+        return await fileToDataUrl(file);
+      }
+
+      const src = await fileToDataUrl(file);
+      const img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("Failed to load image."));
+        el.src = src;
+      });
+
+      const maxEdge = 1400;
+      const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth || img.width || 1, img.naturalHeight || img.height || 1));
+      const width = Math.max(1, Math.round((img.naturalWidth || img.width || 1) * scale));
+      const height = Math.max(1, Math.round((img.naturalHeight || img.height || 1) * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Failed to prepare image.");
+      ctx.drawImage(img, 0, 0, width, height);
+
+      let quality = 0.86;
+      let blob = null;
+      while (quality >= 0.5){
+        blob = await new Promise((resolve) => {
+          canvas.toBlob(resolve, "image/webp", quality);
+        });
+        if (blob && blob.size <= 950 * 1024) break;
+        quality -= 0.08;
+      }
+      if (!blob){
+        throw new Error("Failed to compress image.");
+      }
+
+      return await fileToDataUrl(new File([blob], "cover.webp", { type: "image/webp" }));
+    }
+
     function showErr(msg){ err.style.display = "block"; err.textContent = msg || "Something went wrong."; }
     function clearErr(){ err.style.display = "none"; err.textContent = ""; }
 
@@ -2388,17 +2440,14 @@
       }
 
       try{
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(new Error("Failed to read image."));
-          reader.readAsDataURL(file);
-        });
+        const dataUrl = await compressCoverFile(file);
 
         e_cover_url.value = String(dataUrl || "");
         setBigCover(String(dataUrl || ""));
         detailsOk.style.display = "block";
-        detailsOk.textContent = "New cover selected. Click Save Changes to store it.";
+        detailsOk.textContent = file.size > 1024 * 1024
+          ? "New cover selected and compressed for upload. Click Save Changes to store it."
+          : "New cover selected. Click Save Changes to store it.";
         detailsErr.style.display = "none";
       }catch(e){
         detailsErr.style.display = "block";
