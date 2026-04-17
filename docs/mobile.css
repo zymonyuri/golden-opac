@@ -24,7 +24,7 @@
   .topbar {
     padding: 12px 16px !important;
     gap: 10px;
-    align-items: center;
+    align-items: flex-start;
     flex-wrap: wrap;
   }
 
@@ -53,21 +53,40 @@
 
   .nav {
     width: 100%;
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: center;
-    justify-content: flex-end;
-    gap: 8px 14px;
-    flex-wrap: wrap;
+    justify-content: stretch;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .nav__link {
     margin-left: 0 !important;
-    font-size: 14px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1.1;
+  }
+
+  .nav__link::after {
+    display: none !important;
+  }
+
+  .login-btn {
+    margin-left: 0 !important;
   }
 
   .wrap,
   .hero__content {
-    padding-top: 108px !important;
+    padding-top: 92px !important;
   }
 
   .wrap {
@@ -79,6 +98,16 @@
     width: min(100%, 94vw) !important;
     grid-template-columns: 1fr !important;
     gap: 12px !important;
+  }
+
+  .shell > .panel,
+  .shell > section.panel {
+    order: 1;
+  }
+
+  .shell > .sidebar,
+  .shell > aside.sidebar {
+    order: 2;
   }
 
   .sidebar {
@@ -133,6 +162,11 @@
   .content {
     padding: 16px !important;
     overflow: visible !important;
+  }
+
+  .page,
+  .login-page {
+    min-height: 100vh;
   }
 
   .titleRow {
@@ -301,12 +335,51 @@
   .site-footer__row {
     flex-wrap: wrap;
   }
+
+  .login-page .wrap {
+    display: block !important;
+    min-height: 0 !important;
+    padding-top: 76px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .login-page .card {
+    width: min(100%, 92vw);
+    margin: 0 auto;
+  }
+
+  .login-page .input-wrap {
+    position: relative;
+  }
+
+  .login-page .input {
+    min-height: 52px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+    padding-right: 50px;
+    line-height: 1.2;
+  }
+
+  .login-page .toggle {
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-page .toggle svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+  }
 }
 
 @media (max-width: 768px) {
   .wrap,
   .hero__content {
-    padding-top: 100px !important;
+    padding-top: 88px !important;
   }
 
   .wrap {
@@ -326,7 +399,7 @@
   }
 
   .nav {
-    justify-content: flex-start;
+    justify-content: stretch;
   }
 
   .panel {
@@ -368,6 +441,18 @@
     align-items: stretch !important;
   }
 
+  .login-page .title {
+    font-size: 30px !important;
+  }
+
+  .login-page .brand-copy .brand__name {
+    font-size: 15px;
+  }
+
+  .login-page .brand-copy .brand__sub {
+    font-size: 13px;
+  }
+
   .pageStatus {
     min-width: 0 !important;
     width: 100%;
@@ -399,7 +484,7 @@
 
   .wrap,
   .hero__content {
-    padding-top: 94px !important;
+    padding-top: 84px !important;
   }
 
   .wrap {
@@ -410,6 +495,17 @@
 
   .content {
     padding: 12px !important;
+  }
+
+  .nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .nav__link {
+    min-height: 34px;
+    padding: 7px 6px;
+    font-size: 12px;
   }
 
   .sidebar {
@@ -465,6 +561,28 @@
   .restoreActions,
   .modal__actions {
     padding: 10px 14px 14px !important;
+  }
+
+  .login-page .wrap {
+    padding-top: 64px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .login-page .card {
+    width: 100%;
+    border-radius: 22px;
+    padding: 22px 18px 20px;
+  }
+
+  .login-page .input {
+    min-height: 50px;
+    padding-left: 14px;
+    padding-right: 46px;
+  }
+
+  .login-page .btn {
+    width: 100%;
   }
 
   .site-footer__inner {
