@@ -1903,6 +1903,7 @@
       loading: false
     };
     let listScrollSaveTimer = null;
+    let activeSearchRequestId = 0;
 
     const detailsOverlay = document.getElementById("detailsOverlay");
     const closeDetails = document.getElementById("closeDetails");
@@ -2180,6 +2181,10 @@
       loadMoreBtn.textContent = listState.loading ? "Loading..." : "Load More";
     }
 
+    function resetListState(){
+      listState = { items: [], nextCursor: null, hasMore: false, loading: false };
+    }
+
     function renderList(results){
       clearListCards();
       empty.style.display = results.length ? "none" : "block";
@@ -2247,8 +2252,14 @@
     }
 
     async function searchNow({ reset = false } = {}){
+      const requestId = ++activeSearchRequestId;
       clearErr();
       empty.style.display = "none";
+
+      if (reset){
+        resetListState();
+        clearListCards();
+      }
 
       showListLoader(true);
       startProgress();
@@ -2257,6 +2268,7 @@
 
       try{
         const payload = await fetchBooksBatch(reset ? null : listState.nextCursor);
+        if (requestId !== activeSearchRequestId) return;
         listState = {
           items: reset ? payload.items : [...listState.items, ...payload.items],
           nextCursor: payload.next_cursor,
@@ -2266,11 +2278,13 @@
         renderList(listState.items);
         saveListState();
       }catch(e){
-        listState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        if (requestId !== activeSearchRequestId) return;
+        resetListState();
         updateLoadMoreState();
         clearListCards();
         showErr(e?.message || "Search failed.");
       }finally{
+        if (requestId !== activeSearchRequestId) return;
         listState.loading = false;
         showListLoader(false);
         endProgress();
@@ -2309,14 +2323,12 @@
     function scheduleSearch(){
       clearTimeout(t);
       t = setTimeout(() => {
-        listState = { items: [], nextCursor: null, hasMore: false, loading: false };
         searchNow({ reset: true });
       }, 360);
     }
 
     qEl.addEventListener("input", scheduleSearch);
     sortEl.addEventListener("change", () => {
-      listState = { items: [], nextCursor: null, hasMore: false, loading: false };
       searchNow({ reset: true });
     });
     loadMoreBtn.addEventListener("click", () => {
