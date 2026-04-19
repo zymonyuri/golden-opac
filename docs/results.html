@@ -473,6 +473,9 @@
 
           <div class="book-grid" id="grid"></div>
           <div id="emptySlot"></div>
+          <div class="filters-actions" id="loadMoreWrap" style="display:none; margin-top:18px; justify-content:center;">
+            <button class="btn-secondary" id="loadMoreBtn" type="button">Load More</button>
+          </div>
         </div>
       </div>
     </div>
@@ -540,7 +543,7 @@
 <script>
   const BASE_URL = 'https://golden-opac-backend.onrender.com';
   const DEFAULT_LOGO = "assets/default-school-logo.png";
-  const pageSize = 60;
+  const pageSize = 30;
 
   const header = document.getElementById("siteHeader");
   const contactLink = document.getElementById("contactLink");
@@ -561,10 +564,18 @@
   const progressBar = document.getElementById("progressBar");
   const panelBody = document.getElementById("panelBody");
   const loadingCenter = document.getElementById("loadingCenter");
+  const hintText = document.getElementById("hintText");
+  const loadMoreWrap = document.getElementById("loadMoreWrap");
+  const loadMoreBtn = document.getElementById("loadMoreBtn");
 
   let progressTimer = null;
   let progress = 0;
   let activeSectionFilter = "";   // holds ?section= value from URL
+  let currentPage = 1;
+  let totalResults = 0;
+  let loadedResults = 0;
+  let hasMoreResults = false;
+  let isLoadingMore = false;
 
   const escapeHtml = (s) => String(s ?? "")
     .replaceAll("&", "&amp;")
@@ -760,12 +771,13 @@
   const yEl = document.getElementById("footerYear");
   if (yEl) yEl.textContent = String(new Date().getFullYear());
 
- function buildParams() {
+ function buildParams(page = 1) {
     const params = new URLSearchParams();
     const q = qEl.value.trim();
  
     if (q) params.set("q", q);
     params.set("page_size", String(pageSize));
+    params.set("page", String(page));
  
     const field = fieldEl.value;
     if (field && field !== "all") params.set("field", field);
@@ -791,6 +803,30 @@
 
   function clearEmpty() {
     emptySlot.innerHTML = "";
+  }
+
+  function updateResultsMeta() {
+    if (!loadedResults) {
+      countText.textContent = "Results";
+      hintText.textContent = "Hover a book to see the title.";
+      return;
+    }
+
+    if (hasMoreResults && totalResults > loadedResults) {
+      countText.textContent = `${loadedResults} of ${totalResults} result${totalResults === 1 ? "" : "s"}`;
+      hintText.textContent = "Showing the first results first for faster loading.";
+      return;
+    }
+
+    const totalLabel = totalResults || loadedResults;
+    countText.textContent = `${totalLabel} result${totalLabel === 1 ? "" : "s"}`;
+    hintText.textContent = "Hover a book to see the title.";
+  }
+
+  function updateLoadMoreState() {
+    loadMoreWrap.style.display = hasMoreResults ? "flex" : "none";
+    loadMoreBtn.disabled = isLoadingMore;
+    loadMoreBtn.textContent = isLoadingMore ? "Loading..." : "Load More";
   }
 
   function cardHtml(book) {
@@ -847,38 +883,74 @@
     }
   }
 
-  async function load() {
-    clearEmpty();
-    grid.innerHTML = "";
-    countText.textContent = "Results";
-    setLoading(true);
-    startProgress();
+  async function load(page = 1, append = false) {
+    if (!append) {
+      clearEmpty();
+      grid.innerHTML = "";
+      currentPage = 1;
+      totalResults = 0;
+      loadedResults = 0;
+      hasMoreResults = false;
+      isLoadingMore = false;
+      updateResultsMeta();
+      updateLoadMoreState();
+      setLoading(true);
+      startProgress();
+    } else {
+      isLoadingMore = true;
+      updateLoadMoreState();
+    }
 
     try {
-      const params = buildParams();
+      const params = buildParams(page);
       const res = await fetch(`${BASE_URL}/api/opac/books?${params.toString()}`);
       if (!res.ok) throw new Error("Request failed");
 
       const data = await res.json();
-      finishProgress();
-      setLoading(false);
-
       const list = data?.results ?? [];
-      const total = data?.total ?? list.length;
+      const total = Number(data?.total ?? list.length) || list.length;
 
-      countText.textContent = `${total} result${total === 1 ? "" : "s"}`;
+      totalResults = total;
+      currentPage = page;
+      loadedResults = append ? loadedResults + list.length : list.length;
+      hasMoreResults = loadedResults < totalResults;
 
-      if (!list.length) {
+      if (!append) {
+        finishProgress();
+        setLoading(false);
+      }
+
+      if (!list.length && !append) {
         renderEmpty(qEl.value.trim());
+        updateResultsMeta();
+        updateLoadMoreState();
         return;
       }
 
-      grid.innerHTML = list.map(cardHtml).join("");
+      if (list.length) {
+        if (append) {
+          grid.insertAdjacentHTML("beforeend", list.map(cardHtml).join(""));
+        } else {
+          grid.innerHTML = list.map(cardHtml).join("");
+        }
+      }
+
+      updateResultsMeta();
+      updateLoadMoreState();
     } catch (err) {
-      finishProgress();
-      setLoading(false);
-      renderEmpty(qEl.value.trim());
-      countText.textContent = "Results";
+      if (!append) {
+        finishProgress();
+        setLoading(false);
+        renderEmpty(qEl.value.trim());
+      }
+      hasMoreResults = false;
+      updateResultsMeta();
+      updateLoadMoreState();
+    } finally {
+      if (append) {
+        isLoadingMore = false;
+        updateLoadMoreState();
+      }
     }
   }
 
@@ -909,6 +981,11 @@
     load();
   });
 
+  loadMoreBtn.addEventListener("click", () => {
+    if (isLoadingMore || !hasMoreResults) return;
+    load(currentPage + 1, true);
+  });
+
   qEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -918,7 +995,8 @@
   });
 
   function updateUrlFromState() {
-    const params = buildParams();
+    const params = buildParams(1);
+    params.delete("page");
     history.replaceState(null, "", `results.html?${params.toString()}`);
   }
 

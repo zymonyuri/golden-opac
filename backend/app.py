@@ -6347,6 +6347,7 @@ def opac_search(
     genre: str | None = None,
     subject: str | None = None,
     section: str | None = None,
+    availability: str | None = None,
     sort: str = "title_asc",   # title_asc|title_desc|newest|most_borrowed
     page: int = 1,
     page_size: int = 24,
@@ -6405,6 +6406,26 @@ def opac_search(
         where.append("COALESCE(b.section,'') ILIKE %s")
         params.append(f"%{section.strip()}%")
 
+    availability_clean = (availability or "").strip().lower()
+    if availability_clean == "available":
+        where.append("""
+          EXISTS (
+            SELECT 1
+            FROM book_copy bc_available
+            WHERE bc_available.book_id = b.book_id
+              AND bc_available.status = 'available'
+          )
+        """)
+    elif availability_clean == "unavailable":
+        where.append("""
+          NOT EXISTS (
+            SELECT 1
+            FROM book_copy bc_available
+            WHERE bc_available.book_id = b.book_id
+              AND bc_available.status = 'available'
+          )
+        """)
+
     where_sql = " AND ".join(where) if where else "TRUE"
 
     order_sql = "b.title ASC"
@@ -6418,6 +6439,16 @@ def opac_search(
     conn = get_connection()
     cur = conn.cursor()
     try:
+        cur.execute(
+            f"""
+            SELECT COUNT(*)::int AS total
+            FROM book b
+            WHERE {where_sql}
+            """,
+            tuple(params),
+        )
+        total = int((cur.fetchone() or {}).get("total", 0))
+
         cur.execute(
             f"""
             WITH borrow AS (
@@ -6449,7 +6480,16 @@ def opac_search(
         )
         rows = cur.fetchall()
 
-        return {"page": page, "page_size": page_size, "sort": sort, "total": len(rows), "results": rows}
+        total_pages = max(1, (total + page_size - 1) // page_size) if total else 1
+
+        return {
+            "page": page,
+            "page_size": page_size,
+            "sort": sort,
+            "total": total,
+            "total_pages": total_pages,
+            "results": rows,
+        }
 
     finally:
         cur.close()
