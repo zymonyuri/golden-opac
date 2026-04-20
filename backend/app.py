@@ -6647,20 +6647,20 @@ def build_title_barcode_labels_pdf(
         "LabelTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=7,
-        leading=8,
+        fontSize=6,
+        leading=7,
         alignment=1,  # center
-        spaceAfter=2,
+        spaceAfter=1,
         spaceBefore=0,
     )
     id_style = ParagraphStyle(
         "LabelID",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=7,
-        leading=8,
+        fontSize=6,
+        leading=7,
         alignment=1,  # center
-        spaceBefore=1,
+        spaceBefore=0,
     )
 
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
@@ -6669,8 +6669,8 @@ def build_title_barcode_labels_pdf(
     # Give the whole label stack enough room to sit centered inside the border.
     label_h = 1.34 * inch if columns == 3 else 1.46 * inch
 
-    # Make the barcode easier to scan while keeping the centered stack compact.
-    bar_height = 0.40 * inch if columns == 3 else 0.46 * inch
+    # Make the barcode easier to scan while keeping the text stack compact underneath.
+    bar_height = 0.48 * inch if columns == 3 else 0.56 * inch
     base_bar_width = 0.010 * inch
     min_bar_width = 0.006 * inch
 
@@ -6686,7 +6686,7 @@ def build_title_barcode_labels_pdf(
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
 
-        max_barcode_width = col_w - 24
+        max_barcode_width = col_w - 20
 
         bc = code128.Code128(
             barcode_value,
@@ -6707,9 +6707,8 @@ def build_title_barcode_labels_pdf(
         inner = Table(
             [
                 [bc],
-                [Spacer(1, 5)],
+                [Spacer(1, 3)],
                 [Paragraph(title, title_style)],
-                [Spacer(1, 1)],
                 [Paragraph(f"Copy ID: {barcode_value}", id_style)],
             ],
             colWidths=[col_w - 18],
