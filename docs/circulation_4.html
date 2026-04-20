@@ -500,7 +500,7 @@
 
     // ── Barcode lookup control ──────────────────────────────────────────────
     // Minimum barcode length before attempting a lookup.
-    // GK barcodes are 24 chars (GK-YYYYMMDD-HHMMSS-NNNNNN).
+    // Book barcodes now use the compact BK...TS...N... format.
     // Any real barcode will be at least 6 chars. Partial strings below this
     // never match anything and just burn DB connections.
     const MIN_BARCODE_LENGTH = 6;

@@ -47,8 +47,7 @@ from reportlab.graphics.barcode import code128
 from pydantic import BaseModel
 from isbn_lookup import normalize_isbn  # <- import your helper
 from datetime import datetime
-import random
-import string
+import time
 
 from pydantic import BaseModel
 
@@ -455,14 +454,13 @@ async def upload_display_logo(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload logo: {str(e)}")
-def generate_barcode(prefix: str = "GK") -> str:
+def generate_barcode(book_id: int, copy_number: int) -> str:
     """
-    Generates a reasonably unique barcode string.
-    Example: GK-20260305-082233-483921
+    Generates a compact barcode string that fits the printed label.
+    Example: BK471-TS1776325050-N2
     """
-    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-    rand = "".join(random.choices(string.digits, k=6))
-    return f"{prefix}-{ts}-{rand}"
+    ts = int(time.time())
+    return f"BK{int(book_id)}-TS{ts}-N{int(copy_number)}"
 
 
 def _find_book_by_title(cur, title: str, author: str | None = None):
@@ -587,10 +585,14 @@ def _ensure_isbn_identifier(cur, book_id: int, normalized_isbn: str | None):
 
 def _create_book_copies(cur, book_id: int, copies: int):
     created = []
+    cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id = %s", (book_id,))
+    existing_total_row = cur.fetchone()
+    next_copy_number = int((existing_total_row["total"] if existing_total_row else 0) or 0) + 1
+
     for _ in range(copies):
         inserted = None
         for _try in range(8):
-            barcode = generate_barcode("GK")
+            barcode = generate_barcode(book_id, next_copy_number)
             cur.execute("SAVEPOINT book_copy_insert_sp")
             try:
                 cur.execute(
@@ -612,6 +614,7 @@ def _create_book_copies(cur, book_id: int, copies: int):
             raise HTTPException(status_code=500, detail="Failed to generate a unique barcode for the new copy")
 
         created.append({"copy_id": inserted["copy_id"], "barcode": inserted["barcode"]})
+        next_copy_number += 1
 
     return created
 
@@ -6661,12 +6664,11 @@ def build_title_barcode_labels_pdf(
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
     col_w = usable_w / columns
 
-    # Label height tuning (smaller than before)
-    # 3 columns = tighter labels
-    label_h = 1.05 * inch if columns == 3 else 1.20 * inch
+    # Give each printed label more vertical space so neighboring barcodes do not collide.
+    label_h = 1.28 * inch if columns == 3 else 1.42 * inch
 
-    # Barcode sizing (smaller)
-    bar_height = 0.42 * inch if columns == 3 else 0.50 * inch
+    # Slightly taller bars stay readable while still fitting the label.
+    bar_height = 0.46 * inch if columns == 3 else 0.54 * inch
     bar_width = 0.010 * inch  # thinner bars
 
     def make_cell(item: dict):
@@ -6692,7 +6694,7 @@ def build_title_barcode_labels_pdf(
         inner = Table(
             [
                 [bc],
-                [Spacer(1, 2)],
+                [Spacer(1, 6)],
                 [Paragraph(title, title_style)],
                 [Paragraph(f"Copy ID: {barcode_value}", id_style)],
             ],
@@ -6700,10 +6702,10 @@ def build_title_barcode_labels_pdf(
         )
 
         inner.setStyle(TableStyle([
-            ("LEFTPADDING", (0, 0), (-1, -1), 3),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ]))
@@ -6734,10 +6736,10 @@ def build_title_barcode_labels_pdf(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("GRID", (0, 0), (-1, -1), 0.6, colors.black),  # strong outline border
-        ("LEFTPADDING", (0, 0), (-1, -1), 2),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
 
     doc.build([sheet])
