@@ -6647,30 +6647,30 @@ def build_title_barcode_labels_pdf(
         "LabelTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=7,
-        leading=8,
+        fontSize=6,
+        leading=7,
         alignment=1,  # center
-        spaceAfter=3,
-        spaceBefore=1,
+        spaceAfter=2,
+        spaceBefore=0,
     )
     id_style = ParagraphStyle(
         "LabelID",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=7,
-        leading=8,
+        fontSize=6,
+        leading=7,
         alignment=1,  # center
-        spaceBefore=2,
+        spaceBefore=1,
     )
 
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
     col_w = usable_w / columns
 
     # Give each printed label more vertical space so neighboring barcodes do not collide.
-    label_h = 1.28 * inch if columns == 3 else 1.42 * inch
+    label_h = 1.22 * inch if columns == 3 else 1.34 * inch
 
     # Slightly taller bars stay readable while still fitting the label.
-    bar_height = 0.46 * inch if columns == 3 else 0.54 * inch
+    bar_height = 0.34 * inch if columns == 3 else 0.42 * inch
     base_bar_width = 0.010 * inch
     min_bar_width = 0.006 * inch
 
@@ -6751,10 +6751,10 @@ def build_title_barcode_labels_pdf(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("GRID", (0, 0), (-1, -1), 0.6, colors.black),  # strong outline border
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
 
     doc.build([sheet])
