@@ -1437,6 +1437,8 @@
     let currentBooks = [];
     let copiesCache = new Map();
     let booksState = { nextCursor: null, hasMore: false, loading: false };
+    let booksRequestSeq = 0;
+    let activeBooksRequestSeq = 0;
     const selected = new Map();
     let lastPdfBlobUrl = null;
     let barcodePageSaveTimer = null;
@@ -1835,8 +1837,10 @@
 
     async function loadBooks({ reset = false } = {}){
       const q = (qEl.value || "").trim();
+      const requestSeq = ++booksRequestSeq;
+      activeBooksRequestSeq = requestSeq;
 
-      if (reset) showBooksLoader();
+      if (reset && !currentBooks.length) showBooksLoader();
       showProgress();
       booksState.loading = true;
       updateBooksPagination();
@@ -1848,6 +1852,7 @@
           cursor: reset ? "0" : String(booksState.nextCursor ?? "0")
         });
         const payload = await apiGet(`/api/librarian/books?${params.toString()}`);
+        if (requestSeq !== activeBooksRequestSeq) return;
         const items = normalizeArray(payload);
         currentBooks = reset ? items : [...currentBooks, ...items];
         booksState = {
@@ -1858,12 +1863,16 @@
         renderBooks(items, { reset });
         saveBarcodePageState();
       }catch(err){
+        if (requestSeq !== activeBooksRequestSeq) return;
         console.error(err);
         booksState = { nextCursor: null, hasMore: false, loading: false };
         updateBooksPagination();
-        bookListEl.innerHTML = `<div class="empty">Failed to load books. (${esc(err.message || "Error")})</div>`;
+        if (!currentBooks.length){
+          bookListEl.innerHTML = `<div class="empty">Failed to load books. (${esc(err.message || "Error")})</div>`;
+        }
         showToast(err.message || "Failed to load books");
       }finally{
+        if (requestSeq !== activeBooksRequestSeq) return;
         booksState.loading = false;
         hideProgress(true);
         updateBooksPagination();
@@ -1889,7 +1898,6 @@
       reprintLabel.textContent = reprintMode ? "ON" : "OFF";
       copiesCache = new Map();
       document.querySelectorAll(".bwrap.is-open").forEach(x=>x.classList.remove("is-open"));
-      currentBooks = [];
       booksState = { nextCursor: null, hasMore: false, loading: false };
       loadBooks({ reset: true });
       showToast(reprintMode ? "Reprint mode ON." : "Reprint mode OFF.");
@@ -2007,7 +2015,6 @@
         selected.clear();
         updateSelectedUI();
         copiesCache = new Map();
-        currentBooks = [];
         booksState = { nextCursor: null, hasMore: false, loading: false };
         await loadBooks({ reset: true });
       }catch(err){
@@ -2022,7 +2029,6 @@
     qEl.addEventListener("input", ()=>{
       clearTimeout(t);
       t = setTimeout(()=>{
-        currentBooks = [];
         booksState = { nextCursor: null, hasMore: false, loading: false };
         loadBooks({ reset: true });
       }, 360);
@@ -2031,7 +2037,6 @@
     qEl.addEventListener("keydown",(e)=>{
       if(e.key==="Enter"){
         e.preventDefault();
-        currentBooks = [];
         booksState = { nextCursor: null, hasMore: false, loading: false };
         loadBooks({ reset: true });
       }

@@ -2009,6 +2009,22 @@
       });
     }
 
+    function estimateDataUrlBytes(dataUrl){
+      const base64 = String(dataUrl || "").split(",")[1] || "";
+      const padding = (base64.match(/=*$/)?.[0]?.length) || 0;
+      return Math.max(0, Math.floor(base64.length * 3 / 4) - padding);
+    }
+
+    function canvasToDataUrl(canvas, type, quality){
+      try{
+        const dataUrl = canvas.toDataURL(type, quality);
+        if (!dataUrl || dataUrl === "data:,") return "";
+        return dataUrl;
+      }catch{
+        return "";
+      }
+    }
+
     async function compressCoverFile(file){
       if (!file || !String(file.type || "").startsWith("image/")){
         throw new Error("Please choose an image file.");
@@ -2031,7 +2047,8 @@
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to prepare image.");
-      let blob = null;
+      let bestDataUrl = "";
+      let bestBytes = Number.POSITIVE_INFINITY;
 
       while (maxEdge >= 500){
         const scale = Math.min(1, maxEdge / originalMaxEdge);
@@ -2042,22 +2059,37 @@
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        let quality = 0.82;
-        while (quality >= 0.42){
-          blob = await new Promise((resolve) => {
-            canvas.toBlob(resolve, "image/webp", quality);
-          });
-          if (blob && blob.size <= targetBytes) break;
-          quality -= 0.08;
+        const attempts = [
+          { type: "image/webp", start: 0.82, min: 0.42, step: 0.08 },
+          { type: "image/jpeg", start: 0.86, min: 0.46, step: 0.08 }
+        ];
+
+        for (const attempt of attempts){
+          let quality = attempt.start;
+          while (quality >= attempt.min){
+            const dataUrl = canvasToDataUrl(canvas, attempt.type, quality);
+            if (!dataUrl || !dataUrl.startsWith(`data:${attempt.type}`)){
+              quality -= attempt.step;
+              continue;
+            }
+
+            const size = estimateDataUrlBytes(dataUrl);
+            if (size < bestBytes){
+              bestBytes = size;
+              bestDataUrl = dataUrl;
+            }
+            if (size <= targetBytes) return dataUrl;
+            quality -= attempt.step;
+          }
         }
-        if (blob && blob.size <= targetBytes) break;
         maxEdge = Math.round(maxEdge * 0.82);
       }
-      if (!blob){
+
+      if (!bestDataUrl){
         throw new Error("Failed to compress image.");
       }
 
-      return await fileToDataUrl(new File([blob], "cover.webp", { type: "image/webp" }));
+      return bestDataUrl;
     }
 
     function showErr(msg){ err.style.display = "block"; err.textContent = msg || "Something went wrong."; }
