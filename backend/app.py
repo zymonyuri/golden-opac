@@ -6650,7 +6650,8 @@ def build_title_barcode_labels_pdf(
         fontSize=7,
         leading=8,
         alignment=1,  # center
-        spaceAfter=1,
+        spaceAfter=3,
+        spaceBefore=1,
     )
     id_style = ParagraphStyle(
         "LabelID",
@@ -6659,6 +6660,7 @@ def build_title_barcode_labels_pdf(
         fontSize=7,
         leading=8,
         alignment=1,  # center
+        spaceBefore=2,
     )
 
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
@@ -6684,7 +6686,7 @@ def build_title_barcode_labels_pdf(
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
 
-        max_barcode_width = col_w - 18
+        max_barcode_width = col_w - 30
 
         bc = code128.Code128(
             barcode_value,
@@ -6704,19 +6706,21 @@ def build_title_barcode_labels_pdf(
         # Cell content: barcode first, then title + copy id under
         inner = Table(
             [
+                [Spacer(1, 4)],
                 [bc],
-                [Spacer(1, 6)],
+                [Spacer(1, 8)],
                 [Paragraph(title, title_style)],
                 [Paragraph(f"Copy ID: {barcode_value}", id_style)],
+                [Spacer(1, 4)],
             ],
-            colWidths=[col_w - 10],
+            colWidths=[col_w - 20],
         )
 
         inner.setStyle(TableStyle([
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ]))
@@ -6747,10 +6751,10 @@ def build_title_barcode_labels_pdf(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("GRID", (0, 0), (-1, -1), 0.6, colors.black),  # strong outline border
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
     ]))
 
     doc.build([sheet])
