@@ -6647,18 +6647,18 @@ def build_title_barcode_labels_pdf(
         "LabelTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=6,
-        leading=7,
+        fontSize=5,
+        leading=6,
         alignment=1,  # center
-        spaceAfter=1,
+        spaceAfter=0,
         spaceBefore=0,
     )
     id_style = ParagraphStyle(
         "LabelID",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=6,
-        leading=7,
+        fontSize=5,
+        leading=6,
         alignment=1,  # center
         spaceBefore=0,
     )
@@ -6669,8 +6669,8 @@ def build_title_barcode_labels_pdf(
     # Give the whole label stack enough room to sit centered inside the border.
     label_h = 1.34 * inch if columns == 3 else 1.46 * inch
 
-    # Make the barcode easier to scan while keeping the text stack compact underneath.
-    bar_height = 0.48 * inch if columns == 3 else 0.56 * inch
+    # Let the barcode take most of the label height for easier scanning.
+    bar_height = 0.60 * inch if columns == 3 else 0.70 * inch
     base_bar_width = 0.010 * inch
     min_bar_width = 0.006 * inch
 
@@ -6686,7 +6686,7 @@ def build_title_barcode_labels_pdf(
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
 
-        max_barcode_width = col_w - 20
+        max_barcode_width = col_w - 12
 
         bc = code128.Code128(
             barcode_value,
@@ -6707,18 +6707,18 @@ def build_title_barcode_labels_pdf(
         inner = Table(
             [
                 [bc],
-                [Spacer(1, 3)],
+                [Spacer(1, 2)],
                 [Paragraph(title, title_style)],
                 [Paragraph(f"Copy ID: {barcode_value}", id_style)],
             ],
-            colWidths=[col_w - 18],
+            colWidths=[col_w - 10],
         )
 
         inner.setStyle(TableStyle([
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ("LEFTPADDING", (0, 0), (-1, -1), 2),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ]))
@@ -6749,10 +6749,10 @@ def build_title_barcode_labels_pdf(
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("GRID", (0, 0), (-1, -1), 0.6, colors.black),  # strong outline border
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 1),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
     ]))
 
     doc.build([sheet])
