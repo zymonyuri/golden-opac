@@ -454,6 +454,80 @@ async def upload_display_logo(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload logo: {str(e)}")
+
+
+async def upload_image_asset(
+    file: UploadFile,
+    *,
+    prefix: str,
+    max_bytes: int = 3 * 1024 * 1024,
+):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file selected")
+
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase is not configured")
+
+    allowed_types = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+        "image/svg+xml": ".svg",
+    }
+
+    content_type = (file.content_type or "").lower()
+    ext = allowed_types.get(content_type)
+    if not ext:
+        raise HTTPException(
+            status_code=400,
+            detail="Only PNG, JPG, JPEG, WEBP, GIF, and SVG files are allowed",
+        )
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    if len(contents) > max_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image file is too large (max {max_bytes // (1024 * 1024)} MB)",
+        )
+
+    filename = f"{prefix}_{uuid4().hex}{ext}"
+    upload_res = supabase.storage.from_(SUPABASE_BUCKET).upload(
+        path=filename,
+        file=contents,
+        file_options={
+            "content-type": content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream",
+            "upsert": "false",
+        },
+    )
+
+    if isinstance(upload_res, dict) and upload_res.get("error"):
+        raise HTTPException(status_code=500, detail=f"Supabase upload failed: {upload_res['error']}")
+
+    return supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
+
+
+@app.post("/api/books/cover-upload")
+async def upload_book_cover(
+    file: UploadFile = File(...),
+    current=Depends(require_roles("librarian", "admin")),
+):
+    try:
+        cover_url = await upload_image_asset(file, prefix="book_cover", max_bytes=5 * 1024 * 1024)
+        return {
+            "message": "Book cover uploaded successfully",
+            "cover_url": cover_url,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload book cover: {str(e)}")
+
+
 def generate_barcode(book_id: int, copy_number: int) -> str:
     """
     Generates a compact barcode string that fits the printed label.

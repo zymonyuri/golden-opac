@@ -1436,7 +1436,7 @@
     let reprintMode = false;
     let currentBooks = [];
     let copiesCache = new Map();
-    let booksState = { nextCursor: null, hasMore: false, loading: false };
+    let booksState = { nextCursor: null, hasMore: false, loading: false, query: "" };
     let booksRequestSeq = 0;
     let activeBooksRequestSeq = 0;
     const selected = new Map();
@@ -1517,16 +1517,31 @@
 
     function updateBooksPagination(){
       const total = currentBooks.length;
+      const activeQuery = String(booksState.query || "").trim();
       resultsChip.textContent = `Results: ${total}`;
       booksMeta.textContent = total
         ? `Showing ${total} book${total === 1 ? "" : "s"}`
         : "Showing 0 results";
       booksPageStatus.textContent = total
-        ? `${total} book${total === 1 ? "" : "s"} loaded`
-        : "No books loaded yet";
+        ? `${total} book${total === 1 ? "" : "s"} loaded${activeQuery ? ` for "${activeQuery}"` : ""}`
+        : activeQuery
+          ? `No matches yet for "${activeQuery}"`
+          : "No books loaded yet";
       booksLoadMoreBtn.style.display = booksState.hasMore ? "" : "none";
       booksLoadMoreBtn.disabled = booksState.loading;
       booksLoadMoreBtn.textContent = booksState.loading ? "Loading..." : "Load More";
+    }
+
+    function mergeBooks(existing, incoming){
+      const merged = [];
+      const seen = new Set();
+      for (const item of [...existing, ...incoming]){
+        const key = String(item?.book_id ?? item?.id ?? item?.bookId ?? item?.bookID ?? "");
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        merged.push(item);
+      }
+      return merged;
     }
 
     function updateSelectedUI(){
@@ -1817,7 +1832,8 @@
         booksState = {
           nextCursor: saved.nextCursor ?? null,
           hasMore: !!saved.hasMore,
-          loading: false
+          loading: false,
+          query: saved.query.q || ""
         };
         selected.clear();
         for (const [copyId, copy] of (saved.selected || []).map(toStoredSelectedItem)){
@@ -1835,14 +1851,15 @@
       }
     }
 
-    async function loadBooks({ reset = false } = {}){
-      const q = (qEl.value || "").trim();
+    async function loadBooks({ reset = false, query = null } = {}){
+      const q = String(query ?? (reset ? qEl.value : (booksState.query || qEl.value || ""))).trim();
       const requestSeq = ++booksRequestSeq;
       activeBooksRequestSeq = requestSeq;
 
       if (reset && !currentBooks.length) showBooksLoader();
       showProgress();
       booksState.loading = true;
+      booksState.query = q;
       updateBooksPagination();
 
       try{
@@ -1854,18 +1871,19 @@
         const payload = await apiGet(`/api/librarian/books?${params.toString()}`);
         if (requestSeq !== activeBooksRequestSeq) return;
         const items = normalizeArray(payload);
-        currentBooks = reset ? items : [...currentBooks, ...items];
+        currentBooks = reset ? items : mergeBooks(currentBooks, items);
         booksState = {
           nextCursor: payload?.next_cursor ?? null,
           hasMore: !!payload?.has_more,
-          loading: false
+          loading: false,
+          query: q
         };
         renderBooks(items, { reset });
         saveBarcodePageState();
       }catch(err){
         if (requestSeq !== activeBooksRequestSeq) return;
         console.error(err);
-        booksState = { nextCursor: null, hasMore: false, loading: false };
+        booksState = { nextCursor: null, hasMore: false, loading: false, query: q };
         updateBooksPagination();
         if (!currentBooks.length){
           bookListEl.innerHTML = `<div class="empty">Failed to load books. (${esc(err.message || "Error")})</div>`;
@@ -1898,8 +1916,8 @@
       reprintLabel.textContent = reprintMode ? "ON" : "OFF";
       copiesCache = new Map();
       document.querySelectorAll(".bwrap.is-open").forEach(x=>x.classList.remove("is-open"));
-      booksState = { nextCursor: null, hasMore: false, loading: false };
-      loadBooks({ reset: true });
+      booksState = { nextCursor: null, hasMore: false, loading: false, query: (qEl.value || "").trim() };
+      loadBooks({ reset: true, query: qEl.value });
       showToast(reprintMode ? "Reprint mode ON." : "Reprint mode OFF.");
     });
 
@@ -2015,8 +2033,8 @@
         selected.clear();
         updateSelectedUI();
         copiesCache = new Map();
-        booksState = { nextCursor: null, hasMore: false, loading: false };
-        await loadBooks({ reset: true });
+        booksState = { nextCursor: null, hasMore: false, loading: false, query: (qEl.value || "").trim() };
+        await loadBooks({ reset: true, query: qEl.value });
       }catch(err){
         showToast(err.message || "Mark printed failed");
       }finally{
@@ -2029,22 +2047,22 @@
     qEl.addEventListener("input", ()=>{
       clearTimeout(t);
       t = setTimeout(()=>{
-        booksState = { nextCursor: null, hasMore: false, loading: false };
-        loadBooks({ reset: true });
+        booksState = { nextCursor: null, hasMore: false, loading: false, query: (qEl.value || "").trim() };
+        loadBooks({ reset: true, query: qEl.value });
       }, 360);
     });
 
     qEl.addEventListener("keydown",(e)=>{
       if(e.key==="Enter"){
         e.preventDefault();
-        booksState = { nextCursor: null, hasMore: false, loading: false };
-        loadBooks({ reset: true });
+        booksState = { nextCursor: null, hasMore: false, loading: false, query: (qEl.value || "").trim() };
+        loadBooks({ reset: true, query: qEl.value });
       }
     });
 
     booksLoadMoreBtn.addEventListener("click", ()=>{
       if (!booksState.hasMore || booksState.loading) return;
-      loadBooks({ reset: false });
+      loadBooks({ reset: false, query: booksState.query });
     });
 
     window.addEventListener("scroll", scheduleBarcodePageSave, { passive: true });
