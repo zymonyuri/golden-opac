@@ -6669,7 +6669,8 @@ def build_title_barcode_labels_pdf(
 
     # Slightly taller bars stay readable while still fitting the label.
     bar_height = 0.46 * inch if columns == 3 else 0.54 * inch
-    bar_width = 0.010 * inch  # thinner bars
+    base_bar_width = 0.010 * inch
+    min_bar_width = 0.006 * inch
 
     def make_cell(item: dict):
         raw_title = (item.get("title") or "").strip()
@@ -6683,12 +6684,22 @@ def build_title_barcode_labels_pdf(
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
 
+        max_barcode_width = col_w - 18
+
         bc = code128.Code128(
             barcode_value,
             barHeight=bar_height,
-            barWidth=bar_width,
+            barWidth=base_bar_width,
             humanReadable=False,  # you want text under barcode, not embedded
         )
+        if getattr(bc, "width", 0) > max_barcode_width:
+            fitted_bar_width = max(min_bar_width, base_bar_width * (max_barcode_width / bc.width))
+            bc = code128.Code128(
+                barcode_value,
+                barHeight=bar_height,
+                barWidth=fitted_bar_width,
+                humanReadable=False,
+            )
 
         # Cell content: barcode first, then title + copy id under
         inner = Table(
