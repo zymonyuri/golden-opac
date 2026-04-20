@@ -6666,11 +6666,11 @@ def build_title_barcode_labels_pdf(
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
     col_w = usable_w / columns
 
-    # Give each printed label more vertical space so neighboring barcodes do not collide.
-    label_h = 1.22 * inch if columns == 3 else 1.34 * inch
+    # Give the whole label stack enough room to sit centered inside the border.
+    label_h = 1.34 * inch if columns == 3 else 1.46 * inch
 
-    # Slightly taller bars stay readable while still fitting the label.
-    bar_height = 0.34 * inch if columns == 3 else 0.42 * inch
+    # Keep the barcode readable without letting it dominate the label height.
+    bar_height = 0.32 * inch if columns == 3 else 0.38 * inch
     base_bar_width = 0.010 * inch
     min_bar_width = 0.006 * inch
 
@@ -6686,13 +6686,13 @@ def build_title_barcode_labels_pdf(
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
 
-        max_barcode_width = col_w - 30
+        max_barcode_width = col_w - 34
 
         bc = code128.Code128(
             barcode_value,
             barHeight=bar_height,
             barWidth=base_bar_width,
-            humanReadable=False,  # you want text under barcode, not embedded
+            humanReadable=False,
         )
         if getattr(bc, "width", 0) > max_barcode_width:
             fitted_bar_width = max(min_bar_width, base_bar_width * (max_barcode_width / bc.width))
@@ -6706,21 +6706,21 @@ def build_title_barcode_labels_pdf(
         # Cell content: barcode first, then title + copy id under
         inner = Table(
             [
-                [Spacer(1, 4)],
+                [Spacer(1, 10)],
                 [bc],
-                [Spacer(1, 8)],
+                [Spacer(1, 10)],
                 [Paragraph(title, title_style)],
                 [Paragraph(f"Copy ID: {barcode_value}", id_style)],
-                [Spacer(1, 4)],
+                [Spacer(1, 10)],
             ],
-            colWidths=[col_w - 20],
+            colWidths=[col_w - 24],
         )
 
         inner.setStyle(TableStyle([
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ]))
