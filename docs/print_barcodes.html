@@ -1856,7 +1856,12 @@
       const requestSeq = ++booksRequestSeq;
       activeBooksRequestSeq = requestSeq;
 
-      if (reset && !currentBooks.length) showBooksLoader();
+      if (reset){
+        currentBooks = [];
+        booksState.nextCursor = null;
+        booksState.hasMore = false;
+        showBooksLoader();
+      }
       showProgress();
       booksState.loading = true;
       booksState.query = q;

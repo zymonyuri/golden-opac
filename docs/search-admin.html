@@ -1633,6 +1633,10 @@
               <input id="e_author" type="text" autocomplete="off" placeholder="Author name">
             </div>
             <div class="field">
+              <label for="e_isbn">ISBN</label>
+              <input id="e_isbn" type="text" autocomplete="off" placeholder="e.g. 9789712345678">
+            </div>
+            <div class="field">
               <label for="e_publisher">Publisher</label>
               <input id="e_publisher" type="text" autocomplete="off" placeholder="Publisher">
             </div>
@@ -1916,6 +1920,7 @@
 
     const e_title = document.getElementById("e_title");
     const e_author = document.getElementById("e_author");
+    const e_isbn = document.getElementById("e_isbn");
     const e_publisher = document.getElementById("e_publisher");
     const e_pub_year = document.getElementById("e_pub_year");
     const e_genre = document.getElementById("e_genre");
@@ -2499,6 +2504,7 @@
 
         e_title.value = data.title ?? "";
         e_author.value = data.author ?? "";
+        e_isbn.value = data.isbn ?? "";
         e_publisher.value = data.publisher ?? "";
         e_pub_year.value = (data.pub_year ?? "") === null ? "" : String(data.pub_year ?? "");
         e_genre.value = normalizeCommaList(data.genre ?? "");
@@ -3035,6 +3041,7 @@
         const payload = {
           title: e_title.value.trim(),
           author: e_author.value.trim(),
+          isbn: e_isbn.value.trim(),
           publisher: e_publisher.value.trim(),
           pub_year: e_pub_year.value.trim() ? Number(e_pub_year.value.trim()) : null,
           genre: e_genre.value.trim(),

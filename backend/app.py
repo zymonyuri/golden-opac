@@ -117,6 +117,7 @@ from typing import Optional
 class BookUpdate(BaseModel):
     title: str
     author: str
+    isbn: Optional[str] = None
     publisher: Optional[str] = None
     pub_year: Optional[int] = None
     genre: Optional[str] = None
@@ -657,6 +658,55 @@ def _ensure_isbn_identifier(cur, book_id: int, normalized_isbn: str | None):
     )
 
 
+def _replace_book_isbn(cur, book_id: int, isbn_value: str | None):
+    raw_isbn = (isbn_value or "").strip()
+    if not raw_isbn:
+        cur.execute(
+            """
+            DELETE FROM book_identifier
+            WHERE book_id = %s
+              AND LOWER(COALESCE(id_type, '')) = 'isbn'
+            """,
+            (book_id,),
+        )
+        return None
+
+    normalized_isbn = normalize_isbn(raw_isbn)
+    if not normalized_isbn:
+        raise HTTPException(status_code=400, detail="Invalid ISBN")
+
+    cur.execute(
+        """
+        SELECT book_id
+        FROM book_identifier
+        WHERE LOWER(COALESCE(id_type, '')) = 'isbn'
+          AND id_value = %s
+          AND book_id <> %s
+        LIMIT 1
+        """,
+        (normalized_isbn, book_id),
+    )
+    if cur.fetchone():
+        raise HTTPException(status_code=400, detail="ISBN is already assigned to another book")
+
+    cur.execute(
+        """
+        DELETE FROM book_identifier
+        WHERE book_id = %s
+          AND LOWER(COALESCE(id_type, '')) = 'isbn'
+        """,
+        (book_id,),
+    )
+    cur.execute(
+        """
+        INSERT INTO book_identifier (book_id, id_type, id_value, is_primary, created_at)
+        VALUES (%s, 'isbn', %s, TRUE, NOW())
+        """,
+        (book_id, normalized_isbn),
+    )
+    return normalized_isbn
+
+
 def _create_book_copies(cur, book_id: int, copies: int):
     created = []
     cur.execute("SELECT COUNT(*) AS total FROM book_copy WHERE book_id = %s", (book_id,))
@@ -1080,7 +1130,15 @@ def get_book_details(book_id: int):
         """
         SELECT
             book_id, title, author, publisher, pub_year,
-            genre, subject, section, cover_url
+            genre, subject, section, cover_url,
+            (
+                SELECT bi.id_value
+                FROM book_identifier bi
+                WHERE bi.book_id = book.book_id
+                  AND LOWER(COALESCE(bi.id_type, '')) = 'isbn'
+                ORDER BY bi.is_primary DESC, bi.created_at ASC, bi.identifier_id ASC
+                LIMIT 1
+            ) AS isbn
         FROM book
         WHERE book_id = %s
         """,
@@ -1114,6 +1172,7 @@ def get_book_details(book_id: int):
         "book_id": book["book_id"],
         "title": book["title"],
         "author": book["author"],
+        "isbn": book.get("isbn"),
         "publisher": book["publisher"],
         "pub_year": book["pub_year"],
         "genre": book["genre"],
@@ -7104,39 +7163,46 @@ def update_book(
         conn.close()
         raise HTTPException(status_code=404, detail="Book not found")
 
-    # Update
-    cur.execute(
-        """
-        UPDATE book
-        SET
-            title = %s,
-            author = %s,
-            publisher = %s,
-            pub_year = %s,
-            genre = %s,
-            subject = %s,
-            section = %s,
-            cover_url = %s,
-            updated_at = NOW()
-        WHERE book_id = %s
-        RETURNING
-            book_id, title, author, publisher, pub_year, genre, subject, section, cover_url, updated_at
-        """,
-        (
-            payload.title.strip(),
-            payload.author.strip(),
-            payload.publisher.strip() if payload.publisher else None,
-            payload.pub_year,
-            payload.genre.strip() if payload.genre else None,
-            payload.subject.strip() if payload.subject else None,
-            payload.section.strip() if payload.section else None,
-            payload.cover_url.strip() if payload.cover_url else None,
-            book_id,
-        ),
-    )
+    try:
+        updated_isbn = _replace_book_isbn(cur, book_id, payload.isbn)
 
-    updated = cur.fetchone()
-    conn.commit()
+        cur.execute(
+            """
+            UPDATE book
+            SET
+                title = %s,
+                author = %s,
+                publisher = %s,
+                pub_year = %s,
+                genre = %s,
+                subject = %s,
+                section = %s,
+                cover_url = %s,
+                updated_at = NOW()
+            WHERE book_id = %s
+            RETURNING
+                book_id, title, author, publisher, pub_year, genre, subject, section, cover_url, updated_at
+            """,
+            (
+                payload.title.strip(),
+                payload.author.strip(),
+                payload.publisher.strip() if payload.publisher else None,
+                payload.pub_year,
+                payload.genre.strip() if payload.genre else None,
+                payload.subject.strip() if payload.subject else None,
+                payload.section.strip() if payload.section else None,
+                payload.cover_url.strip() if payload.cover_url else None,
+                book_id,
+            ),
+        )
+
+        updated = cur.fetchone()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise
 
     cur.close()
     conn.close()
@@ -7145,6 +7211,7 @@ def update_book(
         "book_id": updated["book_id"],
         "title": updated["title"],
         "author": updated["author"],
+        "isbn": updated_isbn,
         "publisher": updated["publisher"],
         "pub_year": updated["pub_year"],
         "genre": updated["genre"],
