@@ -6710,7 +6710,7 @@ def opac_filters():
 
         
 from io import BytesIO
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepInFrame
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
@@ -6785,6 +6785,20 @@ def build_title_barcode_labels_pdf(
         alignment=1,  # center
         spaceAfter=0,
         spaceBefore=0,
+        splitLongWords=True,
+        wordWrap="CJK",
+    )
+    title_style_small = ParagraphStyle(
+        "LabelTitleSmall",
+        parent=title_style,
+        fontSize=4.4,
+        leading=5.2,
+    )
+    title_style_xsmall = ParagraphStyle(
+        "LabelTitleXSmall",
+        parent=title_style,
+        fontSize=3.8,
+        leading=4.5,
     )
     id_style = ParagraphStyle(
         "LabelID",
@@ -6794,6 +6808,8 @@ def build_title_barcode_labels_pdf(
         leading=6,
         alignment=1,  # center
         spaceBefore=0,
+        splitLongWords=True,
+        wordWrap="CJK",
     )
 
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
@@ -6810,11 +6826,7 @@ def build_title_barcode_labels_pdf(
     def make_cell(item: dict):
         raw_title = (item.get("title") or "").strip()
         raw_code = (item.get("barcode") or "").strip()
-
-        # Title truncation to avoid overflow
-        title = raw_title
-        if len(title) > 48:
-            title = title[:48].rstrip() + "â€¦"
+        title = raw_title or "Untitled"
 
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
@@ -6836,17 +6848,34 @@ def build_title_barcode_labels_pdf(
                 humanReadable=False,
             )
 
-        # Keep the barcode, title, and copy id grouped tightly as one centered block.
+        if len(title) > 120:
+            active_title_style = title_style_xsmall
+        elif len(title) > 72:
+            active_title_style = title_style_small
+        else:
+            active_title_style = title_style
+
+        text_block = KeepInFrame(
+            maxWidth=col_w - 10,
+            maxHeight=label_h - bar_height - 8,
+            content=[
+                Paragraph(title, active_title_style),
+                Paragraph(f"Copy ID: {barcode_value}", id_style),
+            ],
+            mode="shrink",
+            hAlign="CENTER",
+            vAlign="MIDDLE",
+        )
+
+        # Keep the barcode fixed-size and let only the text block flex to fit.
         inner = Table(
             [
                 [bc],
-                [Spacer(1, 2)],
-                [Paragraph(title, title_style)],
-                [Paragraph(f"Copy ID: {barcode_value}", id_style)],
+                [Spacer(1, 1)],
+                [text_block],
             ],
             colWidths=[col_w - 10],
         )
-
         inner.setStyle(TableStyle([
             ("LEFTPADDING", (0, 0), (-1, -1), 2),
             ("RIGHTPADDING", (0, 0), (-1, -1), 2),

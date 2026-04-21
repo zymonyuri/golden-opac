@@ -451,9 +451,11 @@
       font-weight:1000;
       color:#111;
       line-height:1.15;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      white-space:normal;
+      overflow:visible;
+      text-overflow:clip;
+      overflow-wrap:anywhere;
+      word-break:break-word;
       margin:0;
       min-width:0;
     }
@@ -778,10 +780,12 @@
       margin:0 0 6px;
       font-size:13px;
       font-weight:1000;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
+      overflow:visible;
+      text-overflow:clip;
+      white-space:normal;
       max-width:320px;
+      overflow-wrap:anywhere;
+      word-break:break-word;
       color:#111;
     }
 
