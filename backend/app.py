@@ -6780,8 +6780,8 @@ def build_title_barcode_labels_pdf(
         "LabelTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=5,
-        leading=6,
+        fontSize=4.6,
+        leading=5.4,
         alignment=1,  # center
         spaceAfter=0,
         spaceBefore=0,
@@ -6791,14 +6791,14 @@ def build_title_barcode_labels_pdf(
     title_style_small = ParagraphStyle(
         "LabelTitleSmall",
         parent=title_style,
-        fontSize=4.4,
-        leading=5.2,
+        fontSize=4.0,
+        leading=4.8,
     )
     title_style_xsmall = ParagraphStyle(
         "LabelTitleXSmall",
         parent=title_style,
-        fontSize=3.8,
-        leading=4.5,
+        fontSize=3.5,
+        leading=4.1,
     )
     id_style = ParagraphStyle(
         "LabelID",
@@ -6815,13 +6815,14 @@ def build_title_barcode_labels_pdf(
     usable_w = page_size[0] - doc.leftMargin - doc.rightMargin
     col_w = usable_w / columns
 
-    # Give the whole label stack enough room to sit centered inside the border.
+    # Keep the overall label footprint unchanged while improving scan reliability
+    # through slightly thicker bars and more horizontal quiet space.
     label_h = 1.34 * inch if columns == 3 else 1.46 * inch
-
-    # Let the barcode take most of the label height for easier scanning.
-    bar_height = 0.60 * inch if columns == 3 else 0.70 * inch
-    base_bar_width = 0.010 * inch
-    min_bar_width = 0.006 * inch
+    bar_height = 0.64 * inch if columns == 3 else 0.74 * inch
+    base_bar_width = 0.012 * inch
+    min_bar_width = 0.0075 * inch
+    barcode_side_padding = 12
+    barcode_text_gap = 1
 
     def make_cell(item: dict):
         raw_title = (item.get("title") or "").strip()
@@ -6831,7 +6832,7 @@ def build_title_barcode_labels_pdf(
         # Barcode value is the Copy ID
         barcode_value = raw_code if raw_code else "N/A"
 
-        max_barcode_width = col_w - 12
+        max_barcode_width = col_w - (barcode_side_padding * 2)
 
         bc = code128.Code128(
             barcode_value,
@@ -6871,7 +6872,7 @@ def build_title_barcode_labels_pdf(
         inner = Table(
             [
                 [bc],
-                [Spacer(1, 1)],
+                [Spacer(1, barcode_text_gap)],
                 [text_block],
             ],
             colWidths=[col_w - 10],
