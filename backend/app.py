@@ -6780,8 +6780,8 @@ def build_title_barcode_labels_pdf(
         "LabelTitle",
         parent=styles["Normal"],
         fontName="Helvetica-Bold",
-        fontSize=4.6,
-        leading=5.4,
+        fontSize=3.8,
+        leading=4.4,
         alignment=1,  # center
         spaceAfter=0,
         spaceBefore=0,
@@ -6791,21 +6791,21 @@ def build_title_barcode_labels_pdf(
     title_style_small = ParagraphStyle(
         "LabelTitleSmall",
         parent=title_style,
-        fontSize=4.0,
-        leading=4.8,
+        fontSize=3.4,
+        leading=4.0,
     )
     title_style_xsmall = ParagraphStyle(
         "LabelTitleXSmall",
         parent=title_style,
-        fontSize=3.5,
-        leading=4.1,
+        fontSize=3.0,
+        leading=3.5,
     )
     id_style = ParagraphStyle(
         "LabelID",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=5,
-        leading=6,
+        fontSize=4.1,
+        leading=4.6,
         alignment=1,  # center
         spaceBefore=0,
         splitLongWords=True,
@@ -6818,11 +6818,11 @@ def build_title_barcode_labels_pdf(
     # Keep the overall label footprint unchanged while improving scan reliability
     # through slightly thicker bars and more horizontal quiet space.
     label_h = 1.34 * inch if columns == 3 else 1.46 * inch
-    bar_height = 0.64 * inch if columns == 3 else 0.74 * inch
-    base_bar_width = 0.012 * inch
-    min_bar_width = 0.0075 * inch
-    barcode_side_padding = 12
-    barcode_text_gap = 1
+    bar_height = 0.98 * inch if columns == 3 else 1.08 * inch
+    base_bar_width = 0.013 * inch
+    min_bar_width = 0.008 * inch
+    barcode_side_padding = 8
+    barcode_text_gap = 0.5
 
     def make_cell(item: dict):
         raw_title = (item.get("title") or "").strip()
@@ -6858,7 +6858,7 @@ def build_title_barcode_labels_pdf(
 
         text_block = KeepInFrame(
             maxWidth=col_w - 10,
-            maxHeight=label_h - bar_height - 8,
+            maxHeight=label_h - bar_height - 4,
             content=[
                 Paragraph(title, active_title_style),
                 Paragraph(f"Copy ID: {barcode_value}", id_style),
@@ -6880,8 +6880,8 @@ def build_title_barcode_labels_pdf(
         inner.setStyle(TableStyle([
             ("LEFTPADDING", (0, 0), (-1, -1), 2),
             ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-            ("TOPPADDING", (0, 0), (-1, -1), 1),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+            ("TOPPADDING", (0, 0), (-1, -1), 0.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0.5),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ]))
