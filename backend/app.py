@@ -51,7 +51,7 @@ import time
 
 from pydantic import BaseModel
 
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 from pathlib import Path
@@ -753,6 +753,10 @@ class AddCopiesRequest(BaseModel):
 
 class BookCopiesCreateRequest(BaseModel):
     copies: int = 1
+
+
+class CopyDeleteBatchRequest(BaseModel):
+    barcodes: List[str]
 
 def normalize_grade(raw: str) -> str:
     """
@@ -7439,6 +7443,187 @@ def _delete_copy_dependencies(cur, copy_ids: list[int]):
 
     cur.execute("DELETE FROM print_log WHERE copy_id = ANY(%s)", (copy_ids,))
     cur.execute("DELETE FROM damage_report WHERE copy_id = ANY(%s)", (copy_ids,))
+
+
+def _fetch_copy_by_barcode(cur, barcode: str):
+    cur.execute(
+        """
+        SELECT
+            bc.copy_id,
+            bc.book_id,
+            bc.barcode,
+            bc.status,
+            b.title,
+            b.author
+        FROM book_copy bc
+        JOIN book b ON b.book_id = bc.book_id
+        WHERE bc.barcode = %s
+        LIMIT 1
+        """,
+        (barcode,),
+    )
+    return cur.fetchone()
+
+
+@app.get("/api/cataloging/copies/by-barcode/{barcode}")
+def get_copy_by_barcode(
+    barcode: str,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    normalized_barcode = str(barcode or "").strip()
+    if not normalized_barcode:
+        raise HTTPException(status_code=400, detail="barcode is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        copy_row = _fetch_copy_by_barcode(cur, normalized_barcode)
+        if not copy_row:
+            raise HTTPException(status_code=404, detail="Copy barcode not found")
+
+        return {
+            "copy_id": copy_row["copy_id"],
+            "book_id": copy_row["book_id"],
+            "barcode": copy_row["barcode"],
+            "title": copy_row["title"],
+            "author": copy_row["author"],
+            "status": copy_row["status"],
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/api/cataloging/copies/delete-batch")
+def delete_copies_by_barcode_batch(
+    payload: CopyDeleteBatchRequest,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    raw_barcodes = payload.barcodes or []
+    normalized_barcodes = []
+    seen_barcodes = set()
+
+    for raw in raw_barcodes:
+        barcode = str(raw or "").strip()
+        if not barcode or barcode in seen_barcodes:
+            continue
+        seen_barcodes.add(barcode)
+        normalized_barcodes.append(barcode)
+
+    if not normalized_barcodes:
+        raise HTTPException(status_code=400, detail="At least one barcode is required")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    results = []
+    deleted_count = 0
+    blocked_count = 0
+    not_found_count = 0
+    error_count = 0
+
+    try:
+        for barcode in normalized_barcodes:
+            try:
+                cur.execute("SAVEPOINT delete_copy_batch_sp")
+                copy_row = _fetch_copy_by_barcode(cur, barcode)
+                if not copy_row:
+                    cur.execute("RELEASE SAVEPOINT delete_copy_batch_sp")
+                    not_found_count += 1
+                    results.append({
+                        "barcode": barcode,
+                        "result": "not_found",
+                        "message": "Copy barcode not found",
+                    })
+                    continue
+
+                status = str(copy_row["status"] or "").strip().lower()
+                if status != "available":
+                    cur.execute("RELEASE SAVEPOINT delete_copy_batch_sp")
+                    blocked_count += 1
+                    results.append({
+                        "barcode": copy_row["barcode"],
+                        "title": copy_row["title"],
+                        "author": copy_row["author"],
+                        "result": "blocked",
+                        "message": "Copy is not available for deletion",
+                        "status": copy_row["status"],
+                    })
+                    continue
+
+                cur.execute(
+                    """
+                    SELECT loan_id
+                    FROM loan
+                    WHERE copy_id = %s
+                      AND returned_at IS NULL
+                    LIMIT 1
+                    """,
+                    (copy_row["copy_id"],),
+                )
+                active_loan = cur.fetchone()
+                if active_loan:
+                    cur.execute("RELEASE SAVEPOINT delete_copy_batch_sp")
+                    blocked_count += 1
+                    results.append({
+                        "barcode": copy_row["barcode"],
+                        "title": copy_row["title"],
+                        "author": copy_row["author"],
+                        "result": "blocked",
+                        "message": "Copy cannot be deleted because it has an active loan",
+                    })
+                    continue
+
+                _delete_copy_dependencies(cur, [copy_row["copy_id"]])
+                cur.execute(
+                    """
+                    DELETE FROM book_copy
+                    WHERE copy_id = %s
+                    RETURNING copy_id, barcode
+                    """,
+                    (copy_row["copy_id"],),
+                )
+                deleted = cur.fetchone()
+                if not deleted:
+                    raise RuntimeError("Copy disappeared before deletion completed")
+
+                cur.execute("RELEASE SAVEPOINT delete_copy_batch_sp")
+                deleted_count += 1
+                results.append({
+                    "barcode": copy_row["barcode"],
+                    "title": copy_row["title"],
+                    "author": copy_row["author"],
+                    "result": "deleted",
+                    "message": "Copy deleted successfully",
+                })
+            except Exception as exc:
+                error_count += 1
+                cur.execute("ROLLBACK TO SAVEPOINT delete_copy_batch_sp")
+                cur.execute("RELEASE SAVEPOINT delete_copy_batch_sp")
+                results.append({
+                    "barcode": barcode,
+                    "result": "error",
+                    "message": str(exc) or "Delete failed",
+                })
+                continue
+
+        conn.commit()
+        return {
+            "message": f"Processed {len(normalized_barcodes)} copie(s)",
+            "deleted_count": deleted_count,
+            "blocked_count": blocked_count,
+            "not_found_count": not_found_count,
+            "error_count": error_count,
+            "results": results,
+        }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Batch delete failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 
 @app.delete("/api/books/{book_id}")
 def delete_book(

@@ -172,11 +172,26 @@
 
     .tools{
       display:grid;
-      grid-template-columns:minmax(0, 1fr) 220px;
+      grid-template-columns:minmax(0, 1fr) auto 220px;
       gap:10px;
       margin-bottom:10px;
       flex:0 0 auto;
       align-items:end;
+    }
+
+    .actionTools{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      min-width:0;
+    }
+
+    .toolbarBtn{
+      min-width:180px;
+      height:46px;
+      padding:0 16px;
+      white-space:nowrap;
     }
 
     .sortBlock{
@@ -1214,6 +1229,169 @@
 
     .actionModal .modalActions{ padding:12px 16px 16px; }
 
+    .deleteCopiesModal{
+      width:min(760px,94vw);
+    }
+
+    .deleteCopiesLead{
+      margin:0 0 14px;
+      color: rgba(0,0,0,0.68);
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .deleteCopiesEntry{
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) auto;
+      gap:10px;
+      align-items:end;
+      margin-bottom:12px;
+    }
+
+    .deleteCopiesField{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+
+    .deleteCopiesField label{
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.58);
+    }
+
+    .deleteCopiesField input{
+      width:100%;
+      height:46px;
+      border-radius:14px;
+      border:1px solid rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.04);
+      padding:0 14px;
+      font:inherit;
+      font-weight:800;
+      color:#111;
+      outline:0;
+    }
+
+    .deleteCopiesField input:focus{
+      border-color: color-mix(in srgb, var(--brand-yellow) 42%, rgba(0,0,0,0.12));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 18%, transparent);
+      background: rgba(0,0,0,0.03);
+    }
+
+    .deleteCopiesMsg{
+      display:none;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:800;
+      margin-bottom:12px;
+    }
+
+    .deleteCopiesMsg.is-ok{
+      display:block;
+      background: rgba(14,91,24,0.08);
+      border:1px solid rgba(14,91,24,0.16);
+      color: var(--okGreen);
+    }
+
+    .deleteCopiesMsg.is-err{
+      display:block;
+      background: rgba(176,0,0,0.07);
+      border:1px solid rgba(176,0,0,0.14);
+      color: rgba(176,0,0,0.9);
+    }
+
+    .deleteCopiesLookupLoading{
+      display:none;
+      align-items:center;
+      gap:10px;
+      border-radius:14px;
+      border:1px dashed rgba(0,0,0,0.12);
+      background: rgba(0,0,0,0.02);
+      padding:12px 14px;
+      margin-bottom:12px;
+      color: rgba(0,0,0,0.58);
+      font-weight:800;
+    }
+
+    .deleteCopiesLookupLoading .dots{
+      padding:8px 10px;
+    }
+
+    .deleteCopiesSummary{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+
+    .deleteCopiesCount{
+      font-size:13px;
+      font-weight:900;
+      color: rgba(0,0,0,0.58);
+      letter-spacing:.02em;
+      text-transform:uppercase;
+    }
+
+    .deleteCopiesTableWrap{
+      border-radius:16px;
+      border:1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.82);
+      overflow:hidden;
+    }
+
+    .deleteCopiesTable{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    .deleteCopiesTable th,
+    .deleteCopiesTable td{
+      padding:12px 14px;
+      text-align:left;
+      border-bottom:1px solid rgba(0,0,0,0.08);
+      vertical-align:top;
+    }
+
+    .deleteCopiesTable th{
+      font-size:12px;
+      font-weight:1000;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+      color: rgba(0,0,0,0.54);
+      background: rgba(0,0,0,0.03);
+    }
+
+    .deleteCopiesTable td{
+      font-size:14px;
+      color:#111;
+    }
+
+    .deleteCopiesTable tr:last-child td{
+      border-bottom:0;
+    }
+
+    .deleteCopiesTable td:last-child,
+    .deleteCopiesTable th:last-child{
+      width:1%;
+      white-space:nowrap;
+      text-align:right;
+    }
+
+    .deleteCopiesEmpty{
+      display:none;
+      padding:18px;
+      color: rgba(0,0,0,0.55);
+      font-weight:900;
+      background: rgba(0,0,0,0.02);
+    }
+
     .copyPanel{
       margin-top:10px;
       display:grid;
@@ -1349,12 +1527,15 @@
     @media (max-width:860px){
       .shell{ grid-template-columns:74px 1fr; }
       .tools{ grid-template-columns:1fr; }
+      .actionTools{ justify-content:stretch; }
+      .toolbarBtn{ width:100%; min-width:unset; }
       .editorGrid{ grid-template-columns:1fr; }
       .bigCover{ width:100%; height:220px; }
       .detailsGrid{ grid-template-columns:1fr; }
       .damagedActions{ width:100%; justify-content:flex-end; }
       .copyPanelBar{ align-items:flex-start; }
       .copyPanelControls{ width:100%; justify-content:flex-start; }
+      .deleteCopiesEntry{ grid-template-columns:1fr; }
     }
 
     /* Save result modal */
@@ -1499,12 +1680,16 @@
             </div>
 
             <div class="tools">
-        <div class="searchWrap" title="Search any keyword (title, author, location, subject, ISBN, barcode, etc.)">
+              <div class="searchWrap" title="Search any keyword (title, author, location, subject, ISBN, barcode, etc.)">
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2.2" opacity=".75"/>
                   <path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".75"/>
                 </svg>
-            <input id="q" autocomplete="off" placeholder="Search books by any keyword (title, author, location, subject, ISBN...)">
+                <input id="q" autocomplete="off" placeholder="Search books by any keyword (title, author, location, subject, ISBN...)">
+              </div>
+
+              <div class="actionTools">
+                <button class="btnDanger toolbarBtn" id="openDeleteCopiesBtn" type="button">Delete Copies</button>
               </div>
 
               <div class="sortBlock">
@@ -1838,6 +2023,59 @@
     </div>
   </div>
 
+  <div class="modalOverlay" id="deleteCopiesQueueOverlay" style="z-index:99999;">
+    <div class="modal actionModal deleteCopiesModal" role="dialog" aria-modal="true" aria-labelledby="deleteCopiesQueueTitle">
+      <div class="modalTop">
+        <h2 id="deleteCopiesQueueTitle">Delete Copies by Barcode</h2>
+        <button class="closeX" id="closeDeleteCopiesQueue" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="modalBody">
+        <p class="deleteCopiesLead">Scan or type copy barcodes to build a deletion queue. Copies are only deleted after the final confirmation.</p>
+
+        <div class="deleteCopiesEntry">
+          <div class="deleteCopiesField">
+            <label for="deleteCopiesBarcodeInput">Barcode</label>
+            <input id="deleteCopiesBarcodeInput" type="text" autocomplete="off" placeholder="Scan or enter a copy barcode">
+          </div>
+          <button class="btn toolbarBtn" id="addDeleteCopyBarcodeBtn" type="button">Add to Queue</button>
+        </div>
+
+        <div class="deleteCopiesMsg" id="deleteCopiesQueueMsg"></div>
+
+        <div class="deleteCopiesLookupLoading" id="deleteCopiesLookupLoading">
+          <div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+          <span>Looking up barcode details…</span>
+        </div>
+
+        <div class="deleteCopiesSummary">
+          <div class="deleteCopiesCount" id="deleteCopiesQueueCount">0 copies queued</div>
+        </div>
+
+        <div class="deleteCopiesTableWrap">
+          <div class="deleteCopiesEmpty" id="deleteCopiesQueueEmpty">No copies queued yet. Scan a barcode to add it here.</div>
+          <table class="deleteCopiesTable" id="deleteCopiesQueueTable" aria-label="Queued copies for deletion">
+            <thead>
+              <tr>
+                <th>Barcode</th>
+                <th>Book Title</th>
+                <th>Author</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="deleteCopiesQueueBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modalActions">
+        <div class="actionsLeft"></div>
+        <div class="actionsRight">
+          <button class="btnGhost" id="cancelDeleteCopiesQueue" type="button">Cancel</button>
+          <button class="btnDanger" id="confirmDeleteCopiesQueue" type="button" disabled>Delete Copies</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Save result feedback modal -->
   <div class="saveResultOverlay" id="saveResultOverlay">
     <div class="saveResultModal" id="saveResultModal">
@@ -1970,6 +2208,20 @@
     const deleteCopyBadgeMeta = document.getElementById("deleteCopyBadgeMeta");
     const deleteCopyErr = document.getElementById("deleteCopyErr");
 
+    const openDeleteCopiesBtn = document.getElementById("openDeleteCopiesBtn");
+    const deleteCopiesQueueOverlay = document.getElementById("deleteCopiesQueueOverlay");
+    const closeDeleteCopiesQueue = document.getElementById("closeDeleteCopiesQueue");
+    const cancelDeleteCopiesQueue = document.getElementById("cancelDeleteCopiesQueue");
+    const deleteCopiesBarcodeInput = document.getElementById("deleteCopiesBarcodeInput");
+    const addDeleteCopyBarcodeBtn = document.getElementById("addDeleteCopyBarcodeBtn");
+    const deleteCopiesQueueMsg = document.getElementById("deleteCopiesQueueMsg");
+    const deleteCopiesLookupLoading = document.getElementById("deleteCopiesLookupLoading");
+    const deleteCopiesQueueCount = document.getElementById("deleteCopiesQueueCount");
+    const deleteCopiesQueueEmpty = document.getElementById("deleteCopiesQueueEmpty");
+    const deleteCopiesQueueTable = document.getElementById("deleteCopiesQueueTable");
+    const deleteCopiesQueueBody = document.getElementById("deleteCopiesQueueBody");
+    const confirmDeleteCopiesQueue = document.getElementById("confirmDeleteCopiesQueue");
+
     const lostOverlay = document.getElementById("lostOverlay");
     const closeLost = document.getElementById("closeLost");
     const cancelLost = document.getElementById("cancelLost");
@@ -1992,6 +2244,8 @@
     let pendingRestoreCopyId = null;
     let pendingDeleteCopy = null;
     let pendingLostCopy = null;
+    let deleteCopiesQueue = [];
+    let deleteCopiesQueueBusy = false;
     let pendingCoverUploadBlob = null;
     let pendingCoverUploadName = "cover.webp";
 
@@ -2457,6 +2711,7 @@
       if (e.key !== "Escape") return;
       if (saveResultOverlay.style.display === "flex") return closeSaveResult();
       if (lostOverlay.style.display === "flex") return closeLostModal();
+      if (deleteCopiesQueueOverlay.style.display === "flex") return closeDeleteCopiesQueueModal();
       if (deleteCopyOverlay.style.display === "flex") return closeDeleteCopyModal();
       if (restoreOverlay.style.display === "flex") return closeRestoreConfirm();
       if (confirmOverlay.style.display === "flex") return closeConfirmModal();
@@ -2720,6 +2975,184 @@
       if (!pendingDeleteCopy) return;
       doDeleteCopy(pendingDeleteCopy);
     });
+
+    function setDeleteCopiesQueueMessage(kind, msg){
+      deleteCopiesQueueMsg.className = `deleteCopiesMsg ${kind === "err" ? "is-err" : "is-ok"}`;
+      deleteCopiesQueueMsg.textContent = msg || "";
+      deleteCopiesQueueMsg.style.display = msg ? "block" : "none";
+    }
+
+    function syncDeleteCopiesQueueControls(){
+      const hasItems = deleteCopiesQueue.length > 0;
+      deleteCopiesQueueCount.textContent = `${deleteCopiesQueue.length} cop${deleteCopiesQueue.length === 1 ? "y" : "ies"} queued`;
+      deleteCopiesQueueEmpty.style.display = hasItems ? "none" : "block";
+      deleteCopiesQueueTable.style.display = hasItems ? "table" : "none";
+      confirmDeleteCopiesQueue.disabled = deleteCopiesQueueBusy || !hasItems;
+      addDeleteCopyBarcodeBtn.disabled = deleteCopiesQueueBusy;
+      deleteCopiesBarcodeInput.disabled = deleteCopiesQueueBusy;
+      cancelDeleteCopiesQueue.disabled = deleteCopiesQueueBusy;
+      closeDeleteCopiesQueue.disabled = deleteCopiesQueueBusy;
+    }
+
+    function renderDeleteCopiesQueue(){
+      deleteCopiesQueueBody.innerHTML = "";
+
+      for (const item of deleteCopiesQueue){
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${escapeHtml(item.barcode || "")}</td>
+          <td>${escapeHtml(item.title || "\u2014")}</td>
+          <td>${escapeHtml(item.author || "\u2014")}</td>
+          <td><button class="btnGhost miniBtn" type="button" data-remove-delete-barcode="${escapeHtml(item.barcode || "")}">Remove</button></td>
+        `;
+        deleteCopiesQueueBody.appendChild(row);
+      }
+
+      deleteCopiesQueueBody.querySelectorAll("[data-remove-delete-barcode]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (deleteCopiesQueueBusy) return;
+          const barcode = btn.getAttribute("data-remove-delete-barcode") || "";
+          deleteCopiesQueue = deleteCopiesQueue.filter(item => item.barcode !== barcode);
+          renderDeleteCopiesQueue();
+          setDeleteCopiesQueueMessage("ok", barcode ? `Removed ${barcode} from the queue.` : "");
+          setTimeout(() => deleteCopiesBarcodeInput.focus(), 30);
+        });
+      });
+
+      syncDeleteCopiesQueueControls();
+    }
+
+    function openDeleteCopiesQueueModal(){
+      setDeleteCopiesQueueMessage("ok", "");
+      deleteCopiesLookupLoading.style.display = "none";
+      deleteCopiesQueueOverlay.style.display = "flex";
+      renderDeleteCopiesQueue();
+      setTimeout(() => deleteCopiesBarcodeInput.focus(), 30);
+    }
+
+    function closeDeleteCopiesQueueModal(force = false){
+      if (deleteCopiesQueueBusy && !force) return;
+      deleteCopiesQueueOverlay.style.display = "none";
+      deleteCopiesLookupLoading.style.display = "none";
+      deleteCopiesBarcodeInput.value = "";
+      setDeleteCopiesQueueMessage("ok", "");
+    }
+
+    async function queueDeleteCopyByBarcode(){
+      if (deleteCopiesQueueBusy) return;
+
+      const barcode = String(deleteCopiesBarcodeInput.value || "").trim();
+      if (!barcode){
+        setDeleteCopiesQueueMessage("err", "Enter or scan a barcode first.");
+        deleteCopiesBarcodeInput.focus();
+        return;
+      }
+
+      if (deleteCopiesQueue.some(item => item.barcode === barcode)){
+        setDeleteCopiesQueueMessage("err", `Barcode ${barcode} is already queued.`);
+        deleteCopiesBarcodeInput.select();
+        return;
+      }
+
+      setDeleteCopiesQueueMessage("ok", "");
+      deleteCopiesQueueBusy = true;
+      deleteCopiesLookupLoading.style.display = "flex";
+      syncDeleteCopiesQueueControls();
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/cataloging/copies/by-barcode/${encodeURIComponent(barcode)}`, {
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Lookup failed (${res.status})`);
+
+        deleteCopiesQueue.push({
+          barcode: data?.barcode || barcode,
+          title: data?.title || "",
+          author: data?.author || ""
+        });
+        deleteCopiesBarcodeInput.value = "";
+        renderDeleteCopiesQueue();
+        setDeleteCopiesQueueMessage("ok", `Queued ${data?.barcode || barcode} for deletion review.`);
+      }catch(e){
+        setDeleteCopiesQueueMessage("err", e?.message || "Failed to look up barcode.");
+      }finally{
+        deleteCopiesQueueBusy = false;
+        deleteCopiesLookupLoading.style.display = "none";
+        syncDeleteCopiesQueueControls();
+        setTimeout(() => deleteCopiesBarcodeInput.focus(), 30);
+      }
+    }
+
+    async function deleteQueuedCopies(){
+      if (deleteCopiesQueueBusy || !deleteCopiesQueue.length) return;
+
+      const copyCount = deleteCopiesQueue.length;
+      const confirmed = window.confirm(`Delete ${copyCount} queued cop${copyCount === 1 ? "y" : "ies"}?`);
+      if (!confirmed) return;
+
+      deleteCopiesQueueBusy = true;
+      deleteCopiesLookupLoading.style.display = "flex";
+      setDeleteCopiesQueueMessage("ok", "");
+      syncDeleteCopiesQueueControls();
+
+      try{
+        const res = await fetch(`${BASE_URL}/api/cataloging/copies/delete-batch`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            barcodes: deleteCopiesQueue.map(item => item.barcode)
+          })
+        });
+        const data = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(data?.detail || `Delete failed (${res.status})`);
+
+        const deletedCount = Number(data?.deleted_count || 0);
+        const blockedCount = Number(data?.blocked_count || 0);
+        const notFoundCount = Number(data?.not_found_count || 0);
+        const errorCount = Number(data?.error_count || 0);
+
+        deleteCopiesQueue = [];
+        renderDeleteCopiesQueue();
+        closeDeleteCopiesQueueModal(true);
+
+        if (activeBookId) await openDetails(activeBookId);
+        scheduleSearch();
+
+        const parts = [];
+        if (deletedCount) parts.push(`${deletedCount} deleted`);
+        if (blockedCount) parts.push(`${blockedCount} blocked`);
+        if (notFoundCount) parts.push(`${notFoundCount} not found`);
+        if (errorCount) parts.push(`${errorCount} error${errorCount === 1 ? "" : "s"}`);
+
+        showSaveResult(
+          deletedCount > 0 ? "ok" : "err",
+          deletedCount > 0 ? "Copies processed" : "No copies deleted",
+          parts.length ? parts.join(" • ") : "No queued copies were processed."
+        );
+      }catch(e){
+        setDeleteCopiesQueueMessage("err", e?.message || "Failed to delete queued copies.");
+      }finally{
+        deleteCopiesQueueBusy = false;
+        deleteCopiesLookupLoading.style.display = "none";
+        syncDeleteCopiesQueueControls();
+      }
+    }
+
+    openDeleteCopiesBtn.addEventListener("click", openDeleteCopiesQueueModal);
+    closeDeleteCopiesQueue.addEventListener("click", closeDeleteCopiesQueueModal);
+    cancelDeleteCopiesQueue.addEventListener("click", closeDeleteCopiesQueueModal);
+    deleteCopiesQueueOverlay.addEventListener("click", (e) => {
+      if (e.target === deleteCopiesQueueOverlay) closeDeleteCopiesQueueModal();
+    });
+    addDeleteCopyBarcodeBtn.addEventListener("click", queueDeleteCopyByBarcode);
+    deleteCopiesBarcodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){
+        e.preventDefault();
+        queueDeleteCopyByBarcode();
+      }
+    });
+    confirmDeleteCopiesQueue.addEventListener("click", deleteQueuedCopies);
 
     function openLostModal(copy){
       pendingLostCopy = copy || null;
