@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
   <title>Print Bar Codes</title>
   <script>
     document.documentElement.classList.add("branding-loading");
@@ -1094,7 +1095,7 @@
                     </button>
 
                     <button class="btn small ghost" id="selectAllResultsBtn" type="button">
-                      Select visible copies
+                      Select all copies
                     </button>
                   </div>
 
@@ -1610,6 +1611,10 @@
       return `${String(bookId)}:${reprintMode ? "ALL" : "UNPRINTED"}:${cursor || "ROOT"}`;
     }
 
+    function getBookId(book){
+      return book?.book_id ?? book?.id ?? book?.bookId ?? book?.bookID;
+    }
+
     async function loadCopies(bookId, bookTitle, cursor = null){
       const key = cacheKey(bookId, cursor || "");
       if (copiesCache.has(key)) return copiesCache.get(key);
@@ -1636,6 +1641,68 @@
       };
       copiesCache.set(key, result);
       return result;
+    }
+
+    async function loadAllCopiesForBook(book){
+      const bookId = getBookId(book);
+      if (!bookId) return [];
+
+      const title = book?.title || "Untitled";
+      const allCopies = [];
+      const seenCursors = new Set();
+      let cursor = null;
+
+      while (true){
+        const payload = await loadCopies(bookId, title, cursor);
+        allCopies.push(...payload.items);
+
+        if (!payload.has_more || !payload.next_cursor) break;
+        if (seenCursors.has(payload.next_cursor)) break;
+        seenCursors.add(payload.next_cursor);
+        cursor = payload.next_cursor;
+      }
+
+      return allCopies;
+    }
+
+    async function loadAllBooksForCurrentQuery(){
+      const q = String(qEl.value || booksState.query || "").trim();
+      const allBooks = [];
+      const seenBooks = new Set();
+      const seenCursors = new Set();
+      let cursor = "0";
+
+      while (true){
+        const params = new URLSearchParams({
+          q,
+          page_size: String(BOOK_PAGE_LIMIT),
+          cursor
+        });
+        const payload = await apiGet(`/api/librarian/books?${params.toString()}`);
+        const items = normalizeArray(payload);
+
+        items.forEach(book => {
+          const bookId = getBookId(book);
+          const key = String(bookId || "");
+          if (!key || seenBooks.has(key)) return;
+          seenBooks.add(key);
+          allBooks.push(book);
+        });
+
+        const nextCursor = payload?.next_cursor ?? null;
+        if (!payload?.has_more || !nextCursor) break;
+        if (seenCursors.has(nextCursor)) break;
+        seenCursors.add(nextCursor);
+        cursor = String(nextCursor);
+      }
+
+      return allBooks;
+    }
+
+    function syncRenderedSelection(){
+      document.querySelectorAll("input[data-copy-id]").forEach(cb => {
+        cb.checked = selected.has(Number(cb.dataset.copyId));
+      });
     }
 
     function renderCopies(copies, targetEl){
@@ -1685,7 +1752,7 @@
       if (reset) bookListEl.innerHTML = "";
 
       itemsToRender.forEach((b, idx)=>{
-        const bookId = b.book_id ?? b.id ?? b.bookId ?? b.bookID;
+        const bookId = getBookId(b);
         const title = b.title || "Untitled";
         const author = b.author || "—";
         const section = b.section || "—";
@@ -1906,17 +1973,43 @@
       }
     }
 
-    selectAllResultsBtn.addEventListener("click", ()=>{
-      const checkboxes = Array.from(document.querySelectorAll(".bwrap.is-open .copiesWrap input[data-copy-id]"));
-      if(!checkboxes.length){
-        showToast("Open a book to select visible copies.");
-        return;
+    selectAllResultsBtn.addEventListener("click", async ()=>{
+      const oldText = selectAllResultsBtn.textContent;
+      selectAllResultsBtn.disabled = true;
+      selectAllResultsBtn.textContent = "Selecting...";
+      showProgress();
+      setPreviewLoading(true);
+
+      try{
+        let added = 0;
+        const booksToSelect = await loadAllBooksForCurrentQuery();
+        if (!booksToSelect.length){
+          showToast("No books found to select from.");
+          return;
+        }
+
+        for (const book of booksToSelect){
+          const copies = await loadAllCopiesForBook(book);
+          copies.forEach(copy => {
+            if (!selected.has(copy.copy_id)) added++;
+            selected.set(copy.copy_id, copy);
+          });
+        }
+
+        syncRenderedSelection();
+        updateSelectedUI();
+
+        const scope = reprintMode ? "copies" : "unprinted copies";
+        showToast(`Selected ${added} ${scope}.`);
+      }catch(err){
+        console.error(err);
+        showToast(err.message || "Failed to select copies.");
+      }finally{
+        selectAllResultsBtn.disabled = false;
+        selectAllResultsBtn.textContent = oldText;
+        hideProgress(true);
+        setPreviewLoading(false);
       }
-      checkboxes.forEach(cb => {
-        cb.checked = true;
-        cb.dispatchEvent(new Event("change", { bubbles: true }));
-      });
-      showToast("Selected all visible copies.");
     });
 
     reprintModeBtn.addEventListener("click", ()=>{
