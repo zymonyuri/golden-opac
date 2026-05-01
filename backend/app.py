@@ -197,6 +197,56 @@ def get_active_school_year(conn) -> str:
     y = today.year
     return f"{y}-{y + 1}" if today.month >= 6 else f"{y - 1}-{y}"
 
+def mark_inactive_students_for_school_year(cur, school_year: str, import_started_at=None):
+    """
+    Calls the DB helper when available. If the helper fails because its
+    current_school_year parameter conflicts with the student column name,
+    fall back to the same update using bound parameters from the app.
+    """
+    cur.execute("SAVEPOINT mark_inactive_students")
+    try:
+        cur.execute("SELECT mark_inactive_students_by_school_year(%s) AS inactive_count", (school_year,))
+        row = cur.fetchone()
+        cur.execute("RELEASE SAVEPOINT mark_inactive_students")
+        return (row or {}).get("inactive_count")
+    except Exception as e:
+        cur.execute("ROLLBACK TO SAVEPOINT mark_inactive_students")
+        cur.execute("RELEASE SAVEPOINT mark_inactive_students")
+        msg = str(e).lower()
+        if "current_school_year" not in msg or "ambiguous" not in msg:
+            raise
+
+    current_start_year = int(str(school_year).split("-", 1)[0])
+    params = [school_year, current_start_year]
+    import_guard = ""
+    if import_started_at is not None:
+        import_guard = "AND (last_imported_at IS NULL OR last_imported_at < %s)"
+        params.append(import_started_at)
+
+    cur.execute(
+        f"""
+        UPDATE student
+        SET
+            status = 'inactive',
+            last_status_change_school_year = %s,
+            updated_at = NOW()
+        WHERE status <> 'inactive'
+          AND last_grade_section_change_school_year IS NOT NULL
+          AND last_status_change_school_year IS NOT NULL
+          {import_guard}
+          AND (
+              %s
+              - CAST(SPLIT_PART(
+                    LEAST(last_grade_section_change_school_year, last_status_change_school_year),
+                    '-',
+                    1
+                ) AS INTEGER)
+          ) >= 5
+        """,
+        tuple(params),
+    )
+    return cur.rowcount
+
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 @app.get("/api/public/display")
@@ -4721,6 +4771,8 @@ async def import_students_csv(
         sy_match = re.match(r"^(\d{4})-(\d{4})$", school_year)
         if not sy_match or int(sy_match.group(2)) != int(sy_match.group(1)) + 1:
             raise HTTPException(status_code=400, detail="current_school_year must be consecutive YYYY-YYYY")
+        cur.execute("SELECT NOW() AS import_started_at")
+        import_started_at = cur.fetchone()["import_started_at"]
 
         for idx, row in enumerate(reader, start=2):  # line 1 is header
             cur.execute("SAVEPOINT student_import_row")
@@ -4832,7 +4884,7 @@ async def import_students_csv(
                 # Record which row failed and why (do not stop entire import)
                 failed.append({"line": idx, "student_code": row.get("student_code"), "error": str(row_err)})
 
-        cur.execute("SELECT mark_inactive_students_by_school_year(%s)", (school_year,))
+        inactive_count = mark_inactive_students_for_school_year(cur, school_year, import_started_at)
         conn.commit()
 
         return {
@@ -4842,6 +4894,7 @@ async def import_students_csv(
             "skipped": len(skipped),
             "failed_count": len(failed),
             "school_year": school_year,
+            "inactive_count": inactive_count,
             "skipped_rows": skipped[:200],
             "failed": failed[:200],  # cap response size
         }
@@ -4869,13 +4922,12 @@ def mark_inactive_students(
         if not sy_match or int(sy_match.group(2)) != int(sy_match.group(1)) + 1:
             raise HTTPException(status_code=400, detail="current_school_year must be consecutive YYYY-YYYY")
 
-        cur.execute("SELECT mark_inactive_students_by_school_year(%s) AS inactive_count", (school_year,))
-        row = cur.fetchone()
+        inactive_count = mark_inactive_students_for_school_year(cur, school_year)
         conn.commit()
         return {
             "message": "Inactive student check complete",
             "school_year": school_year,
-            "inactive_count": (row or {}).get("inactive_count"),
+            "inactive_count": inactive_count,
         }
     except HTTPException:
         conn.rollback()

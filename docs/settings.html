@@ -748,14 +748,19 @@ document.documentElement.classList.add("branding-loading");
     }
 
     /* 8 columns now: Grade / Loan Days / Fine/Day / Max Borrow / Max Renewals / Block Overdue / Updated / Actions */
-    .rulesTable--grades col:nth-child(1){ width:9%; }
+    .rulesTable--grades col:nth-child(1){ width:8%; }
     .rulesTable--grades col:nth-child(2){ width:11%; }
     .rulesTable--grades col:nth-child(3){ width:10%; }
     .rulesTable--grades col:nth-child(4){ width:12%; }
     .rulesTable--grades col:nth-child(5){ width:13%; }
-    .rulesTable--grades col:nth-child(6){ width:14%; }
-    .rulesTable--grades col:nth-child(7){ width:22%; }
-    .rulesTable--grades col:nth-child(8){ width:9%; }
+    .rulesTable--grades col:nth-child(6){ width:15%; }
+    .rulesTable--grades col:nth-child(7){ width:16%; }
+    .rulesTable--grades col:nth-child(8){ width:15%; }
+
+    .rulesTable--grades th:nth-child(8),
+    .rulesTable--grades td:nth-child(8){
+      text-align:center;
+    }
 
     .rulesTable--libs col:nth-child(1){ width:22%; }
     .rulesTable--libs col:nth-child(2){ width:26%; }

@@ -604,17 +604,6 @@
                 </select>
               </div>
 
-              <div class="filterBlock">
-                <label for="statusFilter">Status</label>
-                <select id="statusFilter">
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="graduated">Graduated</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
               <button class="btn" id="addBtn" type="button">Add Student</button>
             </div>
 
@@ -735,7 +724,6 @@
 
     const qEl = document.getElementById("q");
     const gradeFilterEl = document.getElementById("gradeFilter");
-    const statusFilterEl = document.getElementById("statusFilter");
     const listEl = document.getElementById("list");
     const resultsMeta = document.getElementById("resultsMeta");
     const loadMoreBtn = document.getElementById("loadMoreBtn");
@@ -797,8 +785,7 @@
     function getQueryState(){
       return {
         q: qEl.value.trim(),
-        grade: String(gradeFilterEl.value || "").trim(),
-        status: String(statusFilterEl.value || "").trim()
+        grade: String(gradeFilterEl.value || "").trim()
       };
     }
 
@@ -931,7 +918,6 @@
         url.searchParams.set("page_size", String(STUDENT_PAGE_LIMIT));
         url.searchParams.set("cursor", reset ? "0" : String(studentsState.nextCursor ?? "0"));
         if (state.grade) url.searchParams.set("grade", state.grade);
-        if (state.status) url.searchParams.set("status", state.status);
 
         const res = await fetch(url.toString(), { headers: authHeaders() });
         const data = await res.json().catch(() => ({}));
@@ -969,7 +955,6 @@
         if (!saved || !saved.query) return false;
         qEl.value = saved.query.q || "";
         gradeFilterEl.value = saved.query.grade || "";
-        statusFilterEl.value = saved.query.status || "";
         if (saved.signature !== getQuerySignature()) return false;
         studentsState = {
           items: Array.isArray(saved.items) ? saved.items.map(toStoredStudentItem) : [],
@@ -1008,10 +993,6 @@
     });
 
     gradeFilterEl.addEventListener("change", () => {
-      studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
-      loadBatch({ reset: true });
-    });
-    statusFilterEl.addEventListener("change", () => {
       studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
       loadBatch({ reset: true });
     });
