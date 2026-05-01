@@ -217,11 +217,12 @@ def mark_inactive_students_for_school_year(cur, school_year: str, import_started
             raise
 
     current_start_year = int(str(school_year).split("-", 1)[0])
-    params = [school_year, current_start_year]
+    params = [school_year]
     import_guard = ""
     if import_started_at is not None:
         import_guard = "AND (last_imported_at IS NULL OR last_imported_at < %s)"
         params.append(import_started_at)
+    params.append(current_start_year)
 
     cur.execute(
         f"""
