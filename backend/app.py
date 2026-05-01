@@ -4635,8 +4635,8 @@ def update_student(
         raise HTTPException(status_code=400, detail="All required fields must be provided.")
 
     grade = normalize_grade(grade_raw)
-    if status not in ["active", "suspended", "graduated"]:
-        raise HTTPException(status_code=400, detail="status must be active, suspended, or graduated")
+    if status not in ["active", "suspended", "graduated", "inactive"]:
+        raise HTTPException(status_code=400, detail="status must be active, suspended, graduated, or inactive")
 
     conn = get_connection()
     cur = conn.cursor()
@@ -4669,6 +4669,7 @@ def update_student(
 async def import_students_csv(
     file: UploadFile = File(...),
     default_status: str = "active",
+    current_school_year: str | None = None,
     current=Depends(require_roles("librarian", "admin")),
 ):
     """
@@ -4678,11 +4679,11 @@ async def import_students_csv(
       student_code,last_name,first_name,grade,section,status
 
     Behavior:
-      - Validates required fields
-      - Normalizes grade to '1'..'12'
-      - If status is blank, uses default_status
-      - Skips duplicates (same student_code) and records them as errors
-      - Returns summary: inserted + failed rows with reasons
+      - Updates by student_code when it matches
+      - Otherwise updates by one exact full-name match
+      - Skips ambiguous full-name matches
+      - Creates only when no code/name match exists
+      - Returns summary: created, updated, skipped, failed
     """
 
     # Basic file validation
@@ -4710,11 +4711,19 @@ async def import_students_csv(
     conn = get_connection()
     cur = conn.cursor()
 
-    inserted = 0
+    created = 0
+    updated = 0
+    skipped = []
     failed = []
 
     try:
+        school_year = (current_school_year or "").strip() or get_active_school_year(conn)
+        sy_match = re.match(r"^(\d{4})-(\d{4})$", school_year)
+        if not sy_match or int(sy_match.group(2)) != int(sy_match.group(1)) + 1:
+            raise HTTPException(status_code=400, detail="current_school_year must be consecutive YYYY-YYYY")
+
         for idx, row in enumerate(reader, start=2):  # line 1 is header
+            cur.execute("SAVEPOINT student_import_row")
             try:
                 student_code = (row.get("student_code") or "").strip()
                 last_name = (row.get("last_name") or "").strip()
@@ -4724,8 +4733,6 @@ async def import_students_csv(
                 status = (row.get("status") or "").strip() or default_status
 
                 # Validate required fields
-                if not student_code:
-                    raise ValueError("student_code is required")
                 if not last_name or not first_name:
                     raise ValueError("last_name and first_name are required")
                 if not grade_raw:
@@ -4738,35 +4745,144 @@ async def import_students_csv(
 
                 # Normalize status
                 status_norm = status.lower()
-                if status_norm not in ["active", "suspended", "graduated"]:
-                    raise ValueError("status must be active, suspended, or graduated")
+                if status_norm not in ["active", "suspended", "graduated", "inactive"]:
+                    raise ValueError("status must be active, suspended, graduated, or inactive")
 
-                # Insert student
-                cur.execute(
-                    """
-                    INSERT INTO student (student_code, last_name, first_name, grade, section, status, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                    """,
-                    (student_code, last_name, first_name, grade, section, status_norm),
-                )
-                inserted += 1
+                target = None
+                if student_code:
+                    cur.execute(
+                        """
+                        SELECT student_id, grade, section, status
+                        FROM student
+                        WHERE student_code = %s
+                        LIMIT 1
+                        """,
+                        (student_code,),
+                    )
+                    target = cur.fetchone()
+
+                if not target:
+                    cur.execute(
+                        """
+                        SELECT student_id, grade, section, status
+                        FROM student
+                        WHERE LOWER(TRIM(last_name)) = LOWER(%s)
+                          AND LOWER(TRIM(first_name)) = LOWER(%s)
+                        ORDER BY student_id ASC
+                        """,
+                        (last_name, first_name),
+                    )
+                    name_matches = cur.fetchall()
+                    if len(name_matches) > 1:
+                        skipped.append({
+                            "line": idx,
+                            "student_code": student_code,
+                            "reason": "Multiple students share this full name; skipped to avoid overwriting the wrong record.",
+                        })
+                        cur.execute("RELEASE SAVEPOINT student_import_row")
+                        continue
+                    if len(name_matches) == 1:
+                        target = name_matches[0]
+
+                if target:
+                    fields = [
+                        "grade = %s",
+                        "section = %s",
+                        "current_school_year = %s",
+                        "last_grade_section_change_school_year = %s",
+                        "last_imported_at = NOW()",
+                        "updated_at = NOW()",
+                    ]
+                    params = [grade, section, school_year, school_year]
+                    if row.get("status") is not None and str(row.get("status") or "").strip():
+                        fields.append("status = %s")
+                        fields.append("last_status_change_school_year = %s")
+                        params.extend([status_norm, school_year])
+                    params.append(target["student_id"])
+                    cur.execute(
+                        f"""
+                        UPDATE student
+                        SET {', '.join(fields)}
+                        WHERE student_id = %s
+                        """,
+                        tuple(params),
+                    )
+                    updated += 1
+                else:
+                    if not student_code:
+                        raise ValueError("student_code is required for new students")
+                    cur.execute(
+                        """
+                        INSERT INTO student (
+                            student_code, last_name, first_name, grade, section, status,
+                            current_school_year, last_grade_section_change_school_year,
+                            last_imported_at, created_at, updated_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                        """,
+                        (student_code, last_name, first_name, grade, section, status_norm, school_year, school_year),
+                    )
+                    created += 1
+
+                cur.execute("RELEASE SAVEPOINT student_import_row")
 
             except Exception as row_err:
+                cur.execute("ROLLBACK TO SAVEPOINT student_import_row")
+                cur.execute("RELEASE SAVEPOINT student_import_row")
                 # Record which row failed and why (do not stop entire import)
                 failed.append({"line": idx, "student_code": row.get("student_code"), "error": str(row_err)})
 
+        cur.execute("SELECT mark_inactive_students_by_school_year(%s)", (school_year,))
         conn.commit()
 
         return {
             "message": "Import finished",
-            "inserted": inserted,
+            "created": created,
+            "updated": updated,
+            "skipped": len(skipped),
             "failed_count": len(failed),
+            "school_year": school_year,
+            "skipped_rows": skipped[:200],
             "failed": failed[:200],  # cap response size
         }
 
+    except HTTPException:
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"CSV import failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+@app.post("/api/students/mark-inactive")
+def mark_inactive_students(
+    current_school_year: str | None = None,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        school_year = (current_school_year or "").strip() or get_active_school_year(conn)
+        sy_match = re.match(r"^(\d{4})-(\d{4})$", school_year)
+        if not sy_match or int(sy_match.group(2)) != int(sy_match.group(1)) + 1:
+            raise HTTPException(status_code=400, detail="current_school_year must be consecutive YYYY-YYYY")
+
+        cur.execute("SELECT mark_inactive_students_by_school_year(%s) AS inactive_count", (school_year,))
+        row = cur.fetchone()
+        conn.commit()
+        return {
+            "message": "Inactive student check complete",
+            "school_year": school_year,
+            "inactive_count": (row or {}).get("inactive_count"),
+        }
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Mark inactive failed: {str(e)}")
     finally:
         cur.close()
         conn.close()
@@ -4896,8 +5012,8 @@ def bulk_promote_students(
 
     if only_status is not None:
         st = only_status.strip().lower()
-        if st not in ["active", "suspended", "graduated"]:
-            raise HTTPException(status_code=400, detail="only_status must be active, suspended, or graduated")
+        if st not in ["active", "suspended", "graduated", "inactive"]:
+            raise HTTPException(status_code=400, detail="only_status must be active, suspended, graduated, or inactive")
     else:
         st = None
 
@@ -4972,9 +5088,9 @@ def bulk_change_status(
     fs = from_status.strip().lower()
     ts = to_status.strip().lower()
 
-    allowed = ["active", "suspended", "graduated"]
+    allowed = ["active", "suspended", "graduated", "inactive"]
     if fs not in allowed or ts not in allowed:
-        raise HTTPException(status_code=400, detail="from_status and to_status must be active, suspended, or graduated")
+        raise HTTPException(status_code=400, detail="from_status and to_status must be active, suspended, graduated, or inactive")
 
     g = normalize_grade(grade) if grade and grade.strip() else None
     sec = section.strip() if section and section.strip() else None

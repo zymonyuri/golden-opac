@@ -1549,7 +1549,7 @@ document.documentElement.classList.add("branding-loading");
                             <div class="schoolYearRow">
                               <input id="schoolYearStart" type="number" min="2000" max="2100" step="1" inputmode="numeric" aria-label="School year start" placeholder="2025">
                               <span class="schoolYearDash">to</span>
-                              <input id="schoolYearEnd" type="text" aria-label="School year end" readonly tabindex="-1">
+                              <input id="schoolYearEnd" type="text" inputmode="numeric" maxlength="4" aria-label="School year end" placeholder="2026">
                             </div>
                             <span class="schoolYearPreview" id="schoolYearPreview">2025-2026</span>
                             <input id="schoolYear" type="hidden" value="2025-2026">
@@ -2352,14 +2352,17 @@ document.documentElement.classList.add("branding-loading");
       const preview = document.getElementById("schoolYearPreview");
       if (!startInput || !endInput || !hiddenInput || !preview) return "";
 
-      const start = Number(String(startInput.value || "").trim());
-      const valid = Number.isInteger(start) && start >= 2000 && start <= 2100;
-      const end = valid ? start + 1 : "";
-      const value = valid ? `${start}-${end}` : "";
+      startInput.value = String(startInput.value || "").replace(/\D/g, "").slice(0, 4);
+      endInput.value = String(endInput.value || "").replace(/\D/g, "").slice(0, 4);
+      const startText = String(startInput.value || "").trim();
+      const endText = String(endInput.value || "").trim();
+      const start = Number(startText);
+      const end = Number(endText);
+      const valid = /^\d{4}$/.test(startText) && /^\d{4}$/.test(endText) && end === start + 1;
+      const value = valid ? `${startText}-${endText}` : "";
 
-      endInput.value = end ? String(end) : "";
       hiddenInput.value = value;
-      preview.textContent = value || "Enter a valid start year";
+      preview.textContent = value || "Enter consecutive 4-digit years";
       preview.style.color = valid ? "#111" : "#b91c1c";
       preview.style.borderColor = valid ? "rgba(0,0,0,0.10)" : "rgba(220,38,38,0.30)";
       return value;
@@ -2367,25 +2370,42 @@ document.documentElement.classList.add("branding-loading");
 
     function setSchoolYearControls(value){
       const startInput = document.getElementById("schoolYearStart");
-      if (!startInput) return;
+      const endInput = document.getElementById("schoolYearEnd");
+      if (!startInput || !endInput) return;
       const raw = String(value || "").trim();
       const match = raw.match(/^(\d{4})\s*[-/]\s*(\d{4})$/);
       let start;
+      let end;
       if (match){
         start = Number(match[1]);
+        end = Number(match[2]);
       } else {
         start = Number(getSuggestedSchoolYear().split("-")[0]);
+        end = start + 1;
       }
       startInput.value = String(start);
+      endInput.value = String(end);
       syncSchoolYearHidden();
     }
 
     function initSchoolYearControls(){
       setSchoolYearControls(getSuggestedSchoolYear());
       const startInput = document.getElementById("schoolYearStart");
+      const endInput = document.getElementById("schoolYearEnd");
       if (startInput){
-        startInput.addEventListener("input", syncSchoolYearHidden);
+        startInput.addEventListener("input", () => {
+          const cleaned = String(startInput.value || "").replace(/\D/g, "").slice(0, 4);
+          startInput.value = cleaned;
+          if (/^\d{4}$/.test(cleaned) && endInput && !endInput.matches(":focus")){
+            endInput.value = String(Number(cleaned) + 1);
+          }
+          syncSchoolYearHidden();
+        });
         startInput.addEventListener("change", syncSchoolYearHidden);
+      }
+      if (endInput){
+        endInput.addEventListener("input", syncSchoolYearHidden);
+        endInput.addEventListener("change", syncSchoolYearHidden);
       }
     }
 

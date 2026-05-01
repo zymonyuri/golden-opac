@@ -708,6 +708,19 @@ document.documentElement.classList.add("branding-loading");
       <div class="modalBody">
         <div class="big" id="csvFileName">No file selected</div>
         <div id="csvSummary" style="margin-top:4px; color:rgba(0,0,0,0.62);"></div>
+        <div class="row2" style="margin-top:14px;">
+          <div class="field">
+            <label>Start Year <span class="req">*</span></label>
+            <input id="csvSchoolYearStart" type="text" inputmode="numeric" maxlength="4" placeholder="2026" />
+          </div>
+          <div class="field">
+            <label>End Year <span class="req">*</span></label>
+            <input id="csvSchoolYearEnd" type="text" inputmode="numeric" maxlength="4" placeholder="2027" />
+          </div>
+        </div>
+        <div id="csvSchoolYearPreview" style="margin-top:8px; display:inline-flex; min-height:34px; align-items:center; padding:8px 12px; border:1px solid rgba(0,0,0,0.10); border-radius:10px; font-size:12px; font-weight:1000; color:#111;">
+          School year: 2026-2027
+        </div>
 
         <div class="loaderWrap" id="csvLoader" style="display:none; margin-top:12px;">
           <div class="dots">
@@ -890,14 +903,62 @@ document.documentElement.classList.add("branding-loading");
     const csvPreview = document.getElementById("csvPreview");
     const csvErr = document.getElementById("csvErr");
     const csvLoader = document.getElementById("csvLoader");
+    const csvSchoolYearStart = document.getElementById("csvSchoolYearStart");
+    const csvSchoolYearEnd = document.getElementById("csvSchoolYearEnd");
+    const csvSchoolYearPreview = document.getElementById("csvSchoolYearPreview");
 
     let selectedCsv = null;
+
+    function getSuggestedSchoolYear(){
+      const now = new Date();
+      const year = now.getFullYear();
+      const start = now.getMonth() >= 5 ? year : year - 1;
+      return `${start}-${start + 1}`;
+    }
+
+    function digits4(value){
+      return String(value || "").replace(/\D/g, "").slice(0, 4);
+    }
+
+    function syncCsvSchoolYearPreview(){
+      csvSchoolYearStart.value = digits4(csvSchoolYearStart.value);
+      csvSchoolYearEnd.value = digits4(csvSchoolYearEnd.value);
+      const startText = csvSchoolYearStart.value;
+      const endText = csvSchoolYearEnd.value;
+      const start = Number(startText);
+      const end = Number(endText);
+      const valid = /^\d{4}$/.test(startText) && /^\d{4}$/.test(endText) && end === start + 1;
+      const value = valid ? `${startText}-${endText}` : "";
+      csvSchoolYearPreview.textContent = valid ? `School year: ${value}` : "Enter consecutive 4-digit years";
+      csvSchoolYearPreview.style.color = valid ? "#111" : "#b91c1c";
+      csvSchoolYearPreview.style.borderColor = valid ? "rgba(0,0,0,0.10)" : "rgba(220,38,38,0.30)";
+      return value;
+    }
+
+    function setCsvSchoolYearControls(value){
+      const match = String(value || "").trim().match(/^(\d{4})-(\d{4})$/);
+      const fallback = getSuggestedSchoolYear().split("-");
+      csvSchoolYearStart.value = match ? match[1] : fallback[0];
+      csvSchoolYearEnd.value = match ? match[2] : fallback[1];
+      syncCsvSchoolYearPreview();
+    }
+
+    csvSchoolYearStart.addEventListener("input", () => {
+      csvSchoolYearStart.value = digits4(csvSchoolYearStart.value);
+      if (/^\d{4}$/.test(csvSchoolYearStart.value) && !csvSchoolYearEnd.matches(":focus")){
+        csvSchoolYearEnd.value = String(Number(csvSchoolYearStart.value) + 1);
+      }
+      syncCsvSchoolYearPreview();
+    });
+    csvSchoolYearEnd.addEventListener("input", syncCsvSchoolYearPreview);
+    setCsvSchoolYearControls(getSuggestedSchoolYear());
 
     function openCsvModal(){
       csvErr.style.display = "none";
       csvErr.textContent = "";
       csvPreview.innerHTML = "";
       csvSummary.textContent = "";
+      syncCsvSchoolYearPreview();
       csvFileName.textContent = selectedCsv ? selectedCsv.name : "No file selected";
       confirmImportBtn.disabled = !selectedCsv;
       csvModal.style.display = "flex";
@@ -912,6 +973,12 @@ document.documentElement.classList.add("branding-loading");
 
     confirmImportBtn.addEventListener("click", async () => {
       if (!selectedCsv) return;
+      const schoolYearValue = syncCsvSchoolYearPreview();
+      if (!schoolYearValue){
+        csvErr.style.display = "block";
+        csvErr.textContent = "School year must use 4-digit consecutive years, for example 2026 and 2027.";
+        return;
+      }
 
       csvErr.style.display = "none";
       csvErr.textContent = "";
@@ -922,7 +989,7 @@ document.documentElement.classList.add("branding-loading");
         const fd = new FormData();
         fd.append("file", selectedCsv);
 
-        const res = await fetch(`${BASE_URL}/api/students/import-csv`, {
+        const res = await fetch(`${BASE_URL}/api/students/import-csv?current_school_year=${encodeURIComponent(schoolYearValue)}`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
           body: fd
@@ -938,9 +1005,13 @@ document.documentElement.classList.add("branding-loading");
           return;
         }
 
-        const inserted = Number(data?.inserted ?? 0);
+        const created = Number(data?.created ?? data?.inserted ?? 0);
+        const inserted = created;
+        const updated = Number(data?.updated ?? 0);
+        const skipped = Number(data?.skipped ?? 0);
         const failed = Number(data?.failed_count ?? 0);
         const failedList = Array.isArray(data?.failed) ? data.failed : [];
+        const skippedList = Array.isArray(data?.skipped_rows) ? data.skipped_rows : [];
 
         csvSummary.textContent = `Imported: ${inserted} • Failed: ${failed}`;
         csvPreview.innerHTML = `
@@ -948,11 +1019,30 @@ document.documentElement.classList.add("branding-loading");
             <table>
               <thead><tr><th>Result</th><th>Info</th></tr></thead>
               <tbody>
-                <tr><td>Inserted</td><td>${inserted}</td></tr>
+                <tr><td>Created</td><td>${created}</td></tr>
+                <tr><td>Updated</td><td>${updated}</td></tr>
+                <tr><td>Skipped</td><td>${skipped}</td></tr>
                 <tr><td>Failed</td><td>${failed}</td></tr>
               </tbody>
             </table>
           </div>
+          ${skippedList.length ? `
+            <div style="margin-top:10px; font-weight:1000; color:#111;">Skipped Rows:</div>
+            <div class="tableWrap" style="margin-top:8px;">
+              <table>
+                <thead><tr><th>Line</th><th>Student Code</th><th>Reason</th></tr></thead>
+                <tbody>
+                  ${skippedList.map(r => `
+                    <tr>
+                      <td>${escapeHtml(String(r.line ?? ""))}</td>
+                      <td>${escapeHtml(String(r.student_code ?? ""))}</td>
+                      <td class="badCell">${escapeHtml(String(r.reason ?? ""))}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          ` : ""}
           ${failedList.length ? `
             <div style="margin-top:10px; font-weight:1000; color:#111;">Failed Rows:</div>
             <div class="tableWrap" style="margin-top:8px;">
@@ -969,8 +1059,9 @@ document.documentElement.classList.add("branding-loading");
                 </tbody>
               </table>
             </div>
-          ` : `<div style="margin-top:10px; font-weight:1000; color:#111;">All rows imported successfully</div>`}
+          ` : (!skippedList.length ? `<div style="margin-top:10px; font-weight:1000; color:#111;">All rows imported successfully</div>` : "")}
         `;
+        csvSummary.textContent = `Created: ${created} • Updated: ${updated} • Skipped: ${skipped} • Failed: ${failed}`;
 
       }catch(e){
         csvLoader.style.display = "none";
