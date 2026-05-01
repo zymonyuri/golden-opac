@@ -6842,7 +6842,18 @@ def opac_book_details(book_id: int):
         )
         counts = cur.fetchone()
 
-        return {"book": book, "availability": counts}
+        cur.execute(
+            """
+            SELECT COUNT(l.loan_id)::int AS borrow_count
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            WHERE bc.book_id = %s
+            """,
+            (book_id,),
+        )
+        borrow_stats = cur.fetchone() or {"borrow_count": 0}
+
+        return {"book": book, "availability": counts, "stats": borrow_stats}
 
     finally:
         cur.close()

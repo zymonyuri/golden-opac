@@ -859,7 +859,7 @@
 
               <div class="actions">
                 <button class="btnGhost" id="editBtn" type="button">Edit Details</button>
-                <button class="btn" id="payBtn" type="button">Pay Fine</button>
+                <button class="btn" id="payBtn" type="button" style="display:none;">Pay Fine</button>
                 <button class="btnDanger" id="deleteStudentBtn" type="button">Delete Student</button>
               </div>
             </div>
@@ -1144,6 +1144,13 @@
       return { "Authorization": `Bearer ${token}`, ...extra };
     }
 
+    async function fetchMe(){
+      const res = await fetch(`${BASE_URL}/auth/me`, { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.detail || "Unable to verify account access.");
+      return data;
+    }
+
     function esc(s){
       return String(s ?? "").replace(/[&<>"']/g, m => ({
         "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
@@ -1293,6 +1300,14 @@
     const confirmPayBtn = document.getElementById("confirmPayBtn");
     const payError = document.getElementById("payError");
     const viewPaymentsBtn = document.getElementById("viewPaymentsBtn");
+    let currentUser = null;
+    let canPayFines = false;
+
+    function syncPaymentAccess(){
+      const role = String(currentUser?.role || "").trim().toLowerCase();
+      canPayFines = role === "cashier" || role === "admin";
+      if (payBtn) payBtn.style.display = canPayFines ? "" : "none";
+    }
 
     function openPayModal(){
       payError.style.display = "none";
@@ -1522,6 +1537,7 @@
     let derived = null; // derived current list that excludes "lost" based on history
 
     payBtn.addEventListener("click", () => {
+      if (!canPayFines) return;
       if (!profile) return;
       const st = profile.student || {};
       const fullName = `${(st.last_name||"").trim()}, ${(st.first_name||"").trim()}`.replace(/^,|,$/g,"").trim() || st.student_code || "Student";
@@ -1912,7 +1928,7 @@
               <div style="font-weight:1000;font-size:14px;color:rgba(0,0,0,0.72);">Outstanding Balance</div>
               <div style="font-weight:1000;font-size:26px;letter-spacing:0.01em;color:#111;">${esc(fmtMoney(outstanding))}</div>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div style="display:${canPayFines ? "flex" : "none"};gap:10px;flex-wrap:wrap;">
               <button class="btn" type="button" id="payFromFines">Pay Fine</button>
             </div>
           </div>
@@ -2056,7 +2072,17 @@
       }
     }
 
-    loadProfile();
+    async function init(){
+      try{
+        currentUser = await fetchMe();
+      }catch(e){
+        currentUser = null;
+      }
+      syncPaymentAccess();
+      await loadProfile();
+    }
+
+    init();
   </script>
   
   <script src="branding.js"></script>

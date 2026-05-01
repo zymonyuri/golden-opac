@@ -223,18 +223,24 @@
       object-fit: cover;
       display: block;
       filter: saturate(1.02) contrast(1.02);
+      transition: filter 180ms ease;
+    }
+
+    .book-card:hover img {
+      filter: brightness(0.48) saturate(0.92) contrast(1.12);
     }
 
     .book-overlay {
       position: absolute;
       inset: 0;
       display: grid;
-      align-content: end;
-      padding: 12px;
-      background: linear-gradient(transparent, rgba(0,0,0,0.68));
+      place-content: center;
+      padding: 14px;
+      background: rgba(0,0,0,0.28);
       opacity: 0;
       transform: translateY(4px);
       transition: opacity 180ms ease, transform 180ms ease;
+      text-align: center;
     }
 
     .book-card:hover .book-overlay {
@@ -244,14 +250,12 @@
 
     .book-title {
       color: #fff;
-      font-weight: 900;
+      font-weight: 1000;
       font-size: 13px;
-      line-height: 1.25;
-      text-shadow: 0 10px 22px rgba(0,0,0,0.45);
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      line-height: 1.22;
+      text-shadow: 0 3px 12px rgba(0,0,0,0.85), 0 10px 24px rgba(0,0,0,0.70);
+      overflow-wrap: anywhere;
+      word-break: normal;
     }
 
     .book-sub {
@@ -259,10 +263,8 @@
       color: rgba(255,255,255,0.86);
       font-size: 12px;
       opacity: 0.95;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
     }
 
     .panel-body { position: relative; }

@@ -141,6 +141,7 @@
       flex-direction: column;
       justify-content: space-between;
       animation: popIn 240ms ease both;
+      position: relative;
     }
 
     .info-top {
@@ -224,6 +225,25 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      padding-right: 150px;
+    }
+
+    .borrow-count-pill {
+      position: absolute;
+      right: 22px;
+      bottom: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: rgba(17,17,17,0.06);
+      border: 1px solid rgba(17,17,17,0.12);
+      color: rgba(0,0,0,0.72);
+      font-size: 12px;
+      font-weight: 1000;
+      white-space: nowrap;
     }
 
     .tag {
@@ -354,6 +374,12 @@
     @media (max-width: 780px) {
       .details-body { grid-template-columns: 1fr; }
       .cover-wrap { max-width: 280px; }
+      .tags { padding-right: 0; }
+      .borrow-count-pill {
+        position: static;
+        margin-top: 12px;
+        width: max-content;
+      }
     }
   </style>
   <link rel="stylesheet" href="mobile.css" />
@@ -653,6 +679,7 @@
         const data = await res.json();
         const book = data?.book ?? null;
         const avail = data?.availability ?? null;
+        const stats = data?.stats ?? {};
 
         if (!book) throw new Error("not_found");
 
@@ -668,6 +695,7 @@
 
         const total = Number(avail?.total_copies ?? 0);
         const available = Number(avail?.available_copies ?? 0);
+        const borrowCount = Number(stats?.borrow_count ?? 0);
 
         coverWrap.innerHTML = coverUrl
           ? `<img src="${escapeHtml(coverUrl)}" alt="${title} cover" loading="lazy" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=&quot;cover-empty&quot;>No Cover</div>';">`
@@ -704,6 +732,7 @@
          <div class="tags" id="tagRow">
             ${tags.map(t => `<button type="button" class="tag tag-btn" data-q="${escapeHtml(t.value)}" data-type="${escapeHtml(t.type)}">${escapeHtml(t.value)}</button>`).join("")}
           </div>
+          <div class="borrow-count-pill">${borrowCount} borrow${borrowCount === 1 ? "" : "s"}</div>
         `;
 
          infoCard.querySelectorAll(".tag-btn").forEach(btn => {
