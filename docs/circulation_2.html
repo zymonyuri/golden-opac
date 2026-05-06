@@ -434,6 +434,18 @@
       color: rgba(0,0,0,0.75);
     }
 
+    #finishBtn{
+      background: var(--brand-yellow);
+      color:#111;
+      border-color: color-mix(in srgb, var(--brand-yellow) 70%, rgba(0,0,0,0.18));
+      box-shadow: 0 12px 24px rgba(0,0,0,0.14);
+    }
+
+    #finishBtn:disabled{
+      opacity:.55;
+      filter:saturate(.7);
+    }
+
     .list{
       margin-top: 14px;
       border-radius: 14px;

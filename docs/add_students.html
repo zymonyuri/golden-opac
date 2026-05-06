@@ -824,6 +824,11 @@ document.documentElement.classList.add("branding-loading");
       successSub.textContent = sub || "";
       successModal.style.display = "flex";
     }
+    function markStudentsListDirty(){
+      sessionStorage.setItem("students:list-dirty:v1", "1");
+      localStorage.setItem("students:list-dirty:v1", "1");
+      sessionStorage.removeItem("students:list-state:v1");
+    }
     function closeSuccessModal(){ successModal.style.display = "none"; }
     closeSuccess.addEventListener("click", closeSuccessModal);
     successModal.addEventListener("click", (e) => { if (e.target === successModal) closeSuccessModal(); });
@@ -877,6 +882,7 @@ document.documentElement.classList.add("branding-loading");
           return;
         }
 
+        markStudentsListDirty();
         openSuccessModal(
           `${payload.last_name}, ${payload.first_name}`,
           `${payload.grade} - ${payload.section} • ${payload.student_code}`

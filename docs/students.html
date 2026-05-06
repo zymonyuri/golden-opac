@@ -735,6 +735,7 @@
 
     const STUDENT_PAGE_LIMIT = 50;
     const STUDENTS_STATE_KEY = "students:list-state:v1";
+    const STUDENTS_DIRTY_KEY = "students:list-dirty:v1";
     let studentsState = {
       items: [],
       nextCursor: null,
@@ -840,6 +841,20 @@
     function scheduleStudentsStateSave(){
       clearTimeout(scrollSaveTimer);
       scrollSaveTimer = setTimeout(saveStudentsState, 120);
+    }
+
+    function consumeStudentsDirtyFlag(){
+      const dirty = sessionStorage.getItem(STUDENTS_DIRTY_KEY) || localStorage.getItem(STUDENTS_DIRTY_KEY);
+      if (!dirty) return false;
+      sessionStorage.removeItem(STUDENTS_DIRTY_KEY);
+      localStorage.removeItem(STUDENTS_DIRTY_KEY);
+      sessionStorage.removeItem(STUDENTS_STATE_KEY);
+      return true;
+    }
+
+    function refreshStudentsList(){
+      studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+      loadBatch({ reset: true });
     }
 
     function openStudent(student_id){
@@ -1003,8 +1018,17 @@
 
     window.addEventListener("scroll", scheduleStudentsStateSave, { passive: true });
     window.addEventListener("pagehide", saveStudentsState);
+    window.addEventListener("pageshow", () => {
+      if (consumeStudentsDirtyFlag()){
+        qEl.value = "";
+        gradeFilterEl.value = "";
+        refreshStudentsList();
+      }
+    });
 
-    if (!restoreStudentsState()){
+    if (consumeStudentsDirtyFlag()){
+      refreshStudentsList();
+    } else if (!restoreStudentsState()){
       loadBatch({ reset: true });
     } else {
       updateLoadMoreState();

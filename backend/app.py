@@ -8081,7 +8081,7 @@ def reports_activity(limit: int = 30, current=Depends(require_roles("librarian",
                 SELECT
                     l.borrowed_at AS ts,
                     'checkout' AS type,
-                    ('Checked out: ' || b.title || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Checked out: ' || b.title || ' - ' || s.last_name || ', ' || s.first_name) AS message,
                     b.book_id,
                     s.student_id
                 FROM loan l
@@ -8095,7 +8095,7 @@ def reports_activity(limit: int = 30, current=Depends(require_roles("librarian",
                 SELECT
                     l.returned_at AS ts,
                     'return' AS type,
-                    ('Returned: ' || b.title || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Returned: ' || b.title || ' - ' || s.last_name || ', ' || s.first_name) AS message,
                     b.book_id,
                     s.student_id
                 FROM loan l
@@ -8110,7 +8110,7 @@ def reports_activity(limit: int = 30, current=Depends(require_roles("librarian",
                 SELECT
                     fp.paid_at AS ts,
                     'fine_payment' AS type,
-                    ('Fine payment: â‚±' || fp.amount || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Fine payment: PHP ' || fp.amount || ' - ' || s.last_name || ', ' || s.first_name) AS message,
                     NULL::int AS book_id,
                     s.student_id
                 FROM fine_payment fp
@@ -8122,7 +8122,7 @@ def reports_activity(limit: int = 30, current=Depends(require_roles("librarian",
                 SELECT
                     pl.printed_at AS ts,
                     'barcode_print' AS type,
-                    ('Barcode ' || pl.action || ': ' || bc.barcode || ' â€” ' || b.title) AS message,
+                    ('Barcode ' || pl.action || ': ' || bc.barcode || ' - ' || b.title) AS message,
                     b.book_id,
                     NULL::int AS student_id
                 FROM print_log pl
@@ -8135,7 +8135,7 @@ def reports_activity(limit: int = 30, current=Depends(require_roles("librarian",
                 SELECT
                     d.reported_at AS ts,
                     'damage' AS type,
-                    ('Damage report (' || d.severity || '): ' || b.title || ' â€” ' || s.last_name || ', ' || s.first_name) AS message,
+                    ('Damage report (' || d.severity || '): ' || b.title || ' - ' || s.last_name || ', ' || s.first_name) AS message,
                     b.book_id,
                     s.student_id
                 FROM damage_report d
