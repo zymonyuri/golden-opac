@@ -229,7 +229,7 @@
 
     .tools{
       display:grid;
-      grid-template-columns:minmax(0, 1fr) 190px auto;
+      grid-template-columns:minmax(0, 1fr) 190px auto auto;
       gap:12px;
       align-items:end;
       margin-bottom:0;
@@ -734,6 +734,7 @@
               </div>
 
               <button class="btn" id="addBtn" type="button">Add Student</button>
+              <button class="btnGhost" id="importTeachersBtn" type="button" style="display:none;">Import Teachers CSV</button>
             </div>
 
             <div class="progressRow">
@@ -777,12 +778,12 @@
             <input id="teacherCode" autocomplete="off" />
           </div>
           <div class="field">
-            <label for="teacherLastName">Last Name</label>
-            <input id="teacherLastName" autocomplete="off" />
-          </div>
-          <div class="field">
             <label for="teacherFirstName">First Name</label>
             <input id="teacherFirstName" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="teacherLastName">Last Name</label>
+            <input id="teacherLastName" autocomplete="off" />
           </div>
           <div class="field">
             <label for="teacherStatus">Status</label>
@@ -800,6 +801,31 @@
           <button class="btn" id="teacherSaveBtn" type="submit">Save Teacher</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="modalOverlay" id="teacherCsvModal" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="teacherCsvTitle">
+      <div class="modalTop">
+        <h2 id="teacherCsvTitle">Import Teachers CSV</h2>
+        <button class="btnGhost" id="teacherCsvCloseBtn" type="button">Close</button>
+      </div>
+      <div class="modalBody">
+        <p style="margin:0 0 10px;font-size:13px;font-weight:800;color:rgba(0,0,0,0.62);">
+          Required headers: <strong>teacher_code, first_name, last_name, status</strong>.
+        </p>
+        <input id="teacherCsvFile" type="file" accept=".csv,text/csv" style="display:none;" />
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btnGhost" id="chooseTeacherCsvBtn" type="button">Choose File</button>
+          <span id="teacherCsvFileName" style="font-size:13px;font-weight:900;color:rgba(0,0,0,0.58);">No file selected</span>
+        </div>
+        <div id="teacherCsvSummary" style="margin-top:12px;font-size:13px;font-weight:1000;color:#111;"></div>
+        <div class="modalError" id="teacherCsvError"></div>
+      </div>
+      <div class="modalActions">
+        <button class="btnGhost" id="teacherCsvCancelBtn" type="button">Cancel</button>
+        <button class="btn" id="teacherCsvImportBtn" type="button" disabled>Import Teachers CSV</button>
+      </div>
     </div>
   </div>
 
@@ -1260,6 +1286,7 @@
     const teachersTab = document.getElementById("teachersTab");
     const titleAccent = document.querySelector(".titleRow h1 .accent");
     const addBtnEl = document.getElementById("addBtn");
+    const importTeachersBtn = document.getElementById("importTeachersBtn");
 
     function syncTabUi(){
       const isTeachers = activeTab === "teachers";
@@ -1273,6 +1300,7 @@
         : "Search student code, last name, grade, or section...";
       gradeFilterEl.closest(".filterBlock").style.display = isTeachers ? "none" : "";
       addBtnEl.textContent = isTeachers ? "Add Teacher" : "Add Student";
+      importTeachersBtn.style.display = isTeachers ? "" : "none";
       document.querySelector(".pagination")?.setAttribute("aria-label", isTeachers ? "Teacher load more" : "Student load more");
       history.replaceState(history.state || {}, "", `students.html?${new URLSearchParams({ tab: activeTab, ...getQueryState() }).toString()}`);
     }
@@ -1386,6 +1414,114 @@
         setTeacherError(err?.message || "Network error.");
       }finally{
         teacherDeleteBtn.disabled = false;
+      }
+    });
+
+    const teacherCsvModal = document.getElementById("teacherCsvModal");
+    const teacherCsvFile = document.getElementById("teacherCsvFile");
+    const teacherCsvImportBtn = document.getElementById("teacherCsvImportBtn");
+    const teacherCsvFileName = document.getElementById("teacherCsvFileName");
+    const teacherCsvSummary = document.getElementById("teacherCsvSummary");
+    const teacherCsvError = document.getElementById("teacherCsvError");
+    let selectedTeacherCsv = null;
+
+    function setTeacherCsvError(message){
+      teacherCsvError.style.display = message ? "block" : "none";
+      teacherCsvError.textContent = message || "";
+    }
+
+    function openTeacherCsvModal(){
+      selectedTeacherCsv = null;
+      teacherCsvFile.value = "";
+      teacherCsvFileName.textContent = "No file selected";
+      teacherCsvSummary.textContent = "";
+      teacherCsvImportBtn.disabled = true;
+      setTeacherCsvError("");
+      teacherCsvModal.classList.add("is-open");
+      teacherCsvModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeTeacherCsvModal(){
+      teacherCsvModal.classList.remove("is-open");
+      teacherCsvModal.setAttribute("aria-hidden", "true");
+      setTeacherCsvError("");
+    }
+
+    function parseTeacherCsvPreview(text){
+      const lines = String(text || "").split(/\r?\n/).filter(line => line.trim() !== "");
+      if (!lines.length) throw new Error("CSV is empty.");
+      const parseLine = (line) => {
+        const out = [];
+        let cur = "";
+        let quoted = false;
+        for (let i = 0; i < line.length; i++){
+          const ch = line[i];
+          if (ch === '"' && line[i + 1] === '"'){ cur += '"'; i++; continue; }
+          if (ch === '"'){ quoted = !quoted; continue; }
+          if (ch === "," && !quoted){ out.push(cur.trim()); cur = ""; continue; }
+          cur += ch;
+        }
+        out.push(cur.trim());
+        return out;
+      };
+      const headers = parseLine(lines[0]).map(h => h.toLowerCase());
+      const required = ["teacher_code", "first_name", "last_name", "status"];
+      const missing = required.filter(h => !headers.includes(h));
+      if (missing.length) throw new Error(`Missing required headers: ${missing.join(", ")}.`);
+      return { headers, count: Math.max(0, lines.length - 1) };
+    }
+
+    importTeachersBtn.addEventListener("click", openTeacherCsvModal);
+    document.getElementById("teacherCsvCloseBtn").addEventListener("click", closeTeacherCsvModal);
+    document.getElementById("teacherCsvCancelBtn").addEventListener("click", closeTeacherCsvModal);
+    teacherCsvModal.addEventListener("click", (e) => { if (e.target === teacherCsvModal) closeTeacherCsvModal(); });
+    document.getElementById("chooseTeacherCsvBtn").addEventListener("click", () => teacherCsvFile.click());
+
+    teacherCsvFile.addEventListener("change", async () => {
+      const file = teacherCsvFile.files?.[0];
+      selectedTeacherCsv = file || null;
+      teacherCsvFileName.textContent = file ? file.name : "No file selected";
+      teacherCsvImportBtn.disabled = true;
+      teacherCsvSummary.textContent = "";
+      setTeacherCsvError("");
+      if (!file) return;
+      try{
+        const preview = parseTeacherCsvPreview(await file.text());
+        teacherCsvSummary.textContent = `Rows detected: ${preview.count}`;
+        teacherCsvImportBtn.disabled = false;
+      }catch(err){
+        setTeacherCsvError(err?.message || "Unable to read Teacher CSV.");
+      }
+    });
+
+    teacherCsvImportBtn.addEventListener("click", async () => {
+      if (!selectedTeacherCsv) return;
+      teacherCsvImportBtn.disabled = true;
+      setTeacherCsvError("");
+      teacherCsvSummary.textContent = "Importing teachers...";
+      try{
+        const fd = new FormData();
+        fd.append("file", selectedTeacherCsv);
+        const res = await fetch(`${BASE_URL}/api/teachers/import-csv`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: fd
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok){
+          setTeacherCsvError(data?.detail?.message || data?.detail || "Teacher CSV import failed.");
+          return;
+        }
+        const added = Number(data?.added ?? data?.created ?? 0);
+        const updated = Number(data?.updated ?? 0);
+        const skipped = Number(data?.skipped ?? 0);
+        const failed = Number(data?.failed_count ?? 0);
+        teacherCsvSummary.textContent = `Added: ${added} • Updated: ${updated} • Skipped: ${skipped} • Errors: ${failed}`;
+        await refreshTeachersList();
+      }catch(err){
+        setTeacherCsvError(err?.message || "Network error.");
+      }finally{
+        teacherCsvImportBtn.disabled = false;
       }
     });
 

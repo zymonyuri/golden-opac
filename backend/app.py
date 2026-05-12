@@ -420,13 +420,40 @@ def ensure_runtime_schema():
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # Backward-compatible borrower split: existing rows remain students;
-        # teachers reuse the borrower/loan/fine relationships on student.student_id.
+        # Backward-compatible borrower split. Teachers now live in their own
+        # table; the student.borrower_type column is retained only so older
+        # deployments that briefly stored teachers in student can be migrated.
         cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS borrower_type VARCHAR(20) NOT NULL DEFAULT 'student'")
         cur.execute("""
             UPDATE student
             SET borrower_type = 'student'
             WHERE borrower_type IS NULL OR BTRIM(borrower_type) = ''
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS teacher (
+                id SERIAL PRIMARY KEY,
+                teacher_code VARCHAR(100) NOT NULL UNIQUE,
+                first_name VARCHAR(255) NOT NULL,
+                last_name VARCHAR(255) NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        # One-time safety migration for any teacher rows created before the
+        # dedicated teacher table existed. Student rows are left untouched.
+        cur.execute("""
+            INSERT INTO teacher (teacher_code, first_name, last_name, status, created_at, updated_at)
+            SELECT student_code, first_name, last_name, COALESCE(NULLIF(status, ''), 'active'), created_at, COALESCE(updated_at, NOW())
+            FROM student
+            WHERE COALESCE(borrower_type, 'student') = 'teacher'
+              AND student_code IS NOT NULL
+              AND BTRIM(student_code) <> ''
+            ON CONFLICT (teacher_code) DO UPDATE SET
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                status = EXCLUDED.status,
+                updated_at = NOW()
         """)
         cur.execute("ALTER TABLE librarian ADD COLUMN IF NOT EXISTS role VARCHAR(20)")
         cur.execute("ALTER TABLE librarian ALTER COLUMN role SET DEFAULT 'librarian'")
@@ -2217,6 +2244,13 @@ class TeacherPayload(BaseModel):
     status: str = "active"
 
 
+def normalize_teacher_status(status: str | None) -> str:
+    value = (status or "active").strip().lower()
+    if value not in {"active", "suspended", "inactive"}:
+        raise HTTPException(status_code=400, detail="status must be active, suspended, or inactive")
+    return value
+
+
 @app.post("/api/students")
 def add_student(
     payload: StudentCreate,
@@ -3462,15 +3496,10 @@ def reports_dashboard(
         cur.execute("SELECT COUNT(*) AS total_copies FROM book_copy")
         total_copies = cur.fetchone()["total_copies"]
 
-        cur.execute("""
-            SELECT
-              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='student') AS total_students,
-              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='teacher') AS total_teachers
-            FROM student
-        """)
-        borrower_totals = cur.fetchone()
-        total_students = borrower_totals["total_students"]
-        total_teachers = borrower_totals["total_teachers"]
+        cur.execute("SELECT COUNT(*) AS total_students FROM student WHERE COALESCE(borrower_type, 'student')='student'")
+        total_students = cur.fetchone()["total_students"]
+        cur.execute("SELECT COUNT(*) AS total_teachers FROM teacher")
+        total_teachers = cur.fetchone()["total_teachers"]
 
         active_loans_where = ["returned_at IS NULL"]
         active_loans_params = []
@@ -4973,13 +5002,10 @@ def grand_summary_report(
             FROM book_copy
         """)
         inv = cur.fetchone()
-        cur.execute("""
-            SELECT
-              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='student')::int AS total_students,
-              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='teacher')::int AS total_teachers
-            FROM student
-        """)
-        borrowers = cur.fetchone()
+        cur.execute("SELECT COUNT(*)::int AS total_students FROM student WHERE COALESCE(borrower_type, 'student') = 'student'")
+        total_students = int(cur.fetchone()["total_students"] or 0)
+        cur.execute("SELECT COUNT(*)::int AS total_teachers FROM teacher")
+        total_teachers = int(cur.fetchone()["total_teachers"] or 0)
 
         loan_scope = []
         loan_params = []
@@ -4995,12 +5021,21 @@ def grand_summary_report(
 
         cur.execute(f"""
             SELECT
+              COUNT(*)::int AS total_loans,
               COUNT(*) FILTER (WHERE l.returned_at IS NULL)::int AS active_loans,
               COUNT(*) FILTER (WHERE l.returned_at IS NULL AND l.due_at < NOW())::int AS overdue_loans
             FROM loan l
             {loan_scope_sql}
         """, tuple(loan_params))
         loans = cur.fetchone()
+
+        cur.execute(f"""
+            SELECT COUNT(*)::int AS loans_in_period,
+                   COUNT(DISTINCT l.student_id)::int AS active_borrowers_in_period
+            FROM loan l
+            WHERE {' AND '.join(date_scope)}
+        """, tuple(date_params))
+        period_activity = cur.fetchone()
 
         cur.execute(f"""
             SELECT
@@ -5017,7 +5052,7 @@ def grand_summary_report(
             FROM loan l JOIN book_copy bc ON bc.copy_id=l.copy_id JOIN book b ON b.book_id=bc.book_id
             WHERE {' AND '.join(date_scope)}
             GROUP BY b.book_id, b.title, b.author
-            ORDER BY borrow_count DESC, b.title ASC LIMIT 8
+            ORDER BY borrow_count DESC, b.title ASC LIMIT 5
         """, tuple(date_params))
         most_borrowed = cur.fetchall()
 
@@ -5027,9 +5062,20 @@ def grand_summary_report(
             FROM loan l JOIN student s ON s.student_id=l.student_id
             WHERE {' AND '.join(date_scope)}
             GROUP BY s.student_id, s.student_code, s.first_name, s.last_name, s.borrower_type
-            ORDER BY borrow_count DESC, s.last_name ASC LIMIT 8
+            ORDER BY borrow_count DESC, s.last_name ASC LIMIT 5
         """, tuple(date_params))
         top_borrowers = cur.fetchall()
+
+        cur.execute(f"""
+            SELECT COALESCE(NULLIF(TRIM(s.grade), ''), 'Unspecified') AS group_name,
+                   COUNT(l.loan_id)::int AS borrow_count,
+                   COUNT(DISTINCT s.student_id)::int AS borrower_count
+            FROM loan l JOIN student s ON s.student_id=l.student_id
+            WHERE {' AND '.join(date_scope)}
+            GROUP BY COALESCE(NULLIF(TRIM(s.grade), ''), 'Unspecified')
+            ORDER BY borrow_count DESC, group_name ASC LIMIT 5
+        """, tuple(date_params))
+        borrower_groups = cur.fetchall()
 
         cur.execute(f"""
             SELECT COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown') AS subject,
@@ -5037,7 +5083,7 @@ def grand_summary_report(
             FROM loan l JOIN book_copy bc ON bc.copy_id=l.copy_id JOIN book b ON b.book_id=bc.book_id
             WHERE {' AND '.join(date_scope)}
             GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown')
-            ORDER BY borrow_count DESC, subject ASC LIMIT 8
+            ORDER BY borrow_count DESC, subject ASC LIMIT 5
         """, tuple(date_params))
         top_subjects = cur.fetchall()
 
@@ -5047,39 +5093,108 @@ def grand_summary_report(
                    COUNT(bc.copy_id) FILTER (WHERE bc.status='available')::int AS available
             FROM book b LEFT JOIN book_copy bc ON bc.book_id=b.book_id
             GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown')
-            ORDER BY total_copies DESC, subject ASC LIMIT 8
+            ORDER BY total_copies DESC, subject ASC LIMIT 5
         """)
         inventory_by_subject = cur.fetchall()
 
         cur.execute("SELECT COALESCE(status,'unknown') AS status, COUNT(*)::int AS count FROM book_copy GROUP BY COALESCE(status,'unknown') ORDER BY status")
         inventory_by_status = cur.fetchall()
 
+        total_copies = int(inv["total_copies"] or 0)
+        available_copies = int(inv["available_copies"] or 0)
+        borrowed_copies = int(inv["borrowed_copies"] or 0)
+        damaged_copies = int(inv["damaged_copies"] or 0)
+        lost_copies = int(inv["lost_copies"] or 0)
+        active_loans = int(loans["active_loans"] or 0)
+        overdue_loans = int(loans["overdue_loans"] or 0)
+        total_loans = int(loans["total_loans"] or 0)
+        loans_in_period = int(period_activity["loans_in_period"] or 0)
+        active_borrowers = int(period_activity["active_borrowers_in_period"] or 0)
+        availability_rate = round((available_copies / total_copies * 100), 1) if total_copies else 0
+        circulation_rate = round((borrowed_copies / total_copies * 100), 1) if total_copies else 0
+        overdue_percentage = round((overdue_loans / active_loans * 100), 1) if active_loans else 0
+        inactive_copies = damaged_copies + lost_copies
+        inactive_copy_rate = round((inactive_copies / total_copies * 100), 1) if total_copies else 0
+        fine_unpaid = float(fines["unpaid_fines"] or 0)
+        fine_collected = float(fines["collected_fines"] or 0)
+        top_subject = dict(top_subjects[0]) if top_subjects else None
+        top_group = dict(borrower_groups[0]) if borrower_groups else None
+
+        narrative = {
+            "library_overview": (
+                f"The library currently manages {total_books} titles and {total_copies} copies, "
+                f"serving {total_students} students and {total_teachers} teachers."
+            ),
+            "circulation_performance": (
+                f"There are {active_loans} active loans, with {overdue_loans} overdue "
+                f"({overdue_percentage}% of active loans). {loans_in_period} loans were recorded in this report period."
+            ),
+            "collection_status": (
+                f"{availability_rate}% of copies are available while {circulation_rate}% are currently borrowed. "
+                f"Inactive copies from damaged or lost status represent {inactive_copy_rate}% of inventory."
+            ),
+            "borrower_activity": (
+                f"The report period includes {active_borrowers} active borrowers. "
+                f"{'Grade ' + str(top_group['group_name']) + ' has the highest borrowing activity.' if top_group else 'No borrower group has borrowing activity for this period.'}"
+            ),
+            "subject_insights": (
+                f"{top_subject['subject']} materials are the most borrowed subject in this period."
+                if top_subject else "No subject borrowing pattern is available for this period."
+            ),
+            "fines_payments": (
+                f"Outstanding fines total PHP {fine_unpaid:.2f}, while collected fine payments total PHP {fine_collected:.2f}."
+            ),
+        }
+
+        recommendations = []
+        if overdue_percentage >= 20:
+            recommendations.append("Review overdue follow-ups because overdue loans represent a significant share of active loans.")
+        if availability_rate < 50:
+            recommendations.append("Availability is below half of total inventory; monitor high-demand titles and borrower limits.")
+        if inactive_copy_rate >= 10:
+            recommendations.append("Prioritize damaged and lost copy reconciliation to protect collection health.")
+        if not recommendations:
+            recommendations.append("Current indicators show a generally balanced library operation. Continue monitoring overdue loans and high-demand subjects.")
+
         return {
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "filters": {"date_from": dt_from.isoformat(), "date_to": dt_to.isoformat(), "school_year": school_year},
             "totals": {
                 "total_books": total_books,
-                "total_copies": int(inv["total_copies"] or 0),
-                "available_copies": int(inv["available_copies"] or 0),
-                "borrowed_copies": int(inv["borrowed_copies"] or 0),
-                "damaged_copies": int(inv["damaged_copies"] or 0),
-                "lost_copies": int(inv["lost_copies"] or 0),
-                "overdue_loans": int(loans["overdue_loans"] or 0),
-                "active_loans": int(loans["active_loans"] or 0),
-                "total_students": int(borrowers["total_students"] or 0),
-                "total_teachers": int(borrowers["total_teachers"] or 0),
-                "unpaid_fines": float(fines["unpaid_fines"] or 0),
-                "collected_fines": float(fines["collected_fines"] or 0),
+                "total_copies": total_copies,
+                "available_copies": available_copies,
+                "borrowed_copies": borrowed_copies,
+                "damaged_copies": damaged_copies,
+                "lost_copies": lost_copies,
+                "overdue_loans": overdue_loans,
+                "active_loans": active_loans,
+                "total_students": total_students,
+                "total_teachers": total_teachers,
+                "unpaid_fines": fine_unpaid,
+                "collected_fines": fine_collected,
             },
+            "metrics": {
+                "circulation_rate": circulation_rate,
+                "availability_rate": availability_rate,
+                "overdue_percentage": overdue_percentage,
+                "inactive_copy_rate": inactive_copy_rate,
+                "active_borrowers": active_borrowers,
+                "loans_in_period": loans_in_period,
+                "most_active_borrower_category": top_group["group_name"] if top_group else None,
+                "most_borrowed_subject": top_subject["subject"] if top_subject else None,
+            },
+            "narrative": narrative,
+            "recommendations": recommendations,
             "sections": {
                 "most_borrowed_books": [dict(r) for r in most_borrowed],
                 "top_borrowers": [dict(r) for r in top_borrowers],
+                "top_borrower_groups": [dict(r) for r in borrower_groups],
                 "top_subjects": [dict(r) for r in top_subjects],
                 "inventory_by_subject": [dict(r) for r in inventory_by_subject],
                 "inventory_by_status": [dict(r) for r in inventory_by_status],
-                "borrowing_activity_summary": {"date_from": dt_from.isoformat(), "date_to": dt_to.isoformat(), "loans_in_period": sum(int(r["borrow_count"] or 0) for r in most_borrowed)},
-                "fine_payment_summary": {"unpaid_fines": float(fines["unpaid_fines"] or 0), "collected_fines": float(fines["collected_fines"] or 0)},
-                "overdue_summary": {"overdue_loans": int(loans["overdue_loans"] or 0)},
+                "borrowing_activity_summary": {"date_from": dt_from.isoformat(), "date_to": dt_to.isoformat(), "loans_in_period": loans_in_period, "active_borrowers": active_borrowers},
+                "fine_payment_summary": {"unpaid_fines": fine_unpaid, "collected_fines": fine_collected},
+                "overdue_summary": {"overdue_loans": overdue_loans, "overdue_percentage": overdue_percentage},
             },
         }
     finally:
@@ -5118,23 +5233,23 @@ def search_teachers(
     try:
         params = [q_clean, like, like, like, like, like, status_clean, status_clean]
         base_sql = """
-            FROM student s
-            WHERE COALESCE(s.borrower_type, 'student') = 'teacher'
-              AND (%s = '' OR (
-                    COALESCE(s.student_code, '') ILIKE %s OR
-                    COALESCE(s.last_name, '') ILIKE %s OR
-                    COALESCE(s.first_name, '') ILIKE %s OR
-                    TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) ILIKE %s OR
-                    TRIM(CONCAT(COALESCE(s.last_name, ''), ', ', COALESCE(s.first_name, ''))) ILIKE %s
+            FROM teacher t
+            WHERE
+              (%s = '' OR (
+                    COALESCE(t.teacher_code, '') ILIKE %s OR
+                    COALESCE(t.last_name, '') ILIKE %s OR
+                    COALESCE(t.first_name, '') ILIKE %s OR
+                    TRIM(CONCAT(COALESCE(t.first_name, ''), ' ', COALESCE(t.last_name, ''))) ILIKE %s OR
+                    TRIM(CONCAT(COALESCE(t.last_name, ''), ', ', COALESCE(t.first_name, ''))) ILIKE %s
               ))
-              AND (%s = '' OR COALESCE(s.status, '') ILIKE %s)
+              AND (%s = '' OR COALESCE(t.status, '') ILIKE %s)
         """
         cur.execute(
             f"""
-            SELECT s.student_id AS teacher_id, s.student_id, s.student_code AS teacher_code,
-                   s.student_code, s.last_name, s.first_name, s.status
+            SELECT t.id AS teacher_id, t.id, t.teacher_code, t.last_name, t.first_name, t.status,
+                   t.created_at, t.updated_at
             {base_sql}
-            ORDER BY s.last_name ASC, s.first_name ASC, s.student_id ASC
+            ORDER BY t.last_name ASC, t.first_name ASC, t.id ASC
             LIMIT %s OFFSET %s
             """,
             tuple(params + [effective_limit + 1, offset]),
@@ -5161,28 +5276,25 @@ def add_teacher(payload: TeacherPayload, current=Depends(require_roles("libraria
     teacher_code = (payload.teacher_code or payload.student_code or "").strip()
     last_name = (payload.last_name or "").strip()
     first_name = (payload.first_name or "").strip()
-    status = (payload.status or "active").strip().lower()
+    status = normalize_teacher_status(payload.status)
     if not teacher_code:
         raise HTTPException(status_code=400, detail="teacher_code is required")
     if not last_name or not first_name:
         raise HTTPException(status_code=400, detail="teacher name is required")
-    if status not in ["active", "suspended", "inactive"]:
-        raise HTTPException(status_code=400, detail="status must be active, suspended, or inactive")
-
     conn = get_connection()
     cur = conn.cursor()
     try:
         cur.execute(
             """
-            INSERT INTO student (student_code, last_name, first_name, grade, section, status, borrower_type, created_at)
-            VALUES (%s, %s, %s, '', '', %s, 'teacher', NOW())
-            RETURNING student_id
+            INSERT INTO teacher (teacher_code, last_name, first_name, status, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, NOW(), NOW())
+            RETURNING id
             """,
             (teacher_code, last_name, first_name, status),
         )
-        teacher_id = cur.fetchone()["student_id"]
+        teacher_id = cur.fetchone()["id"]
         conn.commit()
-        return {"message": "Teacher added", "teacher_id": teacher_id, "student_id": teacher_id}
+        return {"message": "Teacher added", "teacher_id": teacher_id, "id": teacher_id}
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to add teacher: {str(e)}")
@@ -5200,22 +5312,18 @@ def update_teacher(
     teacher_code = (payload.teacher_code or payload.student_code or "").strip()
     last_name = (payload.last_name or "").strip()
     first_name = (payload.first_name or "").strip()
-    status = (payload.status or "active").strip().lower()
+    status = normalize_teacher_status(payload.status)
     if not teacher_code or not last_name or not first_name:
         raise HTTPException(status_code=400, detail="All required fields must be provided.")
-    if status not in ["active", "suspended", "inactive"]:
-        raise HTTPException(status_code=400, detail="status must be active, suspended, or inactive")
-
     conn = get_connection()
     cur = conn.cursor()
     try:
         cur.execute(
             """
-            UPDATE student
-            SET student_code=%s, last_name=%s, first_name=%s, status=%s,
-                borrower_type='teacher', grade='', section='', updated_at=NOW()
-            WHERE student_id=%s AND COALESCE(borrower_type, 'student') = 'teacher'
-            RETURNING student_id
+            UPDATE teacher
+            SET teacher_code=%s, last_name=%s, first_name=%s, status=%s, updated_at=NOW()
+            WHERE id=%s
+            RETURNING id
             """,
             (teacher_code, last_name, first_name, status, teacher_id),
         )
@@ -5230,6 +5338,98 @@ def update_teacher(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Update teacher failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/api/teachers/import-csv")
+async def import_teachers_csv(
+    file: UploadFile = File(...),
+    default_status: str = "active",
+    current=Depends(require_roles("librarian", "admin")),
+):
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a .csv file")
+
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except Exception:
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded")
+
+    reader = csv.DictReader(io.StringIO(text))
+    required_headers = {"teacher_code", "first_name", "last_name", "status"}
+    missing = required_headers - set((h or "").strip() for h in (reader.fieldnames or []))
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Missing required CSV headers", "missing_headers": sorted(list(missing))},
+        )
+
+    conn = get_connection()
+    cur = conn.cursor()
+    added = 0
+    updated = 0
+    skipped = []
+    failed = []
+    try:
+        for idx, row in enumerate(reader, start=2):
+            cur.execute("SAVEPOINT teacher_import_row")
+            try:
+                teacher_code = (row.get("teacher_code") or "").strip()
+                first_name = (row.get("first_name") or "").strip()
+                last_name = (row.get("last_name") or "").strip()
+                status = (row.get("status") or default_status or "active").strip().lower()
+
+                if not teacher_code:
+                    raise ValueError("teacher_code is required")
+                if not first_name or not last_name:
+                    raise ValueError("first_name and last_name are required")
+                if status not in {"active", "suspended", "inactive"}:
+                    raise ValueError("status must be active, suspended, or inactive")
+
+                cur.execute("SELECT id FROM teacher WHERE teacher_code = %s", (teacher_code,))
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute(
+                        """
+                        UPDATE teacher
+                        SET first_name=%s, last_name=%s, status=%s, updated_at=NOW()
+                        WHERE id=%s
+                        """,
+                        (first_name, last_name, status, existing["id"]),
+                    )
+                    updated += 1
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO teacher (teacher_code, first_name, last_name, status, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, NOW(), NOW())
+                        """,
+                        (teacher_code, first_name, last_name, status),
+                    )
+                    added += 1
+                cur.execute("RELEASE SAVEPOINT teacher_import_row")
+            except Exception as row_err:
+                cur.execute("ROLLBACK TO SAVEPOINT teacher_import_row")
+                cur.execute("RELEASE SAVEPOINT teacher_import_row")
+                failed.append({"line": idx, "teacher_code": row.get("teacher_code") or "", "error": str(row_err)})
+
+        conn.commit()
+        return {
+            "message": "Teacher CSV import finished",
+            "added": added,
+            "created": added,
+            "updated": updated,
+            "skipped": len(skipped),
+            "skipped_rows": skipped,
+            "failed_count": len(failed),
+            "failed": failed,
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Teacher CSV import failed: {str(e)}")
     finally:
         cur.close()
         conn.close()
@@ -9380,9 +9580,9 @@ def delete_teacher(teacher_id: int, current=Depends(require_roles("librarian", "
     try:
         cur.execute(
             """
-            SELECT student_id
-            FROM student
-            WHERE student_id = %s AND COALESCE(borrower_type, 'student') = 'teacher'
+            SELECT id
+            FROM teacher
+            WHERE id = %s
             """,
             (teacher_id,),
         )
@@ -9390,15 +9590,10 @@ def delete_teacher(teacher_id: int, current=Depends(require_roles("librarian", "
         if not row:
             raise HTTPException(status_code=404, detail="Teacher not found")
 
-        sid = row["student_id"]
-        cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE student_id = %s)", (sid,))
-        cur.execute("DELETE FROM fine WHERE student_id = %s", (sid,))
-        cur.execute("DELETE FROM damage_report WHERE student_id = %s", (sid,))
-        cur.execute("DELETE FROM loan WHERE student_id = %s", (sid,))
-        cur.execute("DELETE FROM student WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM teacher WHERE id = %s", (row["id"],))
 
         conn.commit()
-        return {"message": "Teacher and all associated records deleted successfully"}
+        return {"message": "Teacher deleted successfully"}
     except HTTPException:
         conn.rollback()
         raise

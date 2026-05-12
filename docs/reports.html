@@ -1206,14 +1206,10 @@
       const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);const sy=getSchoolYear();if(sy)p.set("school_year",sy);
       const r=await fetch(`${BASE_URL}/api/reports/grand-summary?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");const d=await r.json();
       d.rows=[
-        ...(d.sections?.most_borrowed_books||[]).map(x=>({section:"Most borrowed books",item:x.title||"Untitled",value:fmtNum(x.borrow_count||0),note:x.author||""})),
-        ...(d.sections?.top_borrowers||[]).map(x=>({section:"Top borrowers",item:`${x.last_name||""}, ${x.first_name||""}`.replace(/^,\s*/,"")||x.student_code||"Borrower",value:fmtNum(x.borrow_count||0),note:String(x.borrower_type||"student")})),
-        ...(d.sections?.top_subjects||[]).map(x=>({section:"Top subjects",item:x.subject||"Unknown",value:fmtNum(x.borrow_count||0),note:"borrows"})),
-        ...(d.sections?.inventory_by_subject||[]).map(x=>({section:"Inventory by subject",item:x.subject||"Unknown",value:fmtNum(x.total_copies||0),note:`${fmtNum(x.available||0)} available`})),
-        ...(d.sections?.inventory_by_status||[]).map(x=>({section:"Inventory by status",item:x.status||"unknown",value:fmtNum(x.count||0),note:"copies"})),
-        {section:"Borrowing activity summary",item:`${d.filters?.date_from||""} to ${d.filters?.date_to||""}`,value:fmtNum(d.sections?.borrowing_activity_summary?.loans_in_period||0),note:"loans in period"},
-        {section:"Fine/payment summary",item:"Unpaid fines",value:peso(d.sections?.fine_payment_summary?.unpaid_fines||0),note:`Collected ${peso(d.sections?.fine_payment_summary?.collected_fines||0)}`},
-        {section:"Overdue summary",item:"Current overdue loans",value:fmtNum(d.sections?.overdue_summary?.overdue_loans||0),note:"loans"}
+        ...(d.sections?.most_borrowed_books||[]).map(x=>({section:"Most Borrowed Materials",item:x.title||"Untitled",value:fmtNum(x.borrow_count||0),note:x.author||""})),
+        ...(d.sections?.top_borrower_groups||[]).map(x=>({section:"Borrower Activity",item:`Grade ${x.group_name||"Unspecified"}`,value:fmtNum(x.borrow_count||0),note:`${fmtNum(x.borrower_count||0)} borrower(s)`})),
+        ...(d.sections?.top_subjects||[]).map(x=>({section:"Subject Insights",item:x.subject||"Unknown",value:fmtNum(x.borrow_count||0),note:"borrows"})),
+        ...(d.sections?.inventory_by_status||[]).map(x=>({section:"Inventory Insights",item:x.status||"unknown",value:fmtNum(x.count||0),note:"copies"}))
       ];
       return d;
     }
@@ -1286,7 +1282,7 @@
     const doc=document.querySelector("#reportOutput .rptDoc");if(!doc)return;
     const table=doc.querySelector(".rptTable");const header=doc.querySelector(".rptHeader");const body=doc.querySelector(".rptBody");const foot=doc.querySelector(".rptFoot");
     if(!table||!header||!body||!foot)return;
-    const filters=body.querySelector(".rptFilters");const sum=body.querySelector(".rptSumGrid");
+    const filters=body.querySelector(".rptFilters");const sum=body.querySelector(".rptSumGrid");const summaryBlock=body.querySelector(".rptSummaryBlock");
     const thead=table.querySelector("thead")?.outerHTML||"";
     const colgroup=table.querySelector("colgroup")?.outerHTML||"";
     const rowHTMLs=[...table.querySelectorAll("tbody tr")].map(tr=>tr.outerHTML);
@@ -1296,6 +1292,7 @@
     const infoMeta=(infoParts[1]||"").replace(/\s*·\s*Page\s+\d+\s+of\s+\d+$/i,"");
     const filterHTML=filters?filters.outerHTML:"";
     const sumHTML=sum?sum.outerHTML:"";
+    const summaryHTML=summaryBlock?summaryBlock.outerHTML:"";
     const tableClass=table.className;
     const bodyClass=body.className;
 
@@ -1307,7 +1304,7 @@
     document.body.appendChild(host);
 
     function makeSkeleton(isFirst){
-      page.innerHTML=`${header.outerHTML}<div class="${bodyClass}">${isFirst?filterHTML:""}${isFirst?sumHTML:'<div class="rptContNote">Continued report</div>'}<table class="${tableClass}">${colgroup}${thead}<tbody></tbody></table></div><div class="rptFoot"><span>${esc(infoLeft)}</span><span>${esc(infoMeta)} · Page 1 of 1</span></div>`;
+      page.innerHTML=`${header.outerHTML}<div class="${bodyClass}">${isFirst?filterHTML:""}${isFirst?summaryHTML:""}${isFirst?sumHTML:'<div class="rptContNote">Continued report</div>'}<table class="${tableClass}">${colgroup}${thead}<tbody></tbody></table></div><div class="rptFoot"><span>${esc(infoLeft)}</span><span>${esc(infoMeta)} · Page 1 of 1</span></div>`;
       return page.querySelector("tbody");
     }
 
@@ -1345,7 +1342,7 @@
     host.remove();
 
     const totalPages=pages.length||1;
-    doc.innerHTML=`<div class="previewPages">${pages.map((slice,pageIdx)=>`<section class="rptPage rptPageBreak">      ${header.outerHTML}      <div class="${bodyClass}">        ${pageIdx===0?filterHTML:'<div class="rptContNote">Continued report</div>'}        ${pageIdx===0?sumHTML:''}        <table class="${tableClass}">${colgroup}${thead}<tbody>${slice.join("")}</tbody></table>      </div>      <div class="rptFoot">        <span>${esc(infoLeft)}</span>        <span>${esc(infoMeta)} · Page ${pageIdx+1} of ${totalPages}</span>      </div>    </section>`).join("")}</div>`;
+    doc.innerHTML=`<div class="previewPages">${pages.map((slice,pageIdx)=>`<section class="rptPage rptPageBreak">      ${header.outerHTML}      <div class="${bodyClass}">        ${pageIdx===0?filterHTML:'<div class="rptContNote">Continued report</div>'}        ${pageIdx===0?summaryHTML:''}        ${pageIdx===0?sumHTML:''}        <table class="${tableClass}">${colgroup}${thead}<tbody>${slice.join("")}</tbody></table>      </div>      <div class="rptFoot">        <span>${esc(infoLeft)}</span>        <span>${esc(infoMeta)} · Page ${pageIdx+1} of ${totalPages}</span>      </div>    </section>`).join("")}</div>`;
   }
 
   const RENDERERS={
@@ -1428,20 +1425,41 @@
       return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody compactBody">${fp.length?buildFiltBar(fp).replace('class="rptFilters"','class="rptFilters compact"'):""}${buildSum(sc).replace('class="rptSumGrid"','class="rptSumGrid compactCards"')}<table class="rptTable compact inventoryTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
     },
     grand_summary(data,brand){
-      const rows=data.rows||[];const t=data.totals||{};
+      const rows=data.rows||[];const t=data.totals||{},m=data.metrics||{},n=data.narrative||{},sec=data.sections||{};
       const fp=[{k:"Date",v:`${data.filters?.date_from||"\u2014"} to ${data.filters?.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()}];
-      const totals=[
-        ["Total books",fmtNum(t.total_books)],["Total copies",fmtNum(t.total_copies)],["Available copies",fmtNum(t.available_copies)],["Borrowed copies",fmtNum(t.borrowed_copies)],
-        ["Damaged copies",fmtNum(t.damaged_copies)],["Lost copies",fmtNum(t.lost_copies)],["Overdue loans",fmtNum(t.overdue_loans)],["Active loans",fmtNum(t.active_loans)],
-        ["Total students",fmtNum(t.total_students)],["Total teachers",fmtNum(t.total_teachers)],["Unpaid fines",peso(t.unpaid_fines||0)],["Collected fines/payments",peso(t.collected_fines||0)]
-      ];
-      const totalRows=totals.map(([k,v],i)=>`<tr><td>${i+1}</td><td><b>High-level totals</b></td><td>${esc(k)}</td><td><b>${esc(v)}</b></td><td>\u2014</td></tr>`).join("");
-      const insightRows=rows.map((r,i)=>`<tr><td>${i+1+totals.length}</td><td><b>${esc(r.section)}</b></td><td>${esc(r.item)}</td><td>${esc(r.value)}</td><td>${esc(r.note||"\u2014")}</td></tr>`).join("");
-      return buildHdr(brand,"Grand Summary")+`<div class="rptBody">${buildFiltBar(fp)}<table class="rptTable"><thead><tr><th style="width:45px">#</th><th style="width:145px">Section</th><th>Item</th><th style="width:90px">Value</th><th>Note</th></tr></thead><tbody>${totalRows}${insightRows}</tbody></table></div>`+buildFoot(rows.length+totals.length,"Grand Summary");
+      const metricCards=[
+        ["Circulation Rate",`${fmtNum(m.circulation_rate||0)}%`],["Availability Rate",`${fmtNum(m.availability_rate||0)}%`],
+        ["Overdue Share",`${fmtNum(m.overdue_percentage||0)}%`],["Active Borrowers",fmtNum(m.active_borrowers||0)],
+        ["Active Loans",fmtNum(t.active_loans||0)],["Unpaid Fines",peso(t.unpaid_fines||0)]
+      ].map(([lbl,val])=>`<div style="border:1px solid #e2e2e2;border-radius:10px;padding:9px;background:#fafafa;"><div style="font-size:9px;font-weight:900;text-transform:uppercase;color:#666;">${esc(lbl)}</div><div style="font-size:17px;font-weight:900;color:#111;margin-top:2px;">${esc(val)}</div></div>`).join("");
+      const section = (title, text) => `<div style="border-top:1px solid #e6e6e6;padding-top:10px;margin-top:10px;"><div style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#111;margin-bottom:4px;">${esc(title)}</div><div style="font-size:11px;line-height:1.5;color:#333;">${esc(text||"No insight available for this section.")}</div></div>`;
+      const topBooks=(sec.most_borrowed_books||[]).slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.title||"Untitled")}</b><div class="cs">${esc(r.author||"")}</div></td><td>${fmtNum(r.borrow_count||0)}</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No borrowing data for this period.</td></tr>`;
+      const groups=(sec.top_borrower_groups||[]).slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td>Grade ${esc(r.group_name||"Unspecified")}</td><td>${fmtNum(r.borrow_count||0)}</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No borrower group activity.</td></tr>`;
+      const subjects=(sec.top_subjects||[]).slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.subject||"Unknown")}</td><td>${fmtNum(r.borrow_count||0)}</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No subject activity.</td></tr>`;
+      const inventory=(sec.inventory_by_status||[]).map(r=>`<tr><td>${esc(r.status||"unknown")}</td><td>${fmtNum(r.count||0)}</td><td>${Number(t.total_copies||0)?Math.round(Number(r.count||0)/Number(t.total_copies||1)*100):0}%</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No inventory status data.</td></tr>`;
+      const recommendations=(data.recommendations||[]).map(x=>`<li>${esc(x)}</li>`).join("");
+      const summaryBlock=`<div class="rptSummaryBlock">
+        <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:6px;">Library Performance Summary</div>
+        <div style="font-size:11.5px;line-height:1.55;color:#333;margin-bottom:10px;">${esc(n.library_overview||"")}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">${metricCards}</div>
+        ${section("Circulation Performance",n.circulation_performance)}
+        ${section("Collection Status",n.collection_status)}
+        ${section("Borrower Activity",n.borrower_activity)}
+        ${section("Fines & Payments",n.fines_payments)}
+        ${section("Subject Insights",n.subject_insights)}
+        <div style="border-top:1px solid #e6e6e6;padding-top:10px;margin-top:10px;"><div style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#111;margin-bottom:4px;">Recommendations or Notes</div><ul style="margin:0 0 0 16px;padding:0;font-size:11px;line-height:1.45;color:#333;">${recommendations}</ul></div>
+      </div>`;
+      const supportRows=[
+        `<tr><td colspan="3"><b>Most Borrowed Materials</b></td></tr>${topBooks}`,
+        `<tr><td colspan="3"><b>Top Borrower Groups</b></td></tr>${groups}`,
+        `<tr><td colspan="3"><b>Subject Distribution</b></td></tr>${subjects}`,
+        `<tr><td colspan="3"><b>Inventory Status Counts</b></td></tr>${inventory}`
+      ].join("");
+      return buildHdr(brand,"Library Overview Report")+`<div class="rptBody">${buildFiltBar(fp)}${summaryBlock}<table class="rptTable" style="margin-top:12px;"><thead><tr><th style="width:48px">Rank</th><th>Supporting Insight</th><th style="width:90px">Count</th></tr></thead><tbody>${supportRows}</tbody></table></div>`+buildFoot(rows.length,"Library Overview Report");
     }
   };
 
-  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot",grand_summary:"Grand Summary"};
+  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot",grand_summary:"Library Overview Report"};
 
   async function generateReport(){
     const fetchFn=FETCHERS[curRType],render=RENDERERS[curRType];if(!fetchFn||!render)return;
@@ -1670,3 +1688,6 @@
   <script src="mobile-nav.js"></script>
 </body>
 </html>
+
+
+
