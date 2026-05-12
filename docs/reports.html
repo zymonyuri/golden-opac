@@ -483,6 +483,7 @@
                   <div class="reportTypeCard" data-rtype="most_borrowed"><div class="rtTitle">Most Borrowed Books</div><div class="rtDesc">Books ranked by borrow count over a selected date range</div></div>
                   <div class="reportTypeCard" data-rtype="grade_summary"><div class="rtTitle">Grade Summary</div><div class="rtDesc">Per-grade totals: borrows, active readers, overdue, fines</div></div>
                   <div class="reportTypeCard" data-rtype="inventory"><div class="rtTitle">Inventory Snapshot</div><div class="rtDesc">Book copy status: available, borrowed, damaged, lost &mdash; with filters</div></div>
+                  <div class="reportTypeCard" data-rtype="grand_summary"><div class="rtTitle">Grand Summary</div><div class="rtDesc">Overall library health totals, borrower activity, inventory, fines, and overdue summary</div></div>
                 </div>
               </div>
 
@@ -1132,6 +1133,11 @@
         `<div class="field small"><label>Copy Status</label><select id="f_ist"><option value="">All Statuses</option><option value="available">Available Only</option><option value="borrowed">Borrowed Only</option><option value="damaged">Damaged Only</option><option value="lost">Lost Only</option></select></div>`+
         `<div class="field small"><label>Subject</label><select id="f_isub"><option value="">Any Subject</option></select></div>`+
         `<div class="field small"><label>Sort By</label><select id="f_isort"><option value="title">Title A\u2013Z</option><option value="total_desc">Most Copies</option><option value="avail_asc">Least Available</option><option value="damaged_desc">Most Damaged</option></select></div>`;
+    },
+    grand_summary(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${ago30()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        schoolYearFieldHtml(_activeSchoolYear);
     }
   };
 
@@ -1194,6 +1200,21 @@
       if(st&&d.rows)d.rows=d.rows.filter(r=>{if(st==="available")return Number(r.available??0)>0;if(st==="borrowed")return Number(r.borrowed??0)>0;if(st==="damaged")return Number(r.damaged??0)>0;if(st==="lost")return Number(r.lost??0)>0;return true;});
       if(sub&&d.rows)d.rows=d.rows.filter(r=>String(r.subject||r.genre||"").trim()===sub);
       if(d.rows){if(srt==="total_desc")d.rows.sort((a,b)=>Number(b.total_copies??0)-Number(a.total_copies??0));else if(srt==="avail_asc")d.rows.sort((a,b)=>Number(a.available??0)-Number(b.available??0));else if(srt==="damaged_desc")d.rows.sort((a,b)=>Number(b.damaged??0)-Number(a.damaged??0));else d.rows.sort((a,b)=>String(a.title||"").localeCompare(String(b.title||"")));}
+      return d;
+    },
+    async grand_summary(){
+      const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);const sy=getSchoolYear();if(sy)p.set("school_year",sy);
+      const r=await fetch(`${BASE_URL}/api/reports/grand-summary?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");const d=await r.json();
+      d.rows=[
+        ...(d.sections?.most_borrowed_books||[]).map(x=>({section:"Most borrowed books",item:x.title||"Untitled",value:fmtNum(x.borrow_count||0),note:x.author||""})),
+        ...(d.sections?.top_borrowers||[]).map(x=>({section:"Top borrowers",item:`${x.last_name||""}, ${x.first_name||""}`.replace(/^,\s*/,"")||x.student_code||"Borrower",value:fmtNum(x.borrow_count||0),note:String(x.borrower_type||"student")})),
+        ...(d.sections?.top_subjects||[]).map(x=>({section:"Top subjects",item:x.subject||"Unknown",value:fmtNum(x.borrow_count||0),note:"borrows"})),
+        ...(d.sections?.inventory_by_subject||[]).map(x=>({section:"Inventory by subject",item:x.subject||"Unknown",value:fmtNum(x.total_copies||0),note:`${fmtNum(x.available||0)} available`})),
+        ...(d.sections?.inventory_by_status||[]).map(x=>({section:"Inventory by status",item:x.status||"unknown",value:fmtNum(x.count||0),note:"copies"})),
+        {section:"Borrowing activity summary",item:`${d.filters?.date_from||""} to ${d.filters?.date_to||""}`,value:fmtNum(d.sections?.borrowing_activity_summary?.loans_in_period||0),note:"loans in period"},
+        {section:"Fine/payment summary",item:"Unpaid fines",value:peso(d.sections?.fine_payment_summary?.unpaid_fines||0),note:`Collected ${peso(d.sections?.fine_payment_summary?.collected_fines||0)}`},
+        {section:"Overdue summary",item:"Current overdue loans",value:fmtNum(d.sections?.overdue_summary?.overdue_loans||0),note:"loans"}
+      ];
       return d;
     }
   };
@@ -1405,10 +1426,22 @@
       const cg=`<colgroup><col class="num"><col class="title"><col class="author"><col class="subject"><col class="location"><col class="total"><col class="available"><col class="borrowed"><col class="damaged"><col class="lost"></colgroup>`;
       const tb=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.title||"")}</div></td><td><div class="cs">${esc(r.author||"\u2014")}</div></td><td>${esc(r.genre||"\u2014")}</td><td>${esc(r.book_section||"\u2014")}</td><td><b>${fmtNum(r.total_copies)}</b></td><td><span class="pill ${Number(r.available||0)>0?"green":"gray"}">${fmtNum(r.available)}</span></td><td>${Number(r.borrowed||0)>0?`<span class="pill blue">${fmtNum(r.borrowed)}</span>`:"\u2014"}</td><td>${Number(r.damaged||0)>0?`<span class="pill yellow">${fmtNum(r.damaged)}</span>`:"\u2014"}</td><td>${Number(r.lost||0)>0?`<span class="pill red">${fmtNum(r.lost)}</span>`:"\u2014"}</td></tr>`).join(""):`<tr><td colspan="10" class="rptEmpty">No inventory records found.</td></tr>`;
       return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody compactBody">${fp.length?buildFiltBar(fp).replace('class="rptFilters"','class="rptFilters compact"'):""}${buildSum(sc).replace('class="rptSumGrid"','class="rptSumGrid compactCards"')}<table class="rptTable compact inventoryTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
+    },
+    grand_summary(data,brand){
+      const rows=data.rows||[];const t=data.totals||{};
+      const fp=[{k:"Date",v:`${data.filters?.date_from||"\u2014"} to ${data.filters?.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()}];
+      const totals=[
+        ["Total books",fmtNum(t.total_books)],["Total copies",fmtNum(t.total_copies)],["Available copies",fmtNum(t.available_copies)],["Borrowed copies",fmtNum(t.borrowed_copies)],
+        ["Damaged copies",fmtNum(t.damaged_copies)],["Lost copies",fmtNum(t.lost_copies)],["Overdue loans",fmtNum(t.overdue_loans)],["Active loans",fmtNum(t.active_loans)],
+        ["Total students",fmtNum(t.total_students)],["Total teachers",fmtNum(t.total_teachers)],["Unpaid fines",peso(t.unpaid_fines||0)],["Collected fines/payments",peso(t.collected_fines||0)]
+      ];
+      const totalRows=totals.map(([k,v],i)=>`<tr><td>${i+1}</td><td><b>High-level totals</b></td><td>${esc(k)}</td><td><b>${esc(v)}</b></td><td>\u2014</td></tr>`).join("");
+      const insightRows=rows.map((r,i)=>`<tr><td>${i+1+totals.length}</td><td><b>${esc(r.section)}</b></td><td>${esc(r.item)}</td><td>${esc(r.value)}</td><td>${esc(r.note||"\u2014")}</td></tr>`).join("");
+      return buildHdr(brand,"Grand Summary")+`<div class="rptBody">${buildFiltBar(fp)}<table class="rptTable"><thead><tr><th style="width:45px">#</th><th style="width:145px">Section</th><th>Item</th><th style="width:90px">Value</th><th>Note</th></tr></thead><tbody>${totalRows}${insightRows}</tbody></table></div>`+buildFoot(rows.length+totals.length,"Grand Summary");
     }
   };
 
-  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot"};
+  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot",grand_summary:"Grand Summary"};
 
   async function generateReport(){
     const fetchFn=FETCHERS[curRType],render=RENDERERS[curRType];if(!fetchFn||!render)return;
@@ -1551,9 +1584,22 @@
     fines:`/api/reports/export-typed/csv?report_type=fines`,
     most_borrowed:`/api/reports/export-typed/csv?report_type=most_borrowed`,
     grade_summary:`/api/reports/export-typed/csv?report_type=grade_summary`,
-    inventory:`/api/reports/export-typed/csv?report_type=inventory`
+    inventory:`/api/reports/export-typed/csv?report_type=inventory`,
+    grand_summary:null
   };
   document.getElementById("btnCsv").addEventListener("click",async()=>{
+    if(curRType==="grand_summary"){
+      showProg();
+      try{
+        const data=await FETCHERS.grand_summary();const rows=data.rows||[];
+        const totalRows=Object.entries(data.totals||{}).map(([k,v])=>({section:"Totals",item:k,value:v,note:""}));
+        const columns=["section","item","value","note"];
+        const csv=[columns.join(",")].concat([...totalRows,...rows].map(r=>columns.map(c=>{const val=r[c]??"";const str=String(val).replace(/"/g,'""');return /[",\n]/.test(str)?`"${str}"`:str;}).join(",")));
+        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`grand_summary_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+        hideProg(true);
+      }catch{hideProg(false);alert("CSV export failed.");}
+      return;
+    }
     if(curRType==="students"){
       showProg();
       try{

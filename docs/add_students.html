@@ -1068,6 +1068,7 @@ document.documentElement.classList.add("branding-loading");
           ` : (!skippedList.length ? `<div style="margin-top:10px; font-weight:1000; color:#111;">All rows imported successfully</div>` : "")}
         `;
         csvSummary.textContent = `Created: ${created} • Updated: ${updated} • Skipped: ${skipped} • Failed: ${failed}`;
+        markStudentsListDirty();
 
       }catch(e){
         csvLoader.style.display = "none";

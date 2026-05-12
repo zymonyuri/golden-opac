@@ -420,6 +420,14 @@ def ensure_runtime_schema():
     conn = get_connection()
     cur = conn.cursor()
     try:
+        # Backward-compatible borrower split: existing rows remain students;
+        # teachers reuse the borrower/loan/fine relationships on student.student_id.
+        cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS borrower_type VARCHAR(20) NOT NULL DEFAULT 'student'")
+        cur.execute("""
+            UPDATE student
+            SET borrower_type = 'student'
+            WHERE borrower_type IS NULL OR BTRIM(borrower_type) = ''
+        """)
         cur.execute("ALTER TABLE librarian ADD COLUMN IF NOT EXISTS role VARCHAR(20)")
         cur.execute("ALTER TABLE librarian ALTER COLUMN role SET DEFAULT 'librarian'")
         cur.execute("""
@@ -1267,7 +1275,8 @@ def student_lookup(student_code: str, current=Depends(require_roles("librarian",
     try:
         cur.execute(
             """
-            SELECT student_id, student_code, last_name, first_name, grade, section, status
+            SELECT student_id, student_code, last_name, first_name, grade, section, status,
+                   COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
             """,
@@ -1275,7 +1284,7 @@ def student_lookup(student_code: str, current=Depends(require_roles("librarian",
         )
         s = cur.fetchone()
         if not s:
-            raise HTTPException(status_code=404, detail="Student not found")
+            raise HTTPException(status_code=404, detail="Borrower not found")
 
         return {
             "student_id": s["student_id"],
@@ -1285,7 +1294,8 @@ def student_lookup(student_code: str, current=Depends(require_roles("librarian",
             "grade": s["grade"],
             "section": s["section"],
             "status": s["status"],
-            "grade_section": f"{s['grade']} - {s['section']}" if s["grade"] or s["section"] else "",
+            "borrower_type": s["borrower_type"],
+            "grade_section": "Teacher" if s["borrower_type"] == "teacher" else (f"{s['grade']} - {s['section']}" if s["grade"] or s["section"] else ""),
         }
     finally:
         cur.close()
@@ -2199,6 +2209,13 @@ class StudentCreate(BaseModel):
     section: str
     status: str = "active"
 
+class TeacherPayload(BaseModel):
+    teacher_code: str | None = None
+    student_code: str | None = None
+    last_name: str
+    first_name: str
+    status: str = "active"
+
 
 @app.post("/api/students")
 def add_student(
@@ -2217,8 +2234,8 @@ def add_student(
     try:
         cur.execute(
             """
-            INSERT INTO student (student_code, last_name, first_name, grade, section, status, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            INSERT INTO student (student_code, last_name, first_name, grade, section, status, borrower_type, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'student', NOW())
             RETURNING student_id
             """,
             (
@@ -2266,8 +2283,8 @@ def add_student(
     try:
         cur.execute(
             """
-            INSERT INTO student (student_code, last_name, first_name, grade, section, status, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            INSERT INTO student (student_code, last_name, first_name, grade, section, status, borrower_type, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'student', NOW())
             RETURNING student_id
             """,
             (student_code.strip(), last_name.strip(), first_name.strip(), grade.strip(), section.strip(), status.strip()),
@@ -2337,6 +2354,8 @@ def search_students(
             base_sql = """
                 FROM student s
                 WHERE
+                    COALESCE(s.borrower_type, 'student') = 'student'
+                    AND
                     (%s = '' OR (
                         COALESCE(s.student_code, '') ILIKE %s OR
                         COALESCE(s.last_name, '') ILIKE %s OR
@@ -2403,6 +2422,8 @@ def search_students(
         base_sql = """
             FROM student s
             WHERE
+                COALESCE(s.borrower_type, 'student') = 'student'
+                AND
                 (%s = '' OR (
                     COALESCE(s.student_code, '') ILIKE %s OR
                     COALESCE(s.last_name, '') ILIKE %s OR
@@ -2678,7 +2699,8 @@ def checkout_book(req: CheckoutRequest, current=Depends(require_roles("librarian
         # --- 2) Find student by student_code ---
         cur.execute(
             """
-            SELECT student_id, student_code, grade, section, status, last_name, first_name
+            SELECT student_id, student_code, grade, section, status, last_name, first_name,
+                   COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
             """,
@@ -2686,14 +2708,15 @@ def checkout_book(req: CheckoutRequest, current=Depends(require_roles("librarian
         )
         student = cur.fetchone()
         if not student:
-            raise HTTPException(status_code=404, detail="Student not found")
+            raise HTTPException(status_code=404, detail="Borrower not found")
 
         if (student["status"] or "").lower() != "active":
-            raise HTTPException(status_code=400, detail=f"Student is not active (status={student['status']})")
+            label = "Teacher" if student.get("borrower_type") == "teacher" else "Student"
+            raise HTTPException(status_code=400, detail=f"{label} is not active (status={student['status']})")
 
         student_id = student["student_id"]
         grade_raw = student["grade"]
-        grade = normalize_grade(grade_raw)   # <â€” normalize to "12"
+        grade = "Teacher" if student.get("borrower_type") == "teacher" else normalize_grade(grade_raw)
 
         cur.execute("""
         SELECT loan_period_days, max_borrow_limit, fine_per_day, max_renewals, block_renew_if_overdue
@@ -3439,8 +3462,15 @@ def reports_dashboard(
         cur.execute("SELECT COUNT(*) AS total_copies FROM book_copy")
         total_copies = cur.fetchone()["total_copies"]
 
-        cur.execute("SELECT COUNT(*) AS total_students FROM student")
-        total_students = cur.fetchone()["total_students"]
+        cur.execute("""
+            SELECT
+              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='student') AS total_students,
+              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='teacher') AS total_teachers
+            FROM student
+        """)
+        borrower_totals = cur.fetchone()
+        total_students = borrower_totals["total_students"]
+        total_teachers = borrower_totals["total_teachers"]
 
         active_loans_where = ["returned_at IS NULL"]
         active_loans_params = []
@@ -3616,6 +3646,7 @@ def reports_dashboard(
                 "total_books": int(total_books or 0),
                 "total_copies": int(total_copies or 0),
                 "total_students": int(total_students or 0),
+                "total_teachers": int(total_teachers or 0),
                 "active_loans": int(active_loans or 0),
                 "overdue_loans": int(overdue_loans or 0),
             },
@@ -4538,7 +4569,7 @@ def mark_book_lost(
         )
         student = cur.fetchone()
         if not student:
-            raise HTTPException(status_code=404, detail="Student not found")
+            raise HTTPException(status_code=404, detail="Borrower not found")
         student_id = student["student_id"]
 
         # --- 2) Copy ---
@@ -4695,8 +4726,8 @@ def update_student(
         cur.execute(
             """
             UPDATE student
-            SET student_code=%s, last_name=%s, first_name=%s, grade=%s, section=%s, status=%s, updated_at=NOW()
-            WHERE student_id=%s
+            SET student_code=%s, last_name=%s, first_name=%s, grade=%s, section=%s, status=%s, borrower_type='student', updated_at=NOW()
+            WHERE student_id=%s AND COALESCE(borrower_type, 'student') = 'student'
             RETURNING student_id
             """,
             (student_code, last_name, first_name, grade, section, status, student_id),
@@ -4808,6 +4839,7 @@ async def import_students_csv(
                         SELECT student_id, grade, section, status
                         FROM student
                         WHERE student_code = %s
+                          AND COALESCE(borrower_type, 'student') = 'student'
                         LIMIT 1
                         """,
                         (student_code,),
@@ -4821,6 +4853,7 @@ async def import_students_csv(
                         FROM student
                         WHERE LOWER(TRIM(last_name)) = LOWER(%s)
                           AND LOWER(TRIM(first_name)) = LOWER(%s)
+                          AND COALESCE(borrower_type, 'student') = 'student'
                         ORDER BY student_id ASC
                         """,
                         (last_name, first_name),
@@ -4868,10 +4901,11 @@ async def import_students_csv(
                         """
                         INSERT INTO student (
                             student_code, last_name, first_name, grade, section, status,
+                            borrower_type,
                             current_school_year, last_grade_section_change_school_year,
                             last_imported_at, created_at, updated_at
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
+                        VALUES (%s, %s, %s, %s, %s, %s, 'student', %s, %s, NOW(), NOW(), NOW())
                         """,
                         (student_code, last_name, first_name, grade, section, status_norm, school_year, school_year),
                     )
@@ -4906,6 +4940,296 @@ async def import_students_csv(
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"CSV import failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/reports/grand-summary")
+def grand_summary_report(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    school_year: str | None = None,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    dt_to = parse_date_yyyy_mm_dd(date_to, "date_to") if date_to else date.today()
+    dt_from = parse_date_yyyy_mm_dd(date_from, "date_from") if date_from else dt_to - timedelta(days=30)
+    if dt_from > dt_to:
+        raise HTTPException(status_code=400, detail="date_from must be <= date_to")
+    school_year = (school_year or "").strip() or None
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("SELECT COUNT(*)::int AS total_books FROM book")
+        total_books = int(cur.fetchone()["total_books"] or 0)
+        cur.execute("""
+            SELECT
+              COUNT(*)::int AS total_copies,
+              COUNT(*) FILTER (WHERE status='available')::int AS available_copies,
+              COUNT(*) FILTER (WHERE status='borrowed')::int AS borrowed_copies,
+              COUNT(*) FILTER (WHERE status='damaged')::int AS damaged_copies,
+              COUNT(*) FILTER (WHERE status='lost')::int AS lost_copies
+            FROM book_copy
+        """)
+        inv = cur.fetchone()
+        cur.execute("""
+            SELECT
+              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='student')::int AS total_students,
+              COUNT(*) FILTER (WHERE COALESCE(borrower_type, 'student')='teacher')::int AS total_teachers
+            FROM student
+        """)
+        borrowers = cur.fetchone()
+
+        loan_scope = []
+        loan_params = []
+        if school_year:
+            loan_scope.append("COALESCE(TRIM(l.school_year), '') = %s")
+            loan_params.append(school_year)
+        loan_scope_sql = ("WHERE " + " AND ".join(loan_scope)) if loan_scope else ""
+        date_scope = ["DATE(l.borrowed_at) >= %s", "DATE(l.borrowed_at) <= %s"]
+        date_params = [dt_from.isoformat(), dt_to.isoformat()]
+        if school_year:
+            date_scope.append("COALESCE(TRIM(l.school_year), '') = %s")
+            date_params.append(school_year)
+
+        cur.execute(f"""
+            SELECT
+              COUNT(*) FILTER (WHERE l.returned_at IS NULL)::int AS active_loans,
+              COUNT(*) FILTER (WHERE l.returned_at IS NULL AND l.due_at < NOW())::int AS overdue_loans
+            FROM loan l
+            {loan_scope_sql}
+        """, tuple(loan_params))
+        loans = cur.fetchone()
+
+        cur.execute(f"""
+            SELECT
+              COALESCE(SUM(CASE WHEN COALESCE(f.status,'') <> 'paid' THEN f.amount - f.amount_paid ELSE 0 END),0) AS unpaid_fines,
+              COALESCE(SUM(CASE WHEN COALESCE(f.status,'') = 'paid' THEN f.amount_paid ELSE 0 END),0) AS collected_fines
+            FROM fine f
+            LEFT JOIN loan l ON l.loan_id = f.loan_id
+            {loan_scope_sql}
+        """, tuple(loan_params))
+        fines = cur.fetchone()
+
+        cur.execute(f"""
+            SELECT b.title, b.author, COUNT(l.loan_id)::int AS borrow_count
+            FROM loan l JOIN book_copy bc ON bc.copy_id=l.copy_id JOIN book b ON b.book_id=bc.book_id
+            WHERE {' AND '.join(date_scope)}
+            GROUP BY b.book_id, b.title, b.author
+            ORDER BY borrow_count DESC, b.title ASC LIMIT 8
+        """, tuple(date_params))
+        most_borrowed = cur.fetchall()
+
+        cur.execute(f"""
+            SELECT s.student_code, s.first_name, s.last_name, COALESCE(s.borrower_type,'student') AS borrower_type,
+                   COUNT(l.loan_id)::int AS borrow_count
+            FROM loan l JOIN student s ON s.student_id=l.student_id
+            WHERE {' AND '.join(date_scope)}
+            GROUP BY s.student_id, s.student_code, s.first_name, s.last_name, s.borrower_type
+            ORDER BY borrow_count DESC, s.last_name ASC LIMIT 8
+        """, tuple(date_params))
+        top_borrowers = cur.fetchall()
+
+        cur.execute(f"""
+            SELECT COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown') AS subject,
+                   COUNT(l.loan_id)::int AS borrow_count
+            FROM loan l JOIN book_copy bc ON bc.copy_id=l.copy_id JOIN book b ON b.book_id=bc.book_id
+            WHERE {' AND '.join(date_scope)}
+            GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown')
+            ORDER BY borrow_count DESC, subject ASC LIMIT 8
+        """, tuple(date_params))
+        top_subjects = cur.fetchall()
+
+        cur.execute("""
+            SELECT COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown') AS subject,
+                   COUNT(bc.copy_id)::int AS total_copies,
+                   COUNT(bc.copy_id) FILTER (WHERE bc.status='available')::int AS available
+            FROM book b LEFT JOIN book_copy bc ON bc.book_id=b.book_id
+            GROUP BY COALESCE(NULLIF(TRIM(b.subject), ''), NULLIF(TRIM(b.genre), ''), 'Unknown')
+            ORDER BY total_copies DESC, subject ASC LIMIT 8
+        """)
+        inventory_by_subject = cur.fetchall()
+
+        cur.execute("SELECT COALESCE(status,'unknown') AS status, COUNT(*)::int AS count FROM book_copy GROUP BY COALESCE(status,'unknown') ORDER BY status")
+        inventory_by_status = cur.fetchall()
+
+        return {
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "filters": {"date_from": dt_from.isoformat(), "date_to": dt_to.isoformat(), "school_year": school_year},
+            "totals": {
+                "total_books": total_books,
+                "total_copies": int(inv["total_copies"] or 0),
+                "available_copies": int(inv["available_copies"] or 0),
+                "borrowed_copies": int(inv["borrowed_copies"] or 0),
+                "damaged_copies": int(inv["damaged_copies"] or 0),
+                "lost_copies": int(inv["lost_copies"] or 0),
+                "overdue_loans": int(loans["overdue_loans"] or 0),
+                "active_loans": int(loans["active_loans"] or 0),
+                "total_students": int(borrowers["total_students"] or 0),
+                "total_teachers": int(borrowers["total_teachers"] or 0),
+                "unpaid_fines": float(fines["unpaid_fines"] or 0),
+                "collected_fines": float(fines["collected_fines"] or 0),
+            },
+            "sections": {
+                "most_borrowed_books": [dict(r) for r in most_borrowed],
+                "top_borrowers": [dict(r) for r in top_borrowers],
+                "top_subjects": [dict(r) for r in top_subjects],
+                "inventory_by_subject": [dict(r) for r in inventory_by_subject],
+                "inventory_by_status": [dict(r) for r in inventory_by_status],
+                "borrowing_activity_summary": {"date_from": dt_from.isoformat(), "date_to": dt_to.isoformat(), "loans_in_period": sum(int(r["borrow_count"] or 0) for r in most_borrowed)},
+                "fine_payment_summary": {"unpaid_fines": float(fines["unpaid_fines"] or 0), "collected_fines": float(fines["collected_fines"] or 0)},
+                "overdue_summary": {"overdue_loans": int(loans["overdue_loans"] or 0)},
+            },
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/teachers")
+def search_teachers(
+    q: str = "",
+    search: str | None = None,
+    page: int = 1,
+    limit: int = 50,
+    cursor: str | None = None,
+    page_size: int | None = None,
+    status: str = "",
+    current=Depends(require_roles("librarian", "admin")),
+):
+    q_clean = (search if search is not None else q or "").strip()
+    status_clean = (status or "").strip()
+    like = f"%{q_clean}%"
+
+    effective_limit = page_size if page_size is not None else limit
+    try:
+        effective_limit = int(effective_limit)
+    except Exception:
+        effective_limit = 50
+    effective_limit = max(1, min(effective_limit, 100))
+    try:
+        offset = max(0, int(cursor if cursor is not None else (page - 1) * effective_limit))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid cursor")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        params = [q_clean, like, like, like, like, like, status_clean, status_clean]
+        base_sql = """
+            FROM student s
+            WHERE COALESCE(s.borrower_type, 'student') = 'teacher'
+              AND (%s = '' OR (
+                    COALESCE(s.student_code, '') ILIKE %s OR
+                    COALESCE(s.last_name, '') ILIKE %s OR
+                    COALESCE(s.first_name, '') ILIKE %s OR
+                    TRIM(CONCAT(COALESCE(s.first_name, ''), ' ', COALESCE(s.last_name, ''))) ILIKE %s OR
+                    TRIM(CONCAT(COALESCE(s.last_name, ''), ', ', COALESCE(s.first_name, ''))) ILIKE %s
+              ))
+              AND (%s = '' OR COALESCE(s.status, '') ILIKE %s)
+        """
+        cur.execute(
+            f"""
+            SELECT s.student_id AS teacher_id, s.student_id, s.student_code AS teacher_code,
+                   s.student_code, s.last_name, s.first_name, s.status
+            {base_sql}
+            ORDER BY s.last_name ASC, s.first_name ASC, s.student_id ASC
+            LIMIT %s OFFSET %s
+            """,
+            tuple(params + [effective_limit + 1, offset]),
+        )
+        rows = cur.fetchall()
+        has_more = len(rows) > effective_limit
+        items = rows[:effective_limit]
+        return {
+            "items": items,
+            "results": items,
+            "has_more": has_more,
+            "next_cursor": str(offset + effective_limit) if has_more else None,
+            "page_size": effective_limit,
+            "search": q_clean,
+            "filters": {"status": status_clean},
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.post("/api/teachers")
+def add_teacher(payload: TeacherPayload, current=Depends(require_roles("librarian", "admin"))):
+    teacher_code = (payload.teacher_code or payload.student_code or "").strip()
+    last_name = (payload.last_name or "").strip()
+    first_name = (payload.first_name or "").strip()
+    status = (payload.status or "active").strip().lower()
+    if not teacher_code:
+        raise HTTPException(status_code=400, detail="teacher_code is required")
+    if not last_name or not first_name:
+        raise HTTPException(status_code=400, detail="teacher name is required")
+    if status not in ["active", "suspended", "inactive"]:
+        raise HTTPException(status_code=400, detail="status must be active, suspended, or inactive")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            INSERT INTO student (student_code, last_name, first_name, grade, section, status, borrower_type, created_at)
+            VALUES (%s, %s, %s, '', '', %s, 'teacher', NOW())
+            RETURNING student_id
+            """,
+            (teacher_code, last_name, first_name, status),
+        )
+        teacher_id = cur.fetchone()["student_id"]
+        conn.commit()
+        return {"message": "Teacher added", "teacher_id": teacher_id, "student_id": teacher_id}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add teacher: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.put("/api/teachers/{teacher_id}")
+def update_teacher(
+    teacher_id: int,
+    payload: TeacherPayload,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    teacher_code = (payload.teacher_code or payload.student_code or "").strip()
+    last_name = (payload.last_name or "").strip()
+    first_name = (payload.first_name or "").strip()
+    status = (payload.status or "active").strip().lower()
+    if not teacher_code or not last_name or not first_name:
+        raise HTTPException(status_code=400, detail="All required fields must be provided.")
+    if status not in ["active", "suspended", "inactive"]:
+        raise HTTPException(status_code=400, detail="status must be active, suspended, or inactive")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            UPDATE student
+            SET student_code=%s, last_name=%s, first_name=%s, status=%s,
+                borrower_type='teacher', grade='', section='', updated_at=NOW()
+            WHERE student_id=%s AND COALESCE(borrower_type, 'student') = 'teacher'
+            RETURNING student_id
+            """,
+            (teacher_code, last_name, first_name, status, teacher_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Teacher not found")
+        conn.commit()
+        return {"message": "Teacher updated", "teacher_id": teacher_id}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Update teacher failed: {str(e)}")
     finally:
         cur.close()
         conn.close()
@@ -5842,10 +6166,11 @@ def circulation_precheck(student_code: str, current=Depends(require_roles("libra
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # 1) Student
+        # 1) Borrower
         cur.execute(
             """
-            SELECT student_id, student_code, last_name, first_name, grade, section, status
+            SELECT student_id, student_code, last_name, first_name, grade, section, status,
+                   COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
             """,
@@ -5853,10 +6178,11 @@ def circulation_precheck(student_code: str, current=Depends(require_roles("libra
         )
         st = cur.fetchone()
         if not st:
-            raise HTTPException(status_code=404, detail="Student not found")
+            raise HTTPException(status_code=404, detail="Borrower not found")
 
-        # 2) Get settings (grade_rule -> system_settings)
-        settings = _get_settings_for_grade(cur, st["grade"])
+        # 2) Get settings (grade/teacher rule -> system_settings)
+        borrower_type = st.get("borrower_type") or "student"
+        settings = _get_settings_for_grade(cur, "Teacher" if borrower_type == "teacher" else st["grade"])
         loan_days = int(settings["loan_period_days"] or 7)
         borrow_limit = int(settings["max_borrow_limit"] or 3)
 
@@ -5921,11 +6247,11 @@ def circulation_precheck(student_code: str, current=Depends(require_roles("libra
         # 7) Build reasons list (frontend displays this)
         reasons = []
 
-        # Student inactive blocks checkout
+        # Borrower inactive blocks checkout
         if (st["status"] or "active").lower() != "active":
             reasons.append({
                 "type": "student_inactive",
-                "label": "Student account is not active",
+                "label": "Teacher account is not active" if borrower_type == "teacher" else "Student account is not active",
                 "blocking": True
             })
 
@@ -5974,7 +6300,8 @@ def circulation_precheck(student_code: str, current=Depends(require_roles("libra
                 "grade": st["grade"],
                 "section": st["section"],
                 "status": st["status"],
-                "grade_section": f"{st['grade']} - {st['section']}" if st["grade"] or st["section"] else "",
+                "borrower_type": borrower_type,
+                "grade_section": "Teacher" if borrower_type == "teacher" else (f"{st['grade']} - {st['section']}" if st["grade"] or st["section"] else ""),
             },
             "rules": {
                 "loan_period_days": loan_days,
@@ -6010,7 +6337,7 @@ def overdue_list(student_code: str, current=Depends(require_roles("librarian", "
         cur.execute("SELECT student_id FROM student WHERE student_code=%s", (code,))
         st = cur.fetchone()
         if not st:
-            raise HTTPException(status_code=404, detail="Student not found")
+            raise HTTPException(status_code=404, detail="Borrower not found")
 
         cur.execute(
             """
@@ -9019,7 +9346,7 @@ def delete_student(student_id: int, current=Depends(require_roles("librarian", "
     cur = conn.cursor()
     try:
         # FIX: look up by student_id (PK), not student_code
-        cur.execute("SELECT student_id FROM student WHERE student_id = %s", (student_id,))
+        cur.execute("SELECT student_id FROM student WHERE student_id = %s AND COALESCE(borrower_type, 'student') = 'student'", (student_id,))
         row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Student not found")
@@ -9045,6 +9372,45 @@ def delete_student(student_id: int, current=Depends(require_roles("librarian", "
         cur.close()
         conn.close()
 
+
+@app.delete("/api/teachers/{teacher_id}")
+def delete_teacher(teacher_id: int, current=Depends(require_roles("librarian", "admin"))):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT student_id
+            FROM student
+            WHERE student_id = %s AND COALESCE(borrower_type, 'student') = 'teacher'
+            """,
+            (teacher_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Teacher not found")
+
+        sid = row["student_id"]
+        cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE student_id = %s)", (sid,))
+        cur.execute("DELETE FROM fine WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM damage_report WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM loan WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM student WHERE student_id = %s", (sid,))
+
+        conn.commit()
+        return {"message": "Teacher and all associated records deleted successfully"}
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Delete teacher failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
 @app.get("/health")
 def health():
     return {"ok": True}
+
+

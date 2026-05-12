@@ -2276,6 +2276,12 @@ document.documentElement.classList.add("branding-loading");
         opt.textContent = String(g).trim();
         selectEl.appendChild(opt);
       });
+      if (selectEl.id === "ruleGrade"){
+        const opt = document.createElement("option");
+        opt.value = "Teacher";
+        opt.textContent = "Teachers";
+        selectEl.appendChild(opt);
+      }
     }
 
     function latestRulesByGrade(rows){

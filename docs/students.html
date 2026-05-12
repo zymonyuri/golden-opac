@@ -137,6 +137,67 @@
       flex-direction:column;
     }
 
+    .tabs{
+      position:relative;
+      display:flex;
+      gap:10px;
+      padding:14px 16px 0;
+      border-bottom:1px solid rgba(0,0,0,0.12);
+      flex-wrap:wrap;
+      flex:0 0 auto;
+    }
+    .tabs::after{
+      content:"";
+      position:absolute;
+      left:16px;
+      right:16px;
+      bottom:-1px;
+      height:14px;
+      background:rgba(255,255,255,0.60);
+      border:1px solid rgba(0,0,0,0.10);
+      border-top:0;
+      border-radius:0 0 14px 14px;
+      z-index:0;
+      pointer-events:none;
+    }
+    .tab{
+      position:relative;
+      z-index:1;
+      padding:10px 18px;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(0,0,0,0.12);
+      border-bottom:0;
+      background:rgba(0,0,0,0.06);
+      color:rgba(0,0,0,0.70);
+      font-weight:1000;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      transition:transform 160ms ease,background 160ms ease,box-shadow 160ms ease;
+      white-space:nowrap;
+      font-family:inherit;
+    }
+    .tab::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:14px 14px 0 0;
+      background:linear-gradient(to bottom,rgba(255,255,255,.55),rgba(255,255,255,0));
+      opacity:.65;
+      pointer-events:none;
+    }
+    .tab:hover{ background:rgba(0,0,0,0.08); transform:translateY(-1px); }
+    .tab.is-active{
+      background:var(--brand-yellow);
+      color:#111;
+      transform:translateY(1px);
+      box-shadow:0 10px 22px rgba(0,0,0,0.12);
+    }
+    .tab.is-active::before{ opacity:.22; }
+    .tab.is-active:hover{ transform:translateY(1px); }
+
     .content{
       padding:18px 18px 20px;
       display:flex;
@@ -450,6 +511,70 @@
       font-weight:900;
     }
 
+    .modalOverlay{
+      position:fixed;
+      inset:0;
+      z-index:2000;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      background:rgba(0,0,0,0.45);
+    }
+    .modalOverlay.is-open{ display:flex; }
+    .modalCard{
+      width:min(520px,94vw);
+      border-radius:18px;
+      background:rgba(255,255,255,0.98);
+      border:1px solid rgba(0,0,0,0.08);
+      box-shadow:0 30px 80px rgba(0,0,0,0.35);
+      overflow:hidden;
+      color:#111;
+    }
+    .modalTop{
+      padding:16px;
+      border-bottom:1px solid rgba(0,0,0,0.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .modalTop h2{ margin:0; font-size:18px; font-weight:1000; }
+    .modalBody{ padding:14px 16px 16px; }
+    .modalActions{ padding:0 16px 16px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+    .field{ margin:10px 0; }
+    .field label{
+      display:block;
+      font-size:13px;
+      font-weight:1000;
+      color:rgba(0,0,0,0.70);
+      margin-bottom:6px;
+    }
+    .field input,.field select{
+      width:100%;
+      height:44px;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.14);
+      background:rgba(0,0,0,0.03);
+      padding:0 12px;
+      font-weight:900;
+      outline:none;
+      color:#111;
+      font-family:inherit;
+    }
+    .btnGhost,.btnDanger{
+      height:42px;
+      border-radius:12px;
+      padding:0 14px;
+      cursor:pointer;
+      font-weight:1000;
+      font-size:13px;
+      font-family:inherit;
+    }
+    .btnGhost{ border:1px solid rgba(0,0,0,0.12); background:rgba(0,0,0,0.04); color:#111; }
+    .btnDanger{ border:1px solid rgba(217,54,54,0.35); background:rgba(217,54,54,0.12); color:#8a0d0d; }
+    .modalError{ display:none; margin-top:10px; font-size:12px; font-weight:900; color:rgba(176,0,0,0.82); }
+
     .listFooter{
       margin-top:14px;
       display:flex;
@@ -578,6 +703,10 @@
         </aside>
 
         <section class="panel">
+          <div class="tabs" role="tablist" aria-label="Borrower type">
+            <button class="tab is-active" id="studentsTab" type="button" role="tab" aria-selected="true">Students</button>
+            <button class="tab" id="teachersTab" type="button" role="tab" aria-selected="false">Teachers</button>
+          </div>
           <div class="content">
             <div class="titleRow">
               <h1><span class="accent">STUDENTS</span></h1>
@@ -633,6 +762,46 @@
       </div>
     </section>
   </main>
+
+  <div class="modalOverlay" id="teacherModal" aria-hidden="true">
+    <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="teacherModalTitle">
+      <div class="modalTop">
+        <h2 id="teacherModalTitle">Add Teacher</h2>
+        <button class="btnGhost" id="teacherCloseBtn" type="button">Close</button>
+      </div>
+      <form id="teacherForm">
+        <div class="modalBody">
+          <input id="teacherId" type="hidden" />
+          <div class="field">
+            <label for="teacherCode">Teacher Code</label>
+            <input id="teacherCode" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="teacherLastName">Last Name</label>
+            <input id="teacherLastName" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="teacherFirstName">First Name</label>
+            <input id="teacherFirstName" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="teacherStatus">Status</label>
+            <select id="teacherStatus">
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="modalError" id="teacherError"></div>
+        </div>
+        <div class="modalActions">
+          <button class="btnDanger" id="teacherDeleteBtn" type="button" style="display:none;">Delete Teacher</button>
+          <button class="btnGhost" id="teacherCancelBtn" type="button">Cancel</button>
+          <button class="btn" id="teacherSaveBtn" type="submit">Save Teacher</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <footer class="site-footer" id="footer">
     <div class="site-footer__inner">
@@ -736,7 +905,15 @@
     const STUDENT_PAGE_LIMIT = 50;
     const STUDENTS_STATE_KEY = "students:list-state:v1";
     const STUDENTS_DIRTY_KEY = "students:list-dirty:v1";
+    const TEACHERS_DIRTY_KEY = "teachers:list-dirty:v1";
+    let activeTab = new URLSearchParams(window.location.search).get("tab") === "teachers" ? "teachers" : "students";
     let studentsState = {
+      items: [],
+      nextCursor: null,
+      hasMore: false,
+      loading: false
+    };
+    let teachersState = {
       items: [],
       nextCursor: null,
       hasMore: false,
@@ -771,7 +948,7 @@
 
     function showListLoader(){
       listEl.innerHTML = `
-        <div class="list-loader" aria-label="Loading students">
+        <div class="list-loader" aria-label="Loading ${activeTab}">
           <div class="dots">
             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
           </div>
@@ -780,7 +957,8 @@
     }
 
     document.getElementById("addBtn").addEventListener("click", () => {
-      window.location.href = "add_students.html";
+      if (activeTab === "teachers") openTeacherModal();
+      else window.location.href = "add_students.html";
     });
 
     function getQueryState(){
@@ -813,6 +991,7 @@
     }
 
     function saveStudentsState(){
+      if (activeTab !== "students") return;
       const payload = {
         signature: getQuerySignature(),
         query: getQueryState(),
@@ -863,17 +1042,19 @@
     }
 
     function updateLoadMoreState(){
-      const count = studentsState.items.length;
+      const state = activeTab === "teachers" ? teachersState : studentsState;
+      const noun = activeTab === "teachers" ? "teacher" : "student";
+      const count = state.items.length;
       resultsMeta.textContent = count
-        ? `Showing ${count} student${count === 1 ? "" : "s"}`
+        ? `Showing ${count} ${noun}${count === 1 ? "" : "s"}`
         : "Showing 0 results";
       pageStatus.textContent = count
-        ? `${count} student${count === 1 ? "" : "s"} loaded`
-        : "No students loaded yet";
-      loadMoreBtn.hidden = !studentsState.hasMore && count === 0;
-      loadMoreBtn.style.display = studentsState.hasMore ? "" : "none";
-      loadMoreBtn.disabled = studentsState.loading;
-      loadMoreBtn.textContent = studentsState.loading ? "Loading..." : "Load More";
+        ? `${count} ${noun}${count === 1 ? "" : "s"} loaded`
+        : `No ${noun}s loaded yet`;
+      loadMoreBtn.hidden = !state.hasMore && count === 0;
+      loadMoreBtn.style.display = state.hasMore ? "" : "none";
+      loadMoreBtn.disabled = state.loading;
+      loadMoreBtn.textContent = state.loading ? "Loading..." : "Load More";
     }
 
     function renderStudents(rows){
@@ -908,6 +1089,41 @@
       });
     }
 
+    function renderTeachers(rows){
+      updateLoadMoreState();
+      if (!rows.length){
+        listEl.innerHTML = `<div class="empty">No teachers found.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = rows.map((t, idx) => {
+        const full = `${t.last_name || ""}, ${t.first_name || ""}`.trim().replace(/^,|,$/g,"").trim();
+        const code = t.teacher_code || t.student_code || "";
+        return `
+          <div class="card"
+               data-teacher-id="${esc(t.teacher_id || t.student_id)}"
+               style="animation-delay:${Math.min(idx * 35, 280)}ms; cursor:pointer;">
+            <div>
+              <div class="name">${esc(full || code || "Teacher")}</div>
+              <div class="sub">Teacher details</div>
+            </div>
+            <div class="right">
+              <div class="codeLabel">Teacher Code:</div>
+              <div class="code">${esc(code)}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      listEl.querySelectorAll("[data-teacher-id]").forEach(card => {
+        card.addEventListener("click", () => {
+          const id = card.getAttribute("data-teacher-id");
+          const teacher = teachersState.items.find(item => String(item.teacher_id || item.student_id) === String(id));
+          if (teacher) openTeacherModal(teacher);
+        });
+      });
+    }
+
     function normalizeBatch(payload){
       if (!payload || typeof payload !== "object"){
         return { items: Array.isArray(payload) ? payload : [], has_more: false, next_cursor: null };
@@ -922,42 +1138,53 @@
 
     async function loadBatch({ reset = false } = {}){
       const state = getQueryState();
+      const isTeachers = activeTab === "teachers";
+      const targetState = isTeachers ? teachersState : studentsState;
       showListLoader();
       showProgress();
-      studentsState.loading = true;
+      targetState.loading = true;
       updateLoadMoreState();
 
       try{
-        const url = new URL(`${BASE_URL}/api/students`);
+        const url = new URL(`${BASE_URL}${isTeachers ? "/api/teachers" : "/api/students"}`);
         url.searchParams.set("q", state.q);
         url.searchParams.set("page_size", String(STUDENT_PAGE_LIMIT));
-        url.searchParams.set("cursor", reset ? "0" : String(studentsState.nextCursor ?? "0"));
-        if (state.grade) url.searchParams.set("grade", state.grade);
+        url.searchParams.set("cursor", reset ? "0" : String(targetState.nextCursor ?? "0"));
+        if (!isTeachers && state.grade) url.searchParams.set("grade", state.grade);
 
         const res = await fetch(url.toString(), { headers: authHeaders() });
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok){
-          studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
-          listEl.innerHTML = `<div class="empty">Failed to load students.</div>`;
+          if (isTeachers) teachersState = { items: [], nextCursor: null, hasMore: false, loading: false };
+          else studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+          listEl.innerHTML = `<div class="empty">Failed to load ${isTeachers ? "teachers" : "students"}.</div>`;
           return;
         }
 
         const payload = normalizeBatch(data);
-        studentsState = {
-          items: reset ? payload.items : [...studentsState.items, ...payload.items],
+        const nextState = {
+          items: reset ? payload.items : [...targetState.items, ...payload.items],
           nextCursor: payload.next_cursor,
           hasMore: payload.has_more,
           loading: false
         };
-        renderStudents(studentsState.items);
-        saveStudentsState();
+        if (isTeachers){
+          teachersState = nextState;
+          renderTeachers(teachersState.items);
+        } else {
+          studentsState = nextState;
+          renderStudents(studentsState.items);
+          saveStudentsState();
+        }
       }catch(err){
-        studentsState.loading = false;
+        if (isTeachers) teachersState.loading = false;
+        else studentsState.loading = false;
         listEl.innerHTML = `<div class="empty">Network error. Please try again.</div>`;
       }finally{
         hideProgress(true);
-        studentsState.loading = false;
+        if (isTeachers) teachersState.loading = false;
+        else studentsState.loading = false;
         updateLoadMoreState();
       }
     }
@@ -994,7 +1221,8 @@
     qEl.addEventListener("input", () => {
       clearTimeout(t);
       t = setTimeout(() => {
-        studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        if (activeTab === "teachers") teachersState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        else studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
         loadBatch({ reset: true });
       }, 360);
     });
@@ -1002,7 +1230,8 @@
     qEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter"){
         e.preventDefault();
-        studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        if (activeTab === "teachers") teachersState = { items: [], nextCursor: null, hasMore: false, loading: false };
+        else studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
         loadBatch({ reset: true });
       }
     });
@@ -1012,21 +1241,158 @@
       loadBatch({ reset: true });
     });
     loadMoreBtn.addEventListener("click", () => {
-      if (!studentsState.hasMore || studentsState.loading) return;
+      const state = activeTab === "teachers" ? teachersState : studentsState;
+      if (!state.hasMore || state.loading) return;
       loadBatch({ reset: false });
     });
 
     window.addEventListener("scroll", scheduleStudentsStateSave, { passive: true });
     window.addEventListener("pagehide", saveStudentsState);
     window.addEventListener("pageshow", () => {
-      if (consumeStudentsDirtyFlag()){
+      if (activeTab === "students" && consumeStudentsDirtyFlag()){
         qEl.value = "";
         gradeFilterEl.value = "";
         refreshStudentsList();
       }
     });
 
-    if (consumeStudentsDirtyFlag()){
+    const studentsTab = document.getElementById("studentsTab");
+    const teachersTab = document.getElementById("teachersTab");
+    const titleAccent = document.querySelector(".titleRow h1 .accent");
+    const addBtnEl = document.getElementById("addBtn");
+
+    function syncTabUi(){
+      const isTeachers = activeTab === "teachers";
+      studentsTab.classList.toggle("is-active", !isTeachers);
+      teachersTab.classList.toggle("is-active", isTeachers);
+      studentsTab.setAttribute("aria-selected", String(!isTeachers));
+      teachersTab.setAttribute("aria-selected", String(isTeachers));
+      titleAccent.textContent = isTeachers ? "TEACHERS" : "STUDENTS";
+      qEl.placeholder = isTeachers
+        ? "Search teacher code, first name, or last name..."
+        : "Search student code, last name, grade, or section...";
+      gradeFilterEl.closest(".filterBlock").style.display = isTeachers ? "none" : "";
+      addBtnEl.textContent = isTeachers ? "Add Teacher" : "Add Student";
+      document.querySelector(".pagination")?.setAttribute("aria-label", isTeachers ? "Teacher load more" : "Student load more");
+      history.replaceState(history.state || {}, "", `students.html?${new URLSearchParams({ tab: activeTab, ...getQueryState() }).toString()}`);
+    }
+
+    function switchTab(nextTab){
+      if (activeTab === nextTab) return;
+      activeTab = nextTab;
+      qEl.value = "";
+      gradeFilterEl.value = "";
+      syncTabUi();
+      loadBatch({ reset: true });
+    }
+
+    studentsTab.addEventListener("click", () => switchTab("students"));
+    teachersTab.addEventListener("click", () => switchTab("teachers"));
+
+    const teacherModal = document.getElementById("teacherModal");
+    const teacherForm = document.getElementById("teacherForm");
+    const teacherError = document.getElementById("teacherError");
+    const teacherDeleteBtn = document.getElementById("teacherDeleteBtn");
+
+    function setTeacherError(message){
+      teacherError.style.display = message ? "block" : "none";
+      teacherError.textContent = message || "";
+    }
+
+    function openTeacherModal(teacher = null){
+      setTeacherError("");
+      document.getElementById("teacherModalTitle").textContent = teacher ? "Edit Teacher" : "Add Teacher";
+      document.getElementById("teacherId").value = teacher?.teacher_id || teacher?.student_id || "";
+      document.getElementById("teacherCode").value = teacher?.teacher_code || teacher?.student_code || "";
+      document.getElementById("teacherLastName").value = teacher?.last_name || "";
+      document.getElementById("teacherFirstName").value = teacher?.first_name || "";
+      document.getElementById("teacherStatus").value = (teacher?.status || "active").toLowerCase();
+      teacherDeleteBtn.style.display = teacher ? "" : "none";
+      teacherModal.classList.add("is-open");
+      teacherModal.setAttribute("aria-hidden", "false");
+      document.getElementById("teacherCode").focus();
+    }
+
+    function closeTeacherModal(){
+      teacherModal.classList.remove("is-open");
+      teacherModal.setAttribute("aria-hidden", "true");
+      teacherForm.reset();
+      setTeacherError("");
+    }
+
+    document.getElementById("teacherCloseBtn").addEventListener("click", closeTeacherModal);
+    document.getElementById("teacherCancelBtn").addEventListener("click", closeTeacherModal);
+    teacherModal.addEventListener("click", (e) => { if (e.target === teacherModal) closeTeacherModal(); });
+
+    async function refreshTeachersList(){
+      teachersState = { items: [], nextCursor: null, hasMore: false, loading: false };
+      await loadBatch({ reset: true });
+    }
+
+    teacherForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const teacherId = document.getElementById("teacherId").value.trim();
+      const payload = {
+        teacher_code: document.getElementById("teacherCode").value.trim(),
+        last_name: document.getElementById("teacherLastName").value.trim(),
+        first_name: document.getElementById("teacherFirstName").value.trim(),
+        status: document.getElementById("teacherStatus").value.trim() || "active"
+      };
+      if (!payload.teacher_code || !payload.last_name || !payload.first_name){
+        setTeacherError("Please complete all Teacher details.");
+        return;
+      }
+      document.getElementById("teacherSaveBtn").disabled = true;
+      try{
+        const url = teacherId ? `${BASE_URL}/api/teachers/${encodeURIComponent(teacherId)}` : `${BASE_URL}/api/teachers`;
+        const res = await fetch(url, {
+          method: teacherId ? "PUT" : "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok){
+          setTeacherError(data?.detail || "Failed to save Teacher.");
+          return;
+        }
+        sessionStorage.setItem(TEACHERS_DIRTY_KEY, "1");
+        closeTeacherModal();
+        await refreshTeachersList();
+      }catch(err){
+        setTeacherError(err?.message || "Network error.");
+      }finally{
+        document.getElementById("teacherSaveBtn").disabled = false;
+      }
+    });
+
+    teacherDeleteBtn.addEventListener("click", async () => {
+      const teacherId = document.getElementById("teacherId").value.trim();
+      if (!teacherId) return;
+      if (!confirm("Delete Teacher details and related records?")) return;
+      teacherDeleteBtn.disabled = true;
+      try{
+        const res = await fetch(`${BASE_URL}/api/teachers/${encodeURIComponent(teacherId)}`, {
+          method: "DELETE",
+          headers: authHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok){
+          setTeacherError(data?.detail || "Failed to delete Teacher.");
+          return;
+        }
+        closeTeacherModal();
+        await refreshTeachersList();
+      }catch(err){
+        setTeacherError(err?.message || "Network error.");
+      }finally{
+        teacherDeleteBtn.disabled = false;
+      }
+    });
+
+    syncTabUi();
+    if (activeTab === "teachers"){
+      refreshTeachersList();
+    } else if (consumeStudentsDirtyFlag()){
       refreshStudentsList();
     } else if (!restoreStudentsState()){
       loadBatch({ reset: true });
