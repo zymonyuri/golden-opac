@@ -1306,6 +1306,7 @@ def student_lookup(student_code: str, current=Depends(require_roles("librarian",
                    COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
+              AND COALESCE(status, 'active') NOT IN ('graduated')
             """,
             (code,),
         )
@@ -2389,6 +2390,7 @@ def search_students(
                 FROM student s
                 WHERE
                     COALESCE(s.borrower_type, 'student') = 'student'
+                    AND COALESCE(s.status, 'active') NOT IN ('graduated')
                     AND
                     (%s = '' OR (
                         COALESCE(s.student_code, '') ILIKE %s OR
@@ -2457,6 +2459,7 @@ def search_students(
             FROM student s
             WHERE
                 COALESCE(s.borrower_type, 'student') = 'student'
+                AND COALESCE(s.status, 'active') NOT IN ('graduated')
                 AND
                 (%s = '' OR (
                     COALESCE(s.student_code, '') ILIKE %s OR
@@ -2622,7 +2625,10 @@ def get_student_meta(current=Depends(require_roles("librarian", "admin"))):
             """
             SELECT DISTINCT grade
             FROM student
-            WHERE grade IS NOT NULL AND TRIM(grade) <> ''
+            WHERE grade IS NOT NULL
+              AND TRIM(grade) <> ''
+              AND COALESCE(borrower_type, 'student') = 'student'
+              AND COALESCE(status, 'active') NOT IN ('graduated')
             ORDER BY grade ASC
             """
         )
@@ -2636,6 +2642,8 @@ def get_student_meta(current=Depends(require_roles("librarian", "admin"))):
               AND TRIM(grade) <> ''
               AND section IS NOT NULL
               AND TRIM(section) <> ''
+              AND COALESCE(borrower_type, 'student') = 'student'
+              AND COALESCE(status, 'active') NOT IN ('graduated')
             ORDER BY grade ASC, section ASC
             """
         )
@@ -2737,6 +2745,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(require_roles("librarian
                    COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
+              AND COALESCE(status, 'active') NOT IN ('graduated')
             """,
             (student_code,),
         )
@@ -5667,91 +5676,6 @@ def circulation_lookup(barcode: str, current=Depends(require_roles("librarian", 
         conn.close()
 
 # -----------------------------
-# STUDENTS: BULK PROMOTE GRADE (Librarian Only)
-# -----------------------------
-@app.post("/api/students/bulk-promote")
-def bulk_promote_students(
-    from_grade: str,
-    to_grade: str,
-    from_section: str | None = None,
-    to_section: str | None = None,
-    only_status: str | None = "active",
-    current=Depends(require_roles("librarian", "admin")),
-):
-    """
-    Mass change students from one grade to another.
-
-    Example:
-      from_grade=8 -> to_grade=9 (only active students)
-
-    Params:
-      - only_status: if provided, only update students with this status
-                    (active/suspended/graduated). Use None to update all.
-    """
-    g_from = normalize_grade(from_grade)
-    g_to = normalize_grade(to_grade)
-
-    if g_from == g_to:
-        raise HTTPException(status_code=400, detail="from_grade and to_grade must be different")
-
-    from_section_clean = from_section.strip() if from_section and from_section.strip() else None
-    to_section_clean = to_section.strip() if to_section and to_section.strip() else None
-
-    if not to_section_clean:
-        raise HTTPException(status_code=400, detail="to_section is required")
-
-    if only_status is not None:
-        st = only_status.strip().lower()
-        if st not in ["active", "suspended", "graduated", "inactive"]:
-            raise HTTPException(status_code=400, detail="only_status must be active, suspended, graduated, or inactive")
-    else:
-        st = None
-
-    conn = get_connection()
-    cur = conn.cursor()
-
-    try:
-        where_clauses = ["grade = %s"]
-        params = [g_to, to_section_clean, g_from]
-
-        if st is not None:
-            where_clauses.append("status = %s")
-            params.append(st)
-
-        if from_section_clean is not None:
-            where_clauses.append("section = %s")
-            params.append(from_section_clean)
-
-        cur.execute(
-            f"""
-            UPDATE student
-            SET grade = %s, section = %s, updated_at = NOW()
-            WHERE {' AND '.join(where_clauses)}
-            """,
-            tuple(params),
-        )
-
-        updated = cur.rowcount
-        conn.commit()
-
-        return {
-            "message": "Bulk promotion complete",
-            "from_grade": g_from,
-            "to_grade": g_to,
-            "from_section": from_section_clean,
-            "to_section": to_section_clean,
-            "only_status": st,
-            "updated_count": updated,
-        }
-
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Bulk promote failed: {str(e)}")
-    finally:
-        cur.close()
-        conn.close()
-
-# -----------------------------
 # STUDENTS: BULK STATUS CHANGE (Librarian Only)
 # -----------------------------
 @app.post("/api/students/bulk-status")
@@ -6486,6 +6410,7 @@ def circulation_precheck(student_code: str, current=Depends(require_roles("libra
                    COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
+              AND COALESCE(status, 'active') NOT IN ('graduated')
             """,
             (code,),
         )
@@ -9658,7 +9583,6 @@ def delete_student(student_id: int, current=Depends(require_roles("librarian", "
     conn = get_connection()
     cur = conn.cursor()
     try:
-        # FIX: look up by student_id (PK), not student_code
         cur.execute("SELECT student_id FROM student WHERE student_id = %s AND COALESCE(borrower_type, 'student') = 'student'", (student_id,))
         row = cur.fetchone()
         if not row:
@@ -9666,14 +9590,17 @@ def delete_student(student_id: int, current=Depends(require_roles("librarian", "
 
         sid = row["student_id"]
 
-        cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE student_id = %s)", (sid,))
-        cur.execute("DELETE FROM fine WHERE student_id = %s", (sid,))
-        cur.execute("DELETE FROM damage_report WHERE student_id = %s", (sid,))  # also fix: damage_report not damage_record
-        cur.execute("DELETE FROM loan WHERE student_id = %s", (sid,))
-        cur.execute("DELETE FROM student WHERE student_id = %s", (sid,))
+        cur.execute(
+            """
+            UPDATE student
+            SET status = 'graduated', updated_at = NOW()
+            WHERE student_id = %s
+            """,
+            (sid,),
+        )
 
         conn.commit()
-        return {"message": "Student and all associated records deleted successfully"}
+        return {"message": "Student marked as graduated; historical records were preserved"}
 
     except HTTPException:
         conn.rollback()

@@ -1631,31 +1631,14 @@ document.documentElement.classList.add("branding-loading");
               <div class="stack">
                 <div class="grid2">
                   <article class="card">
-                    <div class="cardHead"><div class="cardTitle">Promote Students</div></div>
-                    <div class="cardBody">
-                      <div class="formGrid">
-                        <div class="field"><label>From Grade</label><select id="promoteFromGrade"></select></div>
-                        <div class="field"><label>From Section</label><select id="promoteFromSection"></select></div>
-                        <div class="field"><label>To Grade</label><input id="promoteToGrade" type="text" placeholder="Enter target grade"></div>
-                        <div class="field"><label>To Section</label><input id="promoteToSection" type="text"></div>
-                      </div>
-                      <div class="actions">
-                        <button class="btn" id="promoteBtn" type="button">Promote</button>
-                      </div>
-                      <div class="statusLine" id="promoteStatus"></div>
-                      <div class="successBox" id="promoteSuccess"></div>
-                    </div>
-                  </article>
-
-                  <article class="card">
-                    <div class="cardHead"><div class="cardTitle">Graduate Grade 12</div></div>
+                    <div class="cardHead"><div class="cardTitle">Graduate Student</div></div>
                     <div class="cardBody">
                       <div class="formGrid">
                         <div class="field"><label>Grade</label><select id="graduateGrade"></select></div>
                         <div class="field"><label>Section (Optional)</label><select id="graduateSection"></select></div>
                       </div>
                       <div class="actions">
-                        <button class="btnDark" id="graduateBtn" type="button">Graduate Students</button>
+                        <button class="btnDark" id="graduateBtn" type="button">Graduate Student</button>
                       </div>
                       <div class="statusLine" id="graduateStatus"></div>
                       <div class="successBox" id="graduateSuccess"></div>
@@ -1957,6 +1940,36 @@ document.documentElement.classList.add("branding-loading");
         <button class="btnGhost" id="cancelDeleteRuleBtn" type="button">Cancel</button>
         <button class="deleteRuleConfirmBtn" id="confirmDeleteRuleBtn" type="button">
           <span id="deleteRuleBtnText">Yes, Delete Rule</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="deleteRuleModal" id="graduateModal" role="dialog" aria-modal="true" aria-labelledby="graduateModalTitle">
+    <div class="deleteRuleModalBox">
+
+      <div class="deleteRuleModalHead">
+        <div class="deleteRuleModalAccentBar"></div>
+        <div class="deleteRuleModalHeadText">
+          <div class="deleteRuleModalTitle" id="graduateModalTitle">Graduate Student</div>
+          <div class="deleteRuleModalSubtitle">This keeps the student record and all historical activity intact.</div>
+        </div>
+      </div>
+
+      <div class="deleteRuleModalBody">
+        <div class="deleteRuleInfoBox">
+          <div class="deleteRuleInfoText">
+            Are you sure you want to mark this student as graduated? This will archive them from active student searches but preserve all historical records.
+          </div>
+        </div>
+        <div class="deleteRuleStatus" id="graduateModalStatus"></div>
+      </div>
+
+      <div class="deleteRuleModalFooter">
+        <button class="btnGhost" id="cancelGraduateBtn" type="button">Cancel</button>
+        <button class="deleteRuleConfirmBtn" id="confirmGraduateBtn" type="button">
+          <span id="graduateBtnText">Yes, Graduate Student</span>
         </button>
       </div>
 
@@ -2551,6 +2564,9 @@ document.documentElement.classList.add("branding-loading");
       if (e.key === "Escape" && document.getElementById("deleteRuleModal").classList.contains("show")) {
         closeDeleteRuleModal();
       }
+      if (e.key === "Escape" && document.getElementById("graduateModal").classList.contains("show")) {
+        closeGraduateModal();
+      }
     });
 
     document.getElementById("confirmDeleteRuleBtn").addEventListener("click", async () => {
@@ -2582,37 +2598,39 @@ document.documentElement.classList.add("branding-loading");
         sections_by_grade: data?.sections_by_grade || {}
       };
       buildGradeSelect(document.getElementById("ruleGrade"), false);
-      buildGradeSelect(document.getElementById("promoteFromGrade"), false);
       buildGradeSelect(document.getElementById("graduateGrade"), false);
       const gradSelect = document.getElementById("graduateGrade");
       gradSelect.value = studentMeta.grades.includes("12") ? "12" : (studentMeta.grades[0] || "12");
-      syncSectionsForGrade("promoteFromGrade", "promoteFromSection", false);
       syncSectionsForGrade("graduateGrade", "graduateSection", true);
       fillRuleFormFromSelectedGrade();
     }
 
-    async function promoteStudents(){
-      const from_grade = document.getElementById("promoteFromGrade").value.trim();
-      const from_section = document.getElementById("promoteFromSection").value.trim();
-      const to_grade = document.getElementById("promoteToGrade").value.trim();
-      const to_section = document.getElementById("promoteToSection").value.trim();
-      if (!from_grade || !to_grade || !to_section){ showToast("Please complete the promotion fields"); return; }
-      const data = await apiFetch("/api/students/bulk-promote?" + qs({ from_grade, from_section, to_grade, to_section, only_status: "active" }), { method: "POST" });
-      document.getElementById("promoteStatus").textContent = "Promotion completed.";
-      const success = document.getElementById("promoteSuccess");
-      success.textContent = `${data?.updated_count ?? 0} student(s) promoted from ${from_grade}${from_section ? " ("+from_section+")" : ""} to ${data?.to_grade ?? to_grade} (${data?.to_section ?? to_section}).`;
-      success.classList.add("show");
-      showToast("Students promoted");
-      document.getElementById("promoteToGrade").value = "";
-      document.getElementById("promoteToSection").value = "";
-      await loadStudentOptions();
+    function openGraduateModal(){
+      const grade = document.getElementById("graduateGrade").value.trim();
+      if (!grade){ showToast("Please select a grade"); return; }
+      document.getElementById("graduateModalStatus").textContent = "";
+      document.getElementById("confirmGraduateBtn").disabled = false;
+      document.getElementById("graduateBtnText").textContent = "Yes, Graduate Student";
+      document.getElementById("graduateModal").classList.add("show");
+    }
+
+    function closeGraduateModal(){
+      document.getElementById("graduateModal").classList.remove("show");
+      document.getElementById("graduateModalStatus").textContent = "";
     }
 
     async function graduateStudents(){
       const grade = document.getElementById("graduateGrade").value.trim();
       const section = document.getElementById("graduateSection").value.trim();
       if (!grade){ showToast("Please select a grade"); return; }
+      const confirmBtn = document.getElementById("confirmGraduateBtn");
+      const btnText = document.getElementById("graduateBtnText");
+      const modalStatus = document.getElementById("graduateModalStatus");
+      confirmBtn.disabled = true;
+      btnText.textContent = "Graduating...";
+      modalStatus.textContent = "Updating student status...";
       const data = await apiFetch("/api/students/bulk-status?" + qs({ from_status: "active", to_status: "graduated", grade, section }), { method: "POST" });
+      closeGraduateModal();
       document.getElementById("graduateStatus").textContent = "Graduation update completed.";
       const success = document.getElementById("graduateSuccess");
       success.textContent = `${data?.updated_count ?? 0} student(s) marked as graduated.`;
@@ -2838,10 +2856,24 @@ document.documentElement.classList.add("branding-loading");
     document.getElementById("saveGlobalBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveGlobalSettings(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Saving defaults failed"); } });
     document.getElementById("ruleGrade").addEventListener("change", fillRuleFormFromSelectedGrade);
     document.getElementById("saveRuleBtn").addEventListener("click", async () => { try { setProgress(true,20); await saveGradeRule(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Saving grade rule failed"); } });
-    document.getElementById("promoteFromGrade").addEventListener("change", () => syncSectionsForGrade("promoteFromGrade","promoteFromSection",false));
     document.getElementById("graduateGrade").addEventListener("change", () => syncSectionsForGrade("graduateGrade","graduateSection",true));
-    document.getElementById("promoteBtn").addEventListener("click", async () => { try { setProgress(true,20); await promoteStudents(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Promotion failed"); } });
-    document.getElementById("graduateBtn").addEventListener("click", async () => { try { setProgress(true,20); await graduateStudents(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Graduation update failed"); } });
+    document.getElementById("graduateBtn").addEventListener("click", openGraduateModal);
+    document.getElementById("cancelGraduateBtn").addEventListener("click", closeGraduateModal);
+    document.getElementById("graduateModal").addEventListener("click", (e) => { if (e.target === document.getElementById("graduateModal")) closeGraduateModal(); });
+    document.getElementById("confirmGraduateBtn").addEventListener("click", async () => {
+      try {
+        setProgress(true,20);
+        await graduateStudents();
+        setProgress(true,100);
+        setTimeout(()=>setProgress(false),180);
+      } catch(err) {
+        setProgress(false);
+        document.getElementById("confirmGraduateBtn").disabled = false;
+        document.getElementById("graduateBtnText").textContent = "Yes, Graduate Student";
+        document.getElementById("graduateModalStatus").textContent = err.message || "Graduation update failed";
+        showToast(err.message||"Graduation update failed");
+      }
+    });
     document.getElementById("createLibBtn").addEventListener("click", async () => { try { setProgress(true,20); await createLibrarian(); setProgress(true,100); setTimeout(()=>setProgress(false),180); } catch(err){ setProgress(false); showToast(err.message||"Creating librarian failed"); } });
 
     // Live confirm-password match indicator for new librarian form
