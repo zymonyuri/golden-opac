@@ -5120,42 +5120,6 @@ def grand_summary_report(
         top_subject = dict(top_subjects[0]) if top_subjects else None
         top_group = dict(borrower_groups[0]) if borrower_groups else None
 
-        narrative = {
-            "library_overview": (
-                f"The library currently manages {total_books} titles and {total_copies} copies, "
-                f"serving {total_students} students and {total_teachers} teachers."
-            ),
-            "circulation_performance": (
-                f"There are {active_loans} active loans, with {overdue_loans} overdue "
-                f"({overdue_percentage}% of active loans). {loans_in_period} loans were recorded in this report period."
-            ),
-            "collection_status": (
-                f"{availability_rate}% of copies are available while {circulation_rate}% are currently borrowed. "
-                f"Inactive copies from damaged or lost status represent {inactive_copy_rate}% of inventory."
-            ),
-            "borrower_activity": (
-                f"The report period includes {active_borrowers} active borrowers. "
-                f"{'Grade ' + str(top_group['group_name']) + ' has the highest borrowing activity.' if top_group else 'No borrower group has borrowing activity for this period.'}"
-            ),
-            "subject_insights": (
-                f"{top_subject['subject']} materials are the most borrowed subject in this period."
-                if top_subject else "No subject borrowing pattern is available for this period."
-            ),
-            "fines_payments": (
-                f"Outstanding fines total PHP {fine_unpaid:.2f}, while collected fine payments total PHP {fine_collected:.2f}."
-            ),
-        }
-
-        recommendations = []
-        if overdue_percentage >= 20:
-            recommendations.append("Review overdue follow-ups because overdue loans represent a significant share of active loans.")
-        if availability_rate < 50:
-            recommendations.append("Availability is below half of total inventory; monitor high-demand titles and borrower limits.")
-        if inactive_copy_rate >= 10:
-            recommendations.append("Prioritize damaged and lost copy reconciliation to protect collection health.")
-        if not recommendations:
-            recommendations.append("Current indicators show a generally balanced library operation. Continue monitoring overdue loans and high-demand subjects.")
-
         return {
             "generated_at": datetime.utcnow().isoformat() + "Z",
             "filters": {"date_from": dt_from.isoformat(), "date_to": dt_to.isoformat(), "school_year": school_year},
@@ -5183,8 +5147,6 @@ def grand_summary_report(
                 "most_active_borrower_category": top_group["group_name"] if top_group else None,
                 "most_borrowed_subject": top_subject["subject"] if top_subject else None,
             },
-            "narrative": narrative,
-            "recommendations": recommendations,
             "sections": {
                 "most_borrowed_books": [dict(r) for r in most_borrowed],
                 "top_borrowers": [dict(r) for r in top_borrowers],
@@ -5359,7 +5321,7 @@ async def import_teachers_csv(
         raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded")
 
     reader = csv.DictReader(io.StringIO(text))
-    required_headers = {"teacher_code", "first_name", "last_name", "status"}
+    required_headers = {"teacher_code", "first_name", "last_name"}
     missing = required_headers - set((h or "").strip() for h in (reader.fieldnames or []))
     if missing:
         raise HTTPException(
@@ -5380,15 +5342,12 @@ async def import_teachers_csv(
                 teacher_code = (row.get("teacher_code") or "").strip()
                 first_name = (row.get("first_name") or "").strip()
                 last_name = (row.get("last_name") or "").strip()
-                status = (row.get("status") or default_status or "active").strip().lower()
+                status = "active"
 
                 if not teacher_code:
                     raise ValueError("teacher_code is required")
                 if not first_name or not last_name:
                     raise ValueError("first_name and last_name are required")
-                if status not in {"active", "suspended", "inactive"}:
-                    raise ValueError("status must be active, suspended, or inactive")
-
                 cur.execute("SELECT id FROM teacher WHERE teacher_code = %s", (teacher_code,))
                 existing = cur.fetchone()
                 if existing:

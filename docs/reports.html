@@ -1206,10 +1206,10 @@
       const p=new URLSearchParams();const df=gfv("f_df"),dt=gfv("f_dt");if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);const sy=getSchoolYear();if(sy)p.set("school_year",sy);
       const r=await fetch(`${BASE_URL}/api/reports/grand-summary?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");const d=await r.json();
       d.rows=[
-        ...(d.sections?.most_borrowed_books||[]).map(x=>({section:"Most Borrowed Materials",item:x.title||"Untitled",value:fmtNum(x.borrow_count||0),note:x.author||""})),
-        ...(d.sections?.top_borrower_groups||[]).map(x=>({section:"Borrower Activity",item:`Grade ${x.group_name||"Unspecified"}`,value:fmtNum(x.borrow_count||0),note:`${fmtNum(x.borrower_count||0)} borrower(s)`})),
-        ...(d.sections?.top_subjects||[]).map(x=>({section:"Subject Insights",item:x.subject||"Unknown",value:fmtNum(x.borrow_count||0),note:"borrows"})),
-        ...(d.sections?.inventory_by_status||[]).map(x=>({section:"Inventory Insights",item:x.status||"unknown",value:fmtNum(x.count||0),note:"copies"}))
+        ...(d.sections?.most_borrowed_books||[]).map(x=>({section:"Top Borrowed Books",item:x.title||"Untitled",value:fmtNum(x.borrow_count||0),note:x.author||""})),
+        ...(d.sections?.top_borrowers||[]).map(x=>({section:"Top Borrowers",item:`${x.last_name||""}, ${x.first_name||""}`.replace(/^,\s*/,"")||x.student_code||"Borrower",value:fmtNum(x.borrow_count||0),note:x.student_code||""})),
+        ...(d.sections?.top_subjects||[]).map(x=>({section:"Subject Summary",item:x.subject||"Unknown",value:fmtNum(x.borrow_count||0),note:"Borrows"})),
+        ...(d.sections?.inventory_by_status||[]).map(x=>({section:"Inventory Status",item:x.status||"unknown",value:fmtNum(x.count||0),note:"Copies"}))
       ];
       return d;
     }
@@ -1425,41 +1425,44 @@
       return buildHdr(brand,"Inventory Snapshot")+`<div class="rptBody compactBody">${fp.length?buildFiltBar(fp).replace('class="rptFilters"','class="rptFilters compact"'):""}${buildSum(sc).replace('class="rptSumGrid"','class="rptSumGrid compactCards"')}<table class="rptTable compact inventoryTable">${cg}<thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Inventory Snapshot");
     },
     grand_summary(data,brand){
-      const rows=data.rows||[];const t=data.totals||{},m=data.metrics||{},n=data.narrative||{},sec=data.sections||{};
+      const rows=data.rows||[];const t=data.totals||{},m=data.metrics||{},sec=data.sections||{};
       const fp=[{k:"Date",v:`${data.filters?.date_from||"\u2014"} to ${data.filters?.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()}];
-      const metricCards=[
-        ["Circulation Rate",`${fmtNum(m.circulation_rate||0)}%`],["Availability Rate",`${fmtNum(m.availability_rate||0)}%`],
-        ["Overdue Share",`${fmtNum(m.overdue_percentage||0)}%`],["Active Borrowers",fmtNum(m.active_borrowers||0)],
-        ["Active Loans",fmtNum(t.active_loans||0)],["Unpaid Fines",peso(t.unpaid_fines||0)]
-      ].map(([lbl,val])=>`<div style="border:1px solid #e2e2e2;border-radius:10px;padding:9px;background:#fafafa;"><div style="font-size:9px;font-weight:900;text-transform:uppercase;color:#666;">${esc(lbl)}</div><div style="font-size:17px;font-weight:900;color:#111;margin-top:2px;">${esc(val)}</div></div>`).join("");
-      const section = (title, text) => `<div style="border-top:1px solid #e6e6e6;padding-top:10px;margin-top:10px;"><div style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#111;margin-bottom:4px;">${esc(title)}</div><div style="font-size:11px;line-height:1.5;color:#333;">${esc(text||"No insight available for this section.")}</div></div>`;
-      const topBooks=(sec.most_borrowed_books||[]).slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td><b>${esc(r.title||"Untitled")}</b><div class="cs">${esc(r.author||"")}</div></td><td>${fmtNum(r.borrow_count||0)}</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No borrowing data for this period.</td></tr>`;
-      const groups=(sec.top_borrower_groups||[]).slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td>Grade ${esc(r.group_name||"Unspecified")}</td><td>${fmtNum(r.borrow_count||0)}</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No borrower group activity.</td></tr>`;
-      const subjects=(sec.top_subjects||[]).slice(0,5).map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.subject||"Unknown")}</td><td>${fmtNum(r.borrow_count||0)}</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No subject activity.</td></tr>`;
-      const inventory=(sec.inventory_by_status||[]).map(r=>`<tr><td>${esc(r.status||"unknown")}</td><td>${fmtNum(r.count||0)}</td><td>${Number(t.total_copies||0)?Math.round(Number(r.count||0)/Number(t.total_copies||1)*100):0}%</td></tr>`).join("")||`<tr><td colspan="3" class="rptEmpty">No inventory status data.</td></tr>`;
-      const recommendations=(data.recommendations||[]).map(x=>`<li>${esc(x)}</li>`).join("");
-      const summaryBlock=`<div class="rptSummaryBlock">
-        <div style="font-size:15px;font-weight:900;color:#111;margin-bottom:6px;">Library Performance Summary</div>
-        <div style="font-size:11.5px;line-height:1.55;color:#333;margin-bottom:10px;">${esc(n.library_overview||"")}</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">${metricCards}</div>
-        ${section("Circulation Performance",n.circulation_performance)}
-        ${section("Collection Status",n.collection_status)}
-        ${section("Borrower Activity",n.borrower_activity)}
-        ${section("Fines & Payments",n.fines_payments)}
-        ${section("Subject Insights",n.subject_insights)}
-        <div style="border-top:1px solid #e6e6e6;padding-top:10px;margin-top:10px;"><div style="font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#111;margin-bottom:4px;">Recommendations or Notes</div><ul style="margin:0 0 0 16px;padding:0;font-size:11px;line-height:1.45;color:#333;">${recommendations}</ul></div>
-      </div>`;
-      const supportRows=[
-        `<tr><td colspan="3"><b>Most Borrowed Materials</b></td></tr>${topBooks}`,
-        `<tr><td colspan="3"><b>Top Borrower Groups</b></td></tr>${groups}`,
-        `<tr><td colspan="3"><b>Subject Distribution</b></td></tr>${subjects}`,
-        `<tr><td colspan="3"><b>Inventory Status Counts</b></td></tr>${inventory}`
+      const pct=(v)=>`${fmtNum(v||0)}%`;
+      const sectionRows=(title,pairs)=>`<tr class="grandSec"><td colspan="3">${esc(title)}</td></tr>${pairs.map(([k,v,note])=>`<tr><td class="grandMetric">${esc(k)}</td><td class="grandValue">${esc(v)}</td><td>${esc(note||"")}</td></tr>`).join("")}`;
+      const rankRows=(title,items,cols)=>`<tr class="grandSec"><td colspan="3">${esc(title)}</td></tr>${items.length?items.slice(0,5).map((r,i)=>cols(r,i)).join(""):`<tr><td colspan="3" class="rptEmpty">No records found.</td></tr>`}`;
+      const bodyRows=[
+        sectionRows("Collection Summary",[
+          ["Total Books",fmtNum(t.total_books),"Titles"],
+          ["Total Copies",fmtNum(t.total_copies),"All copy records"],
+          ["Available Copies",fmtNum(t.available_copies),pct(m.availability_rate)],
+          ["Borrowed Copies",fmtNum(t.borrowed_copies),pct(m.circulation_rate)]
+        ]),
+        sectionRows("Circulation Summary",[
+          ["Active Loans",fmtNum(t.active_loans),""],
+          ["Overdue Loans",fmtNum(t.overdue_loans),pct(m.overdue_percentage)],
+          ["Loans in Selected Period",fmtNum(m.loans_in_period),""],
+          ["Active Borrowers in Period",fmtNum(m.active_borrowers),""]
+        ]),
+        sectionRows("Borrower Summary",[
+          ["Total Students",fmtNum(t.total_students),""],
+          ["Total Teachers",fmtNum(t.total_teachers),""],
+          ["Most Active Borrower Category",m.most_active_borrower_category?`Grade ${m.most_active_borrower_category}`:"—",""]
+        ]),
+        sectionRows("Fines and Payments Summary",[
+          ["Unpaid Fines",peso(t.unpaid_fines||0),""],
+          ["Collected Fines / Payments",peso(t.collected_fines||0),""]
+        ]),
+        rankRows("Inventory Status",sec.inventory_by_status||[],r=>`<tr><td class="grandMetric">${esc(r.status||"unknown")}</td><td class="grandValue">${fmtNum(r.count||0)}</td><td>${Number(t.total_copies||0)?Math.round(Number(r.count||0)/Number(t.total_copies||1)*100):0}%</td></tr>`),
+        rankRows("Top Borrowed Books",sec.most_borrowed_books||[],(r,i)=>`<tr><td class="grandMetric">#${i+1} ${esc(r.title||"Untitled")}</td><td class="grandValue">${fmtNum(r.borrow_count||0)}</td><td>${esc(r.author||"")}</td></tr>`),
+        rankRows("Top Borrowers",sec.top_borrowers||[],(r,i)=>`<tr><td class="grandMetric">#${i+1} ${esc(`${r.last_name||""}, ${r.first_name||""}`.replace(/^,\s*/,"")||r.student_code||"Borrower")}</td><td class="grandValue">${fmtNum(r.borrow_count||0)}</td><td>${esc(r.student_code||"")}</td></tr>`),
+        rankRows("Subject Summary",sec.top_subjects||[],(r,i)=>`<tr><td class="grandMetric">#${i+1} ${esc(r.subject||"Unknown")}</td><td class="grandValue">${fmtNum(r.borrow_count||0)}</td><td>Borrows</td></tr>`)
       ].join("");
-      return buildHdr(brand,"Library Overview Report")+`<div class="rptBody">${buildFiltBar(fp)}${summaryBlock}<table class="rptTable" style="margin-top:12px;"><thead><tr><th style="width:48px">Rank</th><th>Supporting Insight</th><th style="width:90px">Count</th></tr></thead><tbody>${supportRows}</tbody></table></div>`+buildFoot(rows.length,"Library Overview Report");
+      const grandStyle=`<style>.grandTable{table-layout:fixed;font-size:10.5px}.grandTable col:nth-child(1){width:52%}.grandTable col:nth-child(2){width:18%}.grandTable col:nth-child(3){width:30%}.grandTable th,.grandTable td{white-space:normal;word-break:normal;overflow-wrap:anywhere;hyphens:none;line-height:1.28}.grandSec td{background:#f1f1f1!important;color:#111;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;padding:7px 8px}.grandMetric{font-weight:800;color:#111}.grandValue{font-weight:900;text-align:right;color:#111}</style>`;
+      return buildHdr(brand,"Grand Summary")+`<div class="rptBody">${grandStyle}${buildFiltBar(fp)}<table class="rptTable grandTable"><colgroup><col><col><col></colgroup><thead><tr><th>Section / Metric</th><th style="text-align:right;">Value</th><th>Notes</th></tr></thead><tbody>${bodyRows}</tbody></table></div>`+buildFoot(rows.length,"Grand Summary");
     }
   };
 
-  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot",grand_summary:"Library Overview Report"};
+  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot",grand_summary:"Grand Summary"};
 
   async function generateReport(){
     const fetchFn=FETCHERS[curRType],render=RENDERERS[curRType];if(!fetchFn||!render)return;

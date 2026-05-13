@@ -229,7 +229,7 @@
 
     .tools{
       display:grid;
-      grid-template-columns:minmax(0, 1fr) 190px auto auto;
+      grid-template-columns:minmax(0, 1fr) 190px auto;
       gap:12px;
       align-items:end;
       margin-bottom:0;
@@ -734,7 +734,6 @@
               </div>
 
               <button class="btn" id="addBtn" type="button">Add Student</button>
-              <button class="btnGhost" id="importTeachersBtn" type="button" style="display:none;">Import Teachers CSV</button>
             </div>
 
             <div class="progressRow">
@@ -785,18 +784,11 @@
             <label for="teacherLastName">Last Name</label>
             <input id="teacherLastName" autocomplete="off" />
           </div>
-          <div class="field">
-            <label for="teacherStatus">Status</label>
-            <select id="teacherStatus">
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
           <div class="modalError" id="teacherError"></div>
         </div>
         <div class="modalActions">
           <button class="btnDanger" id="teacherDeleteBtn" type="button" style="display:none;">Delete Teacher</button>
+          <button class="btnGhost" id="importTeachersBtn" type="button">Import Teachers CSV</button>
           <button class="btnGhost" id="teacherCancelBtn" type="button">Cancel</button>
           <button class="btn" id="teacherSaveBtn" type="submit">Save Teacher</button>
         </div>
@@ -812,7 +804,7 @@
       </div>
       <div class="modalBody">
         <p style="margin:0 0 10px;font-size:13px;font-weight:800;color:rgba(0,0,0,0.62);">
-          Required headers: <strong>teacher_code, first_name, last_name, status</strong>.
+          Required headers: <strong>teacher_code, first_name, last_name</strong>.
         </p>
         <input id="teacherCsvFile" type="file" accept=".csv,text/csv" style="display:none;" />
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
@@ -1300,7 +1292,6 @@
         : "Search student code, last name, grade, or section...";
       gradeFilterEl.closest(".filterBlock").style.display = isTeachers ? "none" : "";
       addBtnEl.textContent = isTeachers ? "Add Teacher" : "Add Student";
-      importTeachersBtn.style.display = isTeachers ? "" : "none";
       document.querySelector(".pagination")?.setAttribute("aria-label", isTeachers ? "Teacher load more" : "Student load more");
       history.replaceState(history.state || {}, "", `students.html?${new URLSearchParams({ tab: activeTab, ...getQueryState() }).toString()}`);
     }
@@ -1334,8 +1325,8 @@
       document.getElementById("teacherCode").value = teacher?.teacher_code || teacher?.student_code || "";
       document.getElementById("teacherLastName").value = teacher?.last_name || "";
       document.getElementById("teacherFirstName").value = teacher?.first_name || "";
-      document.getElementById("teacherStatus").value = (teacher?.status || "active").toLowerCase();
       teacherDeleteBtn.style.display = teacher ? "" : "none";
+      importTeachersBtn.style.display = teacher ? "none" : "";
       teacherModal.classList.add("is-open");
       teacherModal.setAttribute("aria-hidden", "false");
       document.getElementById("teacherCode").focus();
@@ -1363,8 +1354,7 @@
       const payload = {
         teacher_code: document.getElementById("teacherCode").value.trim(),
         last_name: document.getElementById("teacherLastName").value.trim(),
-        first_name: document.getElementById("teacherFirstName").value.trim(),
-        status: document.getElementById("teacherStatus").value.trim() || "active"
+        first_name: document.getElementById("teacherFirstName").value.trim()
       };
       if (!payload.teacher_code || !payload.last_name || !payload.first_name){
         setTeacherError("Please complete all Teacher details.");
@@ -1465,7 +1455,7 @@
         return out;
       };
       const headers = parseLine(lines[0]).map(h => h.toLowerCase());
-      const required = ["teacher_code", "first_name", "last_name", "status"];
+      const required = ["teacher_code", "first_name", "last_name"];
       const missing = required.filter(h => !headers.includes(h));
       if (missing.length) throw new Error(`Missing required headers: ${missing.join(", ")}.`);
       return { headers, count: Math.max(0, lines.length - 1) };
