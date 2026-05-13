@@ -1016,6 +1016,8 @@ document.documentElement.classList.add("branding-loading");
         const updated = Number(data?.updated ?? 0);
         const skipped = Number(data?.skipped ?? 0);
         const failed = Number(data?.failed_count ?? 0);
+        const inactive = Number(data?.inactive_count ?? 0);
+        const pruned = Number(data?.pruned_count ?? 0);
         const failedList = Array.isArray(data?.failed) ? data.failed : [];
         const skippedList = Array.isArray(data?.skipped_rows) ? data.skipped_rows : [];
 
@@ -1029,6 +1031,8 @@ document.documentElement.classList.add("branding-loading");
                 <tr><td>Updated</td><td>${updated}</td></tr>
                 <tr><td>Skipped</td><td>${skipped}</td></tr>
                 <tr><td>Failed</td><td>${failed}</td></tr>
+                <tr><td>Marked Inactive</td><td>${inactive}</td></tr>
+                <tr><td>Pruned</td><td>${pruned}</td></tr>
               </tbody>
             </table>
           </div>
@@ -1067,7 +1071,7 @@ document.documentElement.classList.add("branding-loading");
             </div>
           ` : (!skippedList.length ? `<div style="margin-top:10px; font-weight:1000; color:#111;">All rows imported successfully</div>` : "")}
         `;
-        csvSummary.textContent = `Created: ${created} • Updated: ${updated} • Skipped: ${skipped} • Failed: ${failed}`;
+        csvSummary.textContent = `Created: ${created} • Updated: ${updated} • Inactive: ${inactive} • Pruned: ${pruned} • Skipped: ${skipped} • Failed: ${failed}`;
         markStudentsListDirty();
 
       }catch(e){

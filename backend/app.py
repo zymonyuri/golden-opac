@@ -199,52 +199,49 @@ def get_active_school_year(conn) -> str:
 
 def mark_inactive_students_for_school_year(cur, school_year: str, import_started_at=None):
     """
-    Calls the DB helper when available. If the helper fails because its
-    current_school_year parameter conflicts with the student column name,
-    fall back to the same update using bound parameters from the app.
+    After a school-year import, students not touched by that import are not
+    enrolled for the current year. Keep their records and history, but hide
+    them from active operational views.
     """
-    cur.execute("SAVEPOINT mark_inactive_students")
-    try:
-        cur.execute("SELECT mark_inactive_students_by_school_year(%s) AS inactive_count", (school_year,))
-        row = cur.fetchone()
-        cur.execute("RELEASE SAVEPOINT mark_inactive_students")
-        return (row or {}).get("inactive_count")
-    except Exception as e:
-        cur.execute("ROLLBACK TO SAVEPOINT mark_inactive_students")
-        cur.execute("RELEASE SAVEPOINT mark_inactive_students")
-        msg = str(e).lower()
-        if "current_school_year" not in msg or "ambiguous" not in msg:
-            raise
-
-    current_start_year = int(str(school_year).split("-", 1)[0])
-    params = [school_year]
+    params = [school_year, school_year]
     import_guard = ""
     if import_started_at is not None:
         import_guard = "AND (last_imported_at IS NULL OR last_imported_at < %s)"
         params.append(import_started_at)
-    params.append(current_start_year)
 
     cur.execute(
         f"""
         UPDATE student
         SET
             status = 'inactive',
+            current_school_year = %s,
             last_status_change_school_year = %s,
             updated_at = NOW()
-        WHERE status <> 'inactive'
-          AND last_grade_section_change_school_year IS NOT NULL
-          AND last_status_change_school_year IS NOT NULL
+        WHERE COALESCE(borrower_type, 'student') = 'student'
+          AND COALESCE(status, 'active') <> 'graduated'
           {import_guard}
-          AND (
-              %s
-              - CAST(SPLIT_PART(
-                    LEAST(last_grade_section_change_school_year, last_status_change_school_year),
-                    '-',
-                    1
-                ) AS INTEGER)
-          ) >= 5
         """,
         tuple(params),
+    )
+    return cur.rowcount
+
+
+def prune_inactive_students_without_dependencies(cur, school_year: str, retention_years: int = 5):
+    current_start_year = int(str(school_year).split("-", 1)[0])
+    cutoff_start_year = current_start_year - retention_years
+    cur.execute(
+        """
+        DELETE FROM student s
+        WHERE COALESCE(s.borrower_type, 'student') = 'student'
+          AND COALESCE(s.status, '') = 'inactive'
+          AND s.last_status_change_school_year ~ '^[0-9]{4}-[0-9]{4}$'
+          AND CAST(SPLIT_PART(s.last_status_change_school_year, '-', 1) AS INTEGER) <= %s
+          AND NOT EXISTS (SELECT 1 FROM loan l WHERE l.student_id = s.student_id)
+          AND NOT EXISTS (SELECT 1 FROM fine f WHERE f.student_id = s.student_id)
+          AND NOT EXISTS (SELECT 1 FROM fine_payment fp WHERE fp.student_id = s.student_id)
+          AND NOT EXISTS (SELECT 1 FROM damage_report dr WHERE dr.student_id = s.student_id)
+        """,
+        (cutoff_start_year,),
     )
     return cur.rowcount
 
@@ -424,6 +421,10 @@ def ensure_runtime_schema():
         # table; the student.borrower_type column is retained only so older
         # deployments that briefly stored teachers in student can be migrated.
         cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS borrower_type VARCHAR(20) NOT NULL DEFAULT 'student'")
+        cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS current_school_year VARCHAR(20)")
+        cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS last_grade_section_change_school_year VARCHAR(20)")
+        cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS last_status_change_school_year VARCHAR(20)")
+        cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS last_imported_at TIMESTAMP WITH TIME ZONE")
         cur.execute("""
             ALTER TABLE student
             DROP CONSTRAINT IF EXISTS student_status_check
@@ -1315,7 +1316,7 @@ def student_lookup(student_code: str, current=Depends(require_roles("librarian",
                    COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
-              AND COALESCE(status, 'active') NOT IN ('graduated')
+              AND COALESCE(status, 'active') NOT IN ('graduated', 'inactive')
             """,
             (code,),
         )
@@ -2399,7 +2400,7 @@ def search_students(
                 FROM student s
                 WHERE
                     COALESCE(s.borrower_type, 'student') = 'student'
-                    AND COALESCE(s.status, 'active') NOT IN ('graduated')
+                    AND COALESCE(s.status, 'active') NOT IN ('graduated', 'inactive')
                     AND
                     (%s = '' OR (
                         COALESCE(s.student_code, '') ILIKE %s OR
@@ -2468,7 +2469,7 @@ def search_students(
             FROM student s
             WHERE
                 COALESCE(s.borrower_type, 'student') = 'student'
-                AND COALESCE(s.status, 'active') NOT IN ('graduated')
+                AND COALESCE(s.status, 'active') NOT IN ('graduated', 'inactive')
                 AND
                 (%s = '' OR (
                     COALESCE(s.student_code, '') ILIKE %s OR
@@ -2637,7 +2638,7 @@ def get_student_meta(current=Depends(require_roles("librarian", "admin"))):
             WHERE grade IS NOT NULL
               AND TRIM(grade) <> ''
               AND COALESCE(borrower_type, 'student') = 'student'
-              AND COALESCE(status, 'active') NOT IN ('graduated')
+              AND COALESCE(status, 'active') NOT IN ('graduated', 'inactive')
             ORDER BY grade ASC
             """
         )
@@ -2652,7 +2653,7 @@ def get_student_meta(current=Depends(require_roles("librarian", "admin"))):
               AND section IS NOT NULL
               AND TRIM(section) <> ''
               AND COALESCE(borrower_type, 'student') = 'student'
-              AND COALESCE(status, 'active') NOT IN ('graduated')
+              AND COALESCE(status, 'active') NOT IN ('graduated', 'inactive')
             ORDER BY grade ASC, section ASC
             """
         )
@@ -2754,7 +2755,7 @@ def checkout_book(req: CheckoutRequest, current=Depends(require_roles("librarian
                    COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
-              AND COALESCE(status, 'active') NOT IN ('graduated')
+              AND COALESCE(status, 'active') NOT IN ('graduated', 'inactive')
             """,
             (student_code,),
         )
@@ -4861,7 +4862,7 @@ async def import_students_csv(
                 first_name = (row.get("first_name") or "").strip()
                 grade_raw = (row.get("grade") or "").strip()
                 section = (row.get("section") or "").strip()
-                status = (row.get("status") or "").strip() or default_status
+                status = "active"
 
                 # Validate required fields
                 if not last_name or not first_name:
@@ -4874,10 +4875,7 @@ async def import_students_csv(
                 # Normalize grade to '1'..'12' (use your helper)
                 grade = normalize_grade(grade_raw)
 
-                # Normalize status
                 status_norm = status.lower()
-                if status_norm not in ["active", "suspended", "graduated", "inactive"]:
-                    raise ValueError("status must be active, suspended, graduated, or inactive")
 
                 target = None
                 if student_code:
@@ -4921,16 +4919,14 @@ async def import_students_csv(
                     fields = [
                         "grade = %s",
                         "section = %s",
+                        "status = %s",
                         "current_school_year = %s",
                         "last_grade_section_change_school_year = %s",
+                        "last_status_change_school_year = %s",
                         "last_imported_at = NOW()",
                         "updated_at = NOW()",
                     ]
-                    params = [grade, section, school_year, school_year]
-                    if row.get("status") is not None and str(row.get("status") or "").strip():
-                        fields.append("status = %s")
-                        fields.append("last_status_change_school_year = %s")
-                        params.extend([status_norm, school_year])
+                    params = [grade, section, status_norm, school_year, school_year, school_year]
                     params.append(target["student_id"])
                     cur.execute(
                         f"""
@@ -4967,6 +4963,7 @@ async def import_students_csv(
                 failed.append({"line": idx, "student_code": row.get("student_code"), "error": str(row_err)})
 
         inactive_count = mark_inactive_students_for_school_year(cur, school_year, import_started_at)
+        pruned_count = prune_inactive_students_without_dependencies(cur, school_year)
         conn.commit()
 
         return {
@@ -4977,6 +4974,7 @@ async def import_students_csv(
             "failed_count": len(failed),
             "school_year": school_year,
             "inactive_count": inactive_count,
+            "pruned_count": pruned_count,
             "skipped_rows": skipped[:200],
             "failed": failed[:200],  # cap response size
         }
@@ -6419,7 +6417,7 @@ def circulation_precheck(student_code: str, current=Depends(require_roles("libra
                    COALESCE(borrower_type, 'student') AS borrower_type
             FROM student
             WHERE student_code = %s
-              AND COALESCE(status, 'active') NOT IN ('graduated')
+              AND COALESCE(status, 'active') NOT IN ('graduated', 'inactive')
             """,
             (code,),
         )

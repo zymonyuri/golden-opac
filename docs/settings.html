@@ -2607,9 +2607,9 @@ document.documentElement.classList.add("branding-loading");
         sections_by_grade: data?.sections_by_grade || {}
       };
       buildGradeSelect(document.getElementById("ruleGrade"), false);
-      buildGradeSelect(document.getElementById("graduateGrade"), false);
       const gradSelect = document.getElementById("graduateGrade");
-      gradSelect.value = studentMeta.grades.includes("12") ? "12" : (studentMeta.grades[0] || "12");
+      gradSelect.innerHTML = `<option value="12">Grade 12</option>`;
+      gradSelect.value = "12";
       syncSectionsForGrade("graduateGrade", "graduateSection", true);
       fillRuleFormFromSelectedGrade();
     }
