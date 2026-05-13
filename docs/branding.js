@@ -44,7 +44,7 @@ function applyDocumentTitle({ schoolName, systemName, headerSubtitle, portalTitl
   const lower = currentTitle.toLowerCase();
   if (lower.includes("login")) { document.title = `${schoolName} — Librarian Login`; return; }
   if (lower.includes("home")) { document.title = `${schoolName} — ${portalTitle}`; return; }
-  if (lower.includes("settings")) { document.title = `${schoolName} — Settings`; return; }
+  if (lower.includes("settings")) { document.title = "Settings"; return; }
   if (lower.includes("results")) { document.title = `${systemName} — Results`; return; }
   if (lower.includes("book details")) { document.title = `${systemName} — Book Details`; return; }
   if (
