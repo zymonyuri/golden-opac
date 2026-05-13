@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <title>Teacher Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap" rel="stylesheet">
+  <script>document.documentElement.classList.add("branding-loading");</script>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    *{box-sizing:border-box}
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:999;border-bottom:1px solid rgba(0,0,0,.08);background:transparent;transition:background 180ms ease,border-color 180ms ease,box-shadow 180ms ease,backdrop-filter 180ms ease}
+    .topbar.is-scrolled{background:rgba(0,0,0,.22);border-bottom:1px solid rgba(255,255,255,.14);backdrop-filter:blur(16px) saturate(160%);box-shadow:0 18px 45px rgba(0,0,0,.22)}
+    .page{position:relative;min-height:100vh;overflow:hidden}.wrap{position:relative;z-index:2;padding:110px 16px 80px}.shell{width:min(1280px,94vw);margin:0 auto;display:grid;grid-template-columns:84px 1fr;gap:16px;align-items:start}
+    .sidebar{border-radius:18px;background:linear-gradient(135deg,rgba(0,0,0,.24),rgba(0,0,0,.14));border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(14px) saturate(140%);box-shadow:0 26px 60px rgba(0,0,0,.30);overflow:hidden}
+    .side-item{position:relative;height:78px;display:grid;place-items:center;border-bottom:1px solid rgba(255,255,255,.10);text-decoration:none;transition:transform 220ms ease,background 220ms ease}.side-item:hover{background:rgba(0,0,0,.28);transform:translateY(-2px)}.side-item:last-child{border-bottom:0}.side-item img{width:34px;height:34px;object-fit:contain;opacity:.92}.side-item.is-active{background:color-mix(in srgb,var(--brand-yellow) 18%,transparent);box-shadow:inset 3px 0 0 var(--brand-yellow)}
+    .panel{border-radius:18px;background:rgba(255,255,255,.96);border:1px solid rgba(0,0,0,.06);box-shadow:0 20px 50px rgba(0,0,0,.25);overflow:hidden;color:#111;min-height:calc(100vh - 190px)}
+    .content{padding:18px;display:flex;flex-direction:column;gap:14px}.topRow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.titleLeft{display:flex;align-items:center;gap:12px}.h1{margin:0;font-size:28px;font-weight:1000;letter-spacing:.01em}.backBtn{width:42px;height:42px;border-radius:12px;border:1px solid rgba(0,0,0,.10);background:rgba(0,0,0,.04);cursor:pointer;color:#111}.backBtn svg{width:22px;height:22px}.actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn,.btnGhost,.btnDanger{height:42px;border-radius:12px;padding:0 14px;cursor:pointer;font-weight:1000;font-size:13px;font-family:inherit}.btn{border:0;background:var(--brand-yellow);color:#111}.btnGhost{border:1px solid rgba(0,0,0,.12);background:rgba(0,0,0,.04);color:#111}.btnDanger{border:1px solid rgba(217,54,54,.35);background:rgba(217,54,54,.12);color:#8a0d0d}
+    .teacherCard{border-radius:16px;border:1px solid rgba(0,0,0,.10);background:rgba(255,255,255,.78);padding:16px;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center}.teacherName{font-size:24px;font-weight:1000;line-height:1.1}.teacherMeta{margin-top:8px;color:rgba(0,0,0,.58);font-weight:900}.badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;border:1px solid rgba(0,0,0,.10);background:rgba(0,0,0,.03);font-size:12px;font-weight:1000;color:rgba(0,0,0,.70)}.b-ok{color:#0b6a1e;border-color:rgba(31,157,65,.30);background:rgba(31,157,65,.10)}
+    .statsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.statCard{border-radius:14px;border:1px solid rgba(0,0,0,.09);background:rgba(255,255,255,.72);padding:14px}.statNum{font-size:24px;font-weight:1000}.statLbl{margin-top:4px;font-size:12px;font-weight:1000;color:rgba(0,0,0,.56);text-transform:uppercase;letter-spacing:.04em}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid rgba(0,0,0,.12);padding-top:4px}.tab{padding:10px 16px;border-radius:14px 14px 0 0;border:1px solid rgba(0,0,0,.12);border-bottom:0;background:rgba(0,0,0,.06);font-weight:1000;text-transform:uppercase;letter-spacing:.06em;font-size:12px;cursor:pointer}.tab.is-active{background:var(--brand-yellow);color:#111}
+    .section{display:none}.section.is-active{display:block}.tableWrap{border-radius:14px;border:1px solid rgba(0,0,0,.10);overflow:auto;background:rgba(255,255,255,.72)}table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid rgba(0,0,0,.08);text-align:left;vertical-align:top;white-space:normal;overflow-wrap:anywhere}th{background:rgba(0,0,0,.04);font-size:12px;font-weight:1000;text-transform:uppercase;color:rgba(0,0,0,.66)}tr:last-child td{border-bottom:0}.empty{border-radius:14px;border:1px dashed rgba(0,0,0,.18);background:rgba(0,0,0,.02);padding:16px;color:rgba(0,0,0,.55);font-weight:900}
+    .modalOverlay{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.45)}.modalOverlay.is-open{display:flex}.modal{width:min(520px,94vw);border-radius:18px;background:rgba(255,255,255,.98);box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden}.modalTop{padding:16px;border-bottom:1px solid rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center}.modalTop h2{margin:0;font-size:18px;font-weight:1000}.modalBody{padding:14px 16px}.modalActions{padding:0 16px 16px;display:flex;gap:10px;justify-content:flex-end}.field{margin:10px 0}.field label{display:block;font-size:13px;font-weight:1000;color:rgba(0,0,0,.70);margin-bottom:6px}.field input{width:100%;height:44px;border-radius:12px;border:1px solid rgba(0,0,0,.14);background:rgba(0,0,0,.03);padding:0 12px;font-weight:900}.modalError{display:none;margin-top:10px;font-size:12px;font-weight:900;color:rgba(176,0,0,.82)}
+    .brand__school{color:var(--brand-yellow);font-weight:900}.brand__subtitle{color:var(--brand-green);font-weight:700}.site-footer{position:relative;z-index:2;margin-top:0}
+    @media(max-width:980px){.shell{grid-template-columns:74px 1fr}.teacherCard{grid-template-columns:1fr}.statsGrid{grid-template-columns:1fr 1fr}.panel{min-height:unset}.wrap{padding-bottom:80px}}
+  </style>
+  <link rel="stylesheet" href="mobile.css" />
+</head>
+<body>
+  <div class="topbar" id="siteHeader">
+    <div class="brand"><img src="assets/default-school-logo.png" class="brand__logo" alt="School Logo" data-brand-logo /><div class="brand__text"><div class="brand__name"><span class="brand__school" data-brand-school-name>Your School Name</span></div><div class="brand__sub"><span class="brand__subtitle" data-brand-header-subtitle>Librarian Portal</span></div></div></div>
+    <nav class="nav" aria-label="Primary"><a href="home.html" class="nav__link">Home</a><a href="#footer" class="nav__link" id="contactLink">Contact</a><a href="#" class="nav__link" id="logoutLink">Log out</a></nav>
+  </div>
+  <main class="page">
+    <div class="page-bg" aria-hidden="true"></div><div class="page-overlay" aria-hidden="true"></div>
+    <section class="wrap"><div class="shell">
+      <aside class="sidebar" aria-label="Modules">
+        <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
+        <a class="side-item is-active" href="students.html?tab=teachers" title="Students"><img src="assets/icons/students.png" alt="Students"></a>
+        <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
+        <a class="side-item" href="cataloging.html" title="Cataloging"><img src="assets/icons/cataloging.png" alt="Cataloging"></a>
+        <a class="side-item" href="reports.html" title="Reports"><img src="assets/icons/reports.png" alt="Reports"></a>
+        <a class="side-item" href="settings.html" title="Settings"><img src="assets/icons/settings.png" alt="Settings"></a>
+      </aside>
+      <section class="panel"><div class="content">
+        <div class="topRow"><div class="titleLeft"><button class="backBtn" id="backBtn" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><h1 class="h1">TEACHER DETAILS</h1></div><div class="actions"><button class="btnGhost" id="editBtn" type="button">Edit Teacher</button><button class="btnDanger" id="deleteBtn" type="button">Delete Teacher</button></div></div>
+        <div id="errorBar" class="empty" style="display:none;"></div>
+        <div id="teacherHeader" class="teacherCard"><div><div class="teacherName">Loading Teacher...</div><div class="teacherMeta">Please wait</div></div><span class="badge">Loading</span></div>
+        <div class="statsGrid">
+          <div class="statCard"><div class="statNum" id="activeLoans">0</div><div class="statLbl">Current Borrowed</div></div>
+          <div class="statCard"><div class="statNum" id="historyCount">0</div><div class="statLbl">Loan History</div></div>
+          <div class="statCard"><div class="statNum" id="overdueCount">0</div><div class="statLbl">Overdues</div></div>
+          <div class="statCard"><div class="statNum" id="fineBalance">PHP 0.00</div><div class="statLbl">Outstanding Fines</div></div>
+        </div>
+        <div class="tabs">
+          <button class="tab is-active" data-tab="current" type="button">Current Borrowed</button>
+          <button class="tab" data-tab="history" type="button">Loan History</button>
+          <button class="tab" data-tab="fines" type="button">Fines / Overdues</button>
+        </div>
+        <section class="section is-active" id="tab-current"></section>
+        <section class="section" id="tab-history"></section>
+        <section class="section" id="tab-fines"></section>
+      </div></section>
+    </div></section>
+  </main>
+  <div class="modalOverlay" id="teacherModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="teacherModalTitle">
+      <div class="modalTop"><h2 id="teacherModalTitle">Edit Teacher</h2><button class="btnGhost" id="teacherCloseBtn" type="button">Close</button></div>
+      <form id="teacherForm"><div class="modalBody">
+        <div class="field"><label for="teacherCode">Teacher Code</label><input id="teacherCode" autocomplete="off"></div>
+        <div class="field"><label for="teacherFirstName">First Name</label><input id="teacherFirstName" autocomplete="off"></div>
+        <div class="field"><label for="teacherLastName">Last Name</label><input id="teacherLastName" autocomplete="off"></div>
+        <div class="modalError" id="teacherError"></div>
+      </div><div class="modalActions"><button class="btnGhost" id="teacherCancelBtn" type="button">Cancel</button><button class="btn" id="teacherSaveBtn" type="submit">Save Teacher</button></div></form>
+    </div>
+  </div>
+  <footer class="site-footer" id="footer"><div class="site-footer__inner"><section class="site-footer__col"><h3 class="site-footer__title" id="footerBrandTitle">Library Management System</h3><p class="site-footer__text" id="footerBrandDescription">Customize your school branding, contact details, and interface appearance in Display Settings.</p><p class="site-footer__fineprint">© <span id="footerYear"></span> <span id="footerBrandCopyright">Your School Name — All Rights Reserved.</span></p></section><section class="site-footer__col site-footer__col--right"><h3 class="site-footer__title">Contact &amp; Support</h3><div class="site-footer__item"><span class="site-footer__icon" aria-hidden="true">●</span><div id="footerBrandAddress">School Address</div></div><div class="site-footer__item"><span class="site-footer__icon" aria-hidden="true">●</span><div id="footerBrandPhone">School Contact Number</div></div><div class="site-footer__item"><span class="site-footer__icon" aria-hidden="true">●</span><div id="footerBrandEmail">library@school.edu</div></div></section></div></footer>
+  <script>
+    const BASE_URL = 'https://golden-opac-backend.onrender.com';
+    const token = sessionStorage.getItem("gk_token") || localStorage.getItem("gk_token");
+    if (!token) window.location.href = "login.html";
+    const qs = new URLSearchParams(window.location.search);
+    const teacherId = qs.get("teacher_id");
+    if (!teacherId) window.location.href = "students.html?tab=teachers";
+    document.getElementById("footerYear").textContent = String(new Date().getFullYear());
+    const header = document.getElementById("siteHeader");
+    function syncHeader(){ header?.classList.toggle("is-scrolled", window.scrollY > 8); }
+    syncHeader(); window.addEventListener("scroll", syncHeader, { passive:true });
+    document.getElementById("logoutLink")?.addEventListener("click", e => { e.preventDefault(); sessionStorage.removeItem("gk_token"); localStorage.removeItem("gk_token"); window.location.href = "login.html"; });
+    document.getElementById("backBtn").addEventListener("click", () => window.location.href = "students.html?tab=teachers");
+    function authHeaders(extra={}){ return Object.assign({ Authorization:`Bearer ${token}` }, extra); }
+    function esc(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
+    function peso(v){ const n=Number(v||0); return `PHP ${n.toFixed(2)}`; }
+    function fmtDate(v){ if(!v)return "—"; const d=new Date(v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString("en-PH",{year:"numeric",month:"short",day:"2-digit"}); }
+    let teacher = null;
+    function showError(msg){ const el=document.getElementById("errorBar"); el.style.display=msg?"block":"none"; el.textContent=msg||""; }
+    function renderTable(rows, cols, emptyText){
+      if(!rows.length) return `<div class="empty">${esc(emptyText)}</div>`;
+      return `<div class="tableWrap"><table><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${c.render(r)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    }
+    function renderProfile(data){
+      teacher = data.teacher || {};
+      const name = `${teacher.last_name || ""}, ${teacher.first_name || ""}`.replace(/^,\s*/,"").trim() || "Teacher";
+      document.getElementById("teacherHeader").innerHTML = `<div><div class="teacherName">${esc(name)}</div><div class="teacherMeta">Teacher Code: ${esc(teacher.teacher_code || "—")}</div></div><span class="badge b-ok">${esc(teacher.status || "active")}</span>`;
+      document.getElementById("activeLoans").textContent = data.summary?.active_loans ?? 0;
+      document.getElementById("historyCount").textContent = data.summary?.loan_history ?? 0;
+      document.getElementById("overdueCount").textContent = data.summary?.overdue_loans ?? 0;
+      document.getElementById("fineBalance").textContent = peso(data.summary?.outstanding_fines || 0);
+      document.getElementById("tab-current").innerHTML = renderTable(data.current_loans || [], [
+        {label:"Book", render:r=>`<b>${esc(r.title||"—")}</b><div>${esc(r.author||"")}</div>`},
+        {label:"Barcode", render:r=>esc(r.barcode||"—")},
+        {label:"Borrowed", render:r=>fmtDate(r.borrowed_at)},
+        {label:"Due", render:r=>fmtDate(r.due_at)},
+        {label:"Status", render:r=>r.is_overdue?'<span class="badge">Overdue</span>':'<span class="badge b-ok">Borrowed</span>'}
+      ], "No current borrowed books for this Teacher.");
+      document.getElementById("tab-history").innerHTML = renderTable(data.loan_history || [], [
+        {label:"Book", render:r=>`<b>${esc(r.title||"—")}</b><div>${esc(r.author||"")}</div>`},
+        {label:"Barcode", render:r=>esc(r.barcode||"—")},
+        {label:"Borrowed", render:r=>fmtDate(r.borrowed_at)},
+        {label:"Returned", render:r=>fmtDate(r.returned_at)},
+        {label:"Status", render:r=>esc(r.loan_status||"—")}
+      ], "No loan history found for this Teacher.");
+      document.getElementById("tab-fines").innerHTML = renderTable(data.fines || [], [
+        {label:"Reason", render:r=>esc(r.reason||"—")},
+        {label:"Book", render:r=>esc(r.title||"—")},
+        {label:"Assessed", render:r=>fmtDate(r.assessed_at)},
+        {label:"Amount", render:r=>peso(r.amount)},
+        {label:"Outstanding", render:r=>peso(r.outstanding)}
+      ], "No fines or overdue fine records found for this Teacher.");
+    }
+    async function loadTeacher(){
+      showError("");
+      try{
+        const res = await fetch(`${BASE_URL}/api/teachers/${encodeURIComponent(teacherId)}/profile`, { headers:authHeaders() });
+        const data = await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data?.detail || "Failed to load Teacher details.");
+        renderProfile(data);
+      }catch(err){ showError(err?.message || "Network error."); }
+    }
+    document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("is-active"));
+      document.querySelectorAll(".section").forEach(s=>s.classList.remove("is-active"));
+      tab.classList.add("is-active");
+      document.getElementById(`tab-${tab.dataset.tab}`).classList.add("is-active");
+    }));
+    const modal=document.getElementById("teacherModal"), form=document.getElementById("teacherForm"), err=document.getElementById("teacherError");
+    function setModalError(msg){ err.style.display=msg?"block":"none"; err.textContent=msg||""; }
+    function openModal(){ setModalError(""); document.getElementById("teacherCode").value=teacher?.teacher_code||""; document.getElementById("teacherFirstName").value=teacher?.first_name||""; document.getElementById("teacherLastName").value=teacher?.last_name||""; modal.classList.add("is-open"); }
+    function closeModal(){ modal.classList.remove("is-open"); setModalError(""); }
+    document.getElementById("editBtn").addEventListener("click", openModal);
+    document.getElementById("teacherCloseBtn").addEventListener("click", closeModal);
+    document.getElementById("teacherCancelBtn").addEventListener("click", closeModal);
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const payload={
+        teacher_code:document.getElementById("teacherCode").value.trim(),
+        first_name:document.getElementById("teacherFirstName").value.trim(),
+        last_name:document.getElementById("teacherLastName").value.trim()
+      };
+      if(!payload.teacher_code || !payload.first_name || !payload.last_name){ setModalError("Please complete all Teacher details."); return; }
+      try{
+        const res=await fetch(`${BASE_URL}/api/teachers/${encodeURIComponent(teacherId)}`, { method:"PUT", headers:authHeaders({"Content-Type":"application/json"}), body:JSON.stringify(payload) });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data?.detail || "Failed to save Teacher.");
+        closeModal(); await loadTeacher();
+      }catch(err){ setModalError(err?.message || "Network error."); }
+    });
+    document.getElementById("deleteBtn").addEventListener("click", async () => {
+      if(!confirm("Delete this Teacher?")) return;
+      try{
+        const res=await fetch(`${BASE_URL}/api/teachers/${encodeURIComponent(teacherId)}`, { method:"DELETE", headers:authHeaders() });
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok) throw new Error(data?.detail || "Failed to delete Teacher.");
+        window.location.href = "students.html?tab=teachers";
+      }catch(err){ showError(err?.message || "Network error."); }
+    });
+    loadTeacher();
+  </script>
+  <script src="branding.js"></script>
+  <script src="mobile-nav.js"></script>
+</body>
+</html>

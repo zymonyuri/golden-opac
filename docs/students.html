@@ -1158,8 +1158,7 @@
       listEl.querySelectorAll("[data-teacher-id]").forEach(card => {
         card.addEventListener("click", () => {
           const id = card.getAttribute("data-teacher-id");
-          const teacher = teachersState.items.find(item => String(item.teacher_id || item.student_id) === String(id));
-          if (teacher) openTeacherModal(teacher);
+          if (id) window.location.href = `teacher_details.html?teacher_id=${encodeURIComponent(id)}`;
         });
       });
     }

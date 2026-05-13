@@ -5265,6 +5265,135 @@ def add_teacher(payload: TeacherPayload, current=Depends(require_roles("libraria
         conn.close()
 
 
+@app.get("/api/teachers/{teacher_id}")
+def get_teacher(teacher_id: int, current=Depends(require_roles("librarian", "admin"))):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT id AS teacher_id, id, teacher_code, first_name, last_name, status, created_at, updated_at
+            FROM teacher
+            WHERE id = %s
+            """,
+            (teacher_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Teacher not found")
+        return row
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/teachers/{teacher_id}/profile")
+def teacher_profile(teacher_id: int, current=Depends(require_roles("librarian", "admin"))):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT id AS teacher_id, id, teacher_code, first_name, last_name, status, created_at, updated_at
+            FROM teacher
+            WHERE id = %s
+            """,
+            (teacher_id,),
+        )
+        teacher = cur.fetchone()
+        if not teacher:
+            raise HTTPException(status_code=404, detail="Teacher not found")
+
+        # Legacy compatibility: if a teacher previously borrowed through a
+        # student-code based borrower record, show those loans on the details page.
+        cur.execute(
+            """
+            SELECT student_id
+            FROM student
+            WHERE student_code = %s
+            ORDER BY student_id ASC
+            LIMIT 1
+            """,
+            (teacher["teacher_code"],),
+        )
+        legacy = cur.fetchone()
+        if not legacy:
+            return {
+                "teacher": teacher,
+                "current_loans": [],
+                "loan_history": [],
+                "fines": [],
+                "summary": {"active_loans": 0, "loan_history": 0, "overdue_loans": 0, "outstanding_fines": 0},
+            }
+
+        sid = legacy["student_id"]
+        cur.execute(
+            """
+            SELECT l.loan_id, l.borrowed_at, l.due_at, l.returned_at, l.status AS loan_status,
+                   b.title, b.author, bc.barcode, bc.status AS copy_status,
+                   (l.returned_at IS NULL AND l.due_at < NOW()) AS is_overdue
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE l.student_id = %s AND l.returned_at IS NULL
+            ORDER BY l.borrowed_at DESC
+            """,
+            (sid,),
+        )
+        current_loans = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT l.loan_id, l.borrowed_at, l.due_at, l.returned_at, l.status AS loan_status,
+                   b.title, b.author, bc.barcode, bc.status AS copy_status
+            FROM loan l
+            JOIN book_copy bc ON bc.copy_id = l.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE l.student_id = %s
+            ORDER BY l.borrowed_at DESC
+            LIMIT 100
+            """,
+            (sid,),
+        )
+        loan_history = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT f.fine_id, f.loan_id, f.amount, f.amount_paid,
+                   (f.amount - f.amount_paid) AS outstanding,
+                   f.status, f.reason, f.assessed_at,
+                   b.title, bc.barcode
+            FROM fine f
+            LEFT JOIN loan l ON l.loan_id = f.loan_id
+            LEFT JOIN book_copy bc ON bc.copy_id = l.copy_id
+            LEFT JOIN book b ON b.book_id = bc.book_id
+            WHERE f.student_id = %s
+            ORDER BY f.assessed_at DESC
+            LIMIT 100
+            """,
+            (sid,),
+        )
+        fines = cur.fetchall()
+
+        outstanding = sum(float(r.get("outstanding") or 0) for r in fines if (r.get("status") or "").lower() != "paid")
+        overdue = sum(1 for r in current_loans if r.get("is_overdue"))
+        return {
+            "teacher": teacher,
+            "current_loans": current_loans,
+            "loan_history": loan_history,
+            "fines": fines,
+            "summary": {
+                "active_loans": len(current_loans),
+                "loan_history": len(loan_history),
+                "overdue_loans": overdue,
+                "outstanding_fines": round(outstanding, 2),
+            },
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
 @app.put("/api/teachers/{teacher_id}")
 def update_teacher(
     teacher_id: int,
