@@ -1439,9 +1439,12 @@
         ]),
         sectionRows("Circulation Summary",[
           ["Active Loans",fmtNum(t.active_loans),""],
-          ["Overdue Loans",fmtNum(t.overdue_loans),pct(m.overdue_percentage)],
           ["Loans in Selected Period",fmtNum(m.loans_in_period),""],
           ["Active Borrowers in Period",fmtNum(m.active_borrowers),""]
+        ]),
+        sectionRows("Overdue Summary",[
+          ["Overdue Loans",fmtNum(t.overdue_loans),""],
+          ["Overdue Percentage",pct(m.overdue_percentage),"Of active loans"]
         ]),
         sectionRows("Borrower Summary",[
           ["Total Students",fmtNum(t.total_students),""],
@@ -1481,6 +1484,7 @@
     card.addEventListener("click",()=>{
       document.querySelectorAll(".reportTypeCard").forEach(c=>c.classList.remove("is-active"));card.classList.add("is-active");curRType=card.dataset.rtype;
       document.getElementById("reportTypeLabel").textContent=LABELS[curRType]||"";document.getElementById("reportRowCount").style.display="none";
+      document.getElementById("btnCsv").style.display=curRType==="grand_summary"?"none":"";
       FILTERS[curRType]?.();generateReport();
     });
   });
@@ -1610,15 +1614,7 @@
   };
   document.getElementById("btnCsv").addEventListener("click",async()=>{
     if(curRType==="grand_summary"){
-      showProg();
-      try{
-        const data=await FETCHERS.grand_summary();const rows=data.rows||[];
-        const totalRows=Object.entries(data.totals||{}).map(([k,v])=>({section:"Totals",item:k,value:v,note:""}));
-        const columns=["section","item","value","note"];
-        const csv=[columns.join(",")].concat([...totalRows,...rows].map(r=>columns.map(c=>{const val=r[c]??"";const str=String(val).replace(/"/g,'""');return /[",\n]/.test(str)?`"${str}"`:str;}).join(",")));
-        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`grand_summary_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-        hideProg(true);
-      }catch{hideProg(false);alert("CSV export failed.");}
+      alert("Grand Summary is available as PDF only.");
       return;
     }
     if(curRType==="students"){
