@@ -425,6 +425,15 @@ def ensure_runtime_schema():
         # deployments that briefly stored teachers in student can be migrated.
         cur.execute("ALTER TABLE student ADD COLUMN IF NOT EXISTS borrower_type VARCHAR(20) NOT NULL DEFAULT 'student'")
         cur.execute("""
+            ALTER TABLE student
+            DROP CONSTRAINT IF EXISTS student_status_check
+        """)
+        cur.execute("""
+            ALTER TABLE student
+            ADD CONSTRAINT student_status_check
+            CHECK (status IN ('active', 'suspended', 'graduated', 'inactive'))
+        """)
+        cur.execute("""
             UPDATE student
             SET borrower_type = 'student'
             WHERE borrower_type IS NULL OR BTRIM(borrower_type) = ''
