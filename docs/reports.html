@@ -483,7 +483,7 @@
                   <div class="reportTypeCard" data-rtype="most_borrowed"><div class="rtTitle">Most Borrowed Books</div><div class="rtDesc">Books ranked by borrow count over a selected date range</div></div>
                   <div class="reportTypeCard" data-rtype="grade_summary"><div class="rtTitle">Grade Summary</div><div class="rtDesc">Per-grade totals: borrows, active readers, overdue, fines</div></div>
                   <div class="reportTypeCard" data-rtype="inventory"><div class="rtTitle">Inventory Snapshot</div><div class="rtDesc">Book copy status: available, borrowed, damaged, lost &mdash; with filters</div></div>
-                  <div class="reportTypeCard" data-rtype="grand_summary"><div class="rtTitle">Grand Summary</div><div class="rtDesc">Overall library health totals, borrower activity, inventory, fines, and overdue summary</div></div>
+                  <div class="reportTypeCard" data-rtype="grand_summary"><div class="rtTitle">Grand Summary</div><div class="rtDesc">Overall library totals, borrower activity, inventory, fines, and top rankings</div></div>
                 </div>
               </div>
 
@@ -576,7 +576,13 @@
   function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
   function fmtNum(n){const x=Number(n??0);return Number.isFinite(x)?x.toLocaleString():"0";}
   function peso(n){const x=Number(n??0);return Number.isFinite(x)?"\u20b1"+x.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):"\u20b10.00";}
-  function safePct(p,w){p=Number(p??0);w=Number(w??0);return(Number.isFinite(p)&&Number.isFinite(w)&&w>0)?Math.round(p/w*100):0;}
+  function safePct(p,w){
+    p=Number(p??0);w=Number(w??0);
+    if(!Number.isFinite(p)||!Number.isFinite(w)||w<=0)return"0";
+    if(p>=w)return"100";
+    const pct=p/w*100;
+    return pct>=99?pct.toFixed(2).replace(/\.?0+$/,""):pct.toFixed(1).replace(/\.0$/,"");
+  }
   function fmtDate(v){if(!v)return"\u2014";try{return new Date(v).toLocaleDateString("en-PH",{year:"numeric",month:"short",day:"numeric"});}catch{return String(v);}}
   function fmtDT(v){if(!v)return"\u2014";try{return new Date(v).toLocaleString("en-PH",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch{return String(v);}}
   function getMDS(d=new Date()){const p=new Intl.DateTimeFormat("en-CA",{timeZone:APP_TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const m={};for(const x of p)if(x.type!=="literal")m[x.type]=x.value;return`${m.year}-${m.month}-${m.day}`;}
@@ -1428,14 +1434,14 @@
     grand_summary(data,brand){
       const rows=data.rows||[];const t=data.totals||{},m=data.metrics||{},sec=data.sections||{};
       const fp=[{k:"Date",v:`${data.filters?.date_from||"\u2014"} to ${data.filters?.date_to||"\u2014"}`},{k:"School Year",v:schoolYearLabel()}];
-      const pct=(v)=>`${fmtNum(v||0)}%`;
+      const pct=(v,n,d)=>n!==undefined&&d!==undefined?`${safePct(n,d)}%`:`${fmtNum(v||0)}%`;
       const totalCopies=Number(t.total_copies||0);
       const smallRows=(items,renderer,emptyCols)=>items.length?items.slice(0,5).map(renderer).join(""):`<tr><td colspan="${emptyCols}" class="rptEmpty">No records found.</td></tr>`;
       const miniTable=(title,heads,body,cls="")=>`<section class="grandBlock ${cls}"><h3>${esc(title)}</h3><table class="rptTable grandMini"><thead><tr>${heads.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></section>`;
       const statCards=[
         ["Total Books",fmtNum(t.total_books),"Titles"],
         ["Total Copies",fmtNum(t.total_copies),"Copy records"],
-        ["Available Copies",fmtNum(t.available_copies),`Availability ${pct(m.availability_rate)}`],
+        ["Available Copies",fmtNum(t.available_copies),`Availability ${pct(m.availability_rate,t.available_copies,t.total_copies)}`],
         ["Borrowed Copies",fmtNum(t.borrowed_copies),`Circulation ${pct(m.circulation_rate)}`],
         ["Active Loans",fmtNum(t.active_loans),"Current loans"],
         ["Overdue Loans",fmtNum(t.overdue_loans),`Overdue ${pct(m.overdue_percentage)}`],
@@ -1459,9 +1465,6 @@
       ]));
       const inventoryBody=smallRows(sec.inventory_by_status||[],r=>`<tr><td>${esc(r.status||"unknown")}</td><td class="numCell">${fmtNum(r.count||0)}</td><td class="numCell">${totalCopies?Math.round(Number(r.count||0)/totalCopies*100):0}%</td></tr>`,3);
       const inventoryTable=miniTable("Inventory Status",["Status","Copies","Share"],inventoryBody);
-      const overdueTable=miniTable("Overdue Summary",["Metric","Value"],metricRows([
-        ["Overdue Loans",fmtNum(t.overdue_loans)],["Overdue Percentage",pct(m.overdue_percentage)],["Active Loans",fmtNum(t.active_loans)]
-      ]));
       const borrowedBody=smallRows(sec.most_borrowed_books||[],(r,i)=>`<tr><td class="rankCell">#${i+1}</td><td><b>${esc(r.title||"Untitled")}</b><div class="miniSub">${esc(r.author||"")}</div></td><td>${esc(r.subject||r.genre||"-")}</td><td class="numCell">${fmtNum(r.borrow_count||0)}</td></tr>`,4);
       const borrowedTable=miniTable("Most Borrowed Books",["Rank","Book","Subject","Borrows"],borrowedBody,"wide");
       const borrowerBody=smallRows(sec.top_borrowers||[],(r,i)=>`<tr><td class="rankCell">#${i+1}</td><td><b>${esc(`${r.last_name||""}, ${r.first_name||""}`.replace(/^,\s*/,"")||r.student_code||"Borrower")}</b><div class="miniSub">${esc(r.student_code||"")}</div></td><td>${esc(r.grade?`Grade ${r.grade}`:"-")}</td><td class="numCell">${fmtNum(r.borrow_count||0)}</td></tr>`,4);
@@ -1469,7 +1472,7 @@
       const subjectBody=smallRows(sec.top_subjects||[],(r,i)=>`<tr><td class="rankCell">#${i+1}</td><td>${esc(r.subject||"Unknown")}</td><td class="numCell">${fmtNum(r.borrow_count||0)}</td></tr>`,3);
       const subjectTable=miniTable("Subject Summary",["Rank","Subject","Borrows"],subjectBody);
       const style=`<style>.grandSummaryReport .rptPage{overflow:hidden}.grandBody{padding-top:14px}.grandCards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 12px}.grandCard{border:1px solid #d8d8d8;border-radius:8px;background:#fff;padding:8px 9px;min-height:66px}.grandCardLabel{font-size:8.8px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#666;line-height:1.2}.grandCardValue{font-size:17px;font-weight:1000;color:#111;line-height:1.15;margin-top:4px;white-space:normal;overflow-wrap:anywhere}.grandCardSub{font-size:9px;color:#666;font-weight:800;margin-top:3px;line-height:1.2}.grandGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}.grandBlock{break-inside:avoid;border:1px solid #dcdcdc;border-radius:8px;overflow:hidden;background:#fff}.grandBlock.wide{grid-column:1/-1}.grandBlock h3{margin:0;padding:8px 10px;background:#f5f5f5;border-bottom:1px solid #dedede;font-size:11px;font-weight:1000;color:#111;text-transform:uppercase;letter-spacing:.04em}.grandMini{table-layout:fixed;width:100%;font-size:9.8px;border:0}.grandMini th,.grandMini td{padding:6px 8px;line-height:1.25;white-space:normal;word-break:normal;overflow-wrap:anywhere;hyphens:none}.grandMini th{font-size:8.5px}.grandMini .numCell{text-align:right;font-weight:900;white-space:normal}.grandMini .rankCell{width:42px;font-weight:900;color:#111}.miniSub{font-size:8.8px;color:#666;font-weight:700;margin-top:2px}.grandContinued{margin-bottom:10px}</style>`;
-      return `<div class="previewPages grandSummaryReport"><section class="rptPage rptPageBreak">${buildHdr(brand,"Grand Summary")}<div class="rptBody grandBody">${style}${buildFiltBar(fp)}<div class="grandCards">${statCards}</div><div class="grandGrid">${collectionTable}${circulationTable}${borrowerTable}${finesTable}${inventoryTable}${overdueTable}</div></div>${buildFoot(rows.length,"Grand Summary",1,2)}</section><section class="rptPage rptPageBreak">${buildHdr(brand,"Grand Summary")}<div class="rptBody grandBody">${style}<div class="rptContNote grandContinued">Grand Summary continued</div><div class="grandGrid">${borrowedTable}${topBorrowersTable}${subjectTable}</div></div>${buildFoot(rows.length,"Grand Summary",2,2)}</section></div>`;
+      return `<div class="previewPages grandSummaryReport"><section class="rptPage rptPageBreak">${buildHdr(brand,"Grand Summary")}<div class="rptBody grandBody">${style}${buildFiltBar(fp)}<div class="grandCards">${statCards}</div><div class="grandGrid">${collectionTable}${circulationTable}${borrowerTable}${finesTable}${inventoryTable}</div></div>${buildFoot(rows.length,"Grand Summary",1,2)}</section><section class="rptPage rptPageBreak">${buildHdr(brand,"Grand Summary")}<div class="rptBody grandBody">${style}<div class="rptContNote grandContinued">Grand Summary continued</div><div class="grandGrid">${borrowedTable}${topBorrowersTable}${subjectTable}</div></div>${buildFoot(rows.length,"Grand Summary",2,2)}</section></div>`;
     }
   };
 

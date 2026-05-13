@@ -5110,7 +5110,7 @@ def grand_summary_report(
         total_loans = int(loans["total_loans"] or 0)
         loans_in_period = int(period_activity["loans_in_period"] or 0)
         active_borrowers = int(period_activity["active_borrowers_in_period"] or 0)
-        availability_rate = round((available_copies / total_copies * 100), 1) if total_copies else 0
+        availability_rate = 100 if total_copies and available_copies >= total_copies else (round((available_copies / total_copies * 100), 2) if total_copies else 0)
         circulation_rate = round((borrowed_copies / total_copies * 100), 1) if total_copies else 0
         overdue_percentage = round((overdue_loans / active_loans * 100), 1) if active_loans else 0
         inactive_copies = damaged_copies + lost_copies
@@ -5322,8 +5322,11 @@ def teacher_profile(teacher_id: int, current=Depends(require_roles("librarian", 
                 "teacher": teacher,
                 "current_loans": [],
                 "loan_history": [],
+                "borrow_history": [],
                 "fines": [],
-                "summary": {"active_loans": 0, "loan_history": 0, "overdue_loans": 0, "outstanding_fines": 0},
+                "fine_history": [],
+                "damage_records": [],
+                "summary": {"active_loans": 0, "current_borrowed_count": 0, "loan_history": 0, "borrowed_count": 0, "overdue_loans": 0, "overdue_count": 0, "outstanding_fines": 0},
             }
 
         sid = legacy["student_id"]
@@ -5345,6 +5348,7 @@ def teacher_profile(teacher_id: int, current=Depends(require_roles("librarian", 
         cur.execute(
             """
             SELECT l.loan_id, l.borrowed_at, l.due_at, l.returned_at, l.status AS loan_status,
+                   l.status, l.renew_count,
                    b.title, b.author, bc.barcode, bc.status AS copy_status
             FROM loan l
             JOIN book_copy bc ON bc.copy_id = l.copy_id
@@ -5375,17 +5379,38 @@ def teacher_profile(teacher_id: int, current=Depends(require_roles("librarian", 
         )
         fines = cur.fetchall()
 
+        cur.execute(
+            """
+            SELECT d.damage_id, d.copy_id, d.severity, d.notes, d.reported_at,
+                   bc.barcode, b.title
+            FROM damage_report d
+            JOIN book_copy bc ON bc.copy_id = d.copy_id
+            JOIN book b ON b.book_id = bc.book_id
+            WHERE d.student_id = %s
+            ORDER BY d.reported_at DESC
+            LIMIT 100
+            """,
+            (sid,),
+        )
+        damage_records = cur.fetchall()
+
         outstanding = sum(float(r.get("outstanding") or 0) for r in fines if (r.get("status") or "").lower() != "paid")
         overdue = sum(1 for r in current_loans if r.get("is_overdue"))
         return {
             "teacher": teacher,
             "current_loans": current_loans,
             "loan_history": loan_history,
+            "borrow_history": loan_history,
             "fines": fines,
+            "fine_history": fines,
+            "damage_records": damage_records,
             "summary": {
                 "active_loans": len(current_loans),
+                "current_borrowed_count": len(current_loans),
                 "loan_history": len(loan_history),
+                "borrowed_count": len(loan_history),
                 "overdue_loans": overdue,
+                "overdue_count": overdue,
                 "outstanding_fines": round(outstanding, 2),
             },
         }
