@@ -50,7 +50,7 @@ function applyDocumentTitle({ schoolName, systemName, headerSubtitle, portalTitl
   if (
     currentTitle === "Library Management System" ||
     currentTitle.includes("Golden Key") ||
-    currentTitle.includes("OPAC")
+    (currentTitle.includes("OPAC") && currentTitle.trim().toUpperCase() !== "OPAC")
   ) {
     document.title = systemName || `${schoolName} — ${headerSubtitle}`;
   }
