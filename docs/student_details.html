@@ -1207,6 +1207,15 @@
       errorBar.textContent = "";
     }
 
+    function invalidateStudentLists(reason = "graduated"){
+      try {
+        const payload = JSON.stringify({ reason, student_id, at: Date.now() });
+        sessionStorage.removeItem("students:list-state:v1");
+        sessionStorage.setItem("students:list-dirty:v1", payload);
+        localStorage.setItem("students:list-dirty:v1", payload);
+      } catch {}
+    }
+
     // Tabs
     const tabs = [...document.querySelectorAll(".tab")];
     function setTab(name){
@@ -1269,7 +1278,7 @@
       if (confirmDeleteStudentBtn.disabled) return;
       deleteStudentStatus.textContent = "";
       confirmDeleteStudentBtn.disabled = true;
-      confirmDeleteStudentBtn.textContent = "Deleting…";
+      confirmDeleteStudentBtn.textContent = "Deleting...";
       try {
         const res = await fetch(`${BASE_URL}/api/students/${encodeURIComponent(student_id)}`, {
           method: "DELETE",
@@ -1277,6 +1286,7 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data?.detail || "Delete failed.");
+        invalidateStudentLists("deleted");
         deleteStudentModal.classList.remove("show");
         window.location.href = "students.html";
       } catch(err) {

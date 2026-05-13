@@ -9592,6 +9592,7 @@ def delete_student(student_id: int, current=Depends(require_roles("librarian", "
     conn = get_connection()
     cur = conn.cursor()
     try:
+        # FIX: look up by student_id (PK), not student_code
         cur.execute("SELECT student_id FROM student WHERE student_id = %s AND COALESCE(borrower_type, 'student') = 'student'", (student_id,))
         row = cur.fetchone()
         if not row:
@@ -9599,17 +9600,14 @@ def delete_student(student_id: int, current=Depends(require_roles("librarian", "
 
         sid = row["student_id"]
 
-        cur.execute(
-            """
-            UPDATE student
-            SET status = 'graduated', updated_at = NOW()
-            WHERE student_id = %s
-            """,
-            (sid,),
-        )
+        cur.execute("DELETE FROM fine_payment WHERE fine_id IN (SELECT fine_id FROM fine WHERE student_id = %s)", (sid,))
+        cur.execute("DELETE FROM fine WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM damage_report WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM loan WHERE student_id = %s", (sid,))
+        cur.execute("DELETE FROM student WHERE student_id = %s", (sid,))
 
         conn.commit()
-        return {"message": "Student marked as graduated; historical records were preserved"}
+        return {"message": "Student and all associated records deleted successfully"}
 
     except HTTPException:
         conn.rollback()

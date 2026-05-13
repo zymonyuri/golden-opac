@@ -2005,6 +2005,15 @@ document.documentElement.classList.add("branding-loading");
       showToast._t = setTimeout(() => toast.classList.remove("show"), 2200);
     }
 
+    function invalidateStudentLists(reason = "graduated"){
+      try {
+        const payload = JSON.stringify({ reason, at: Date.now() });
+        sessionStorage.removeItem("students:list-state:v1");
+        sessionStorage.setItem("students:list-dirty:v1", payload);
+        localStorage.setItem("students:list-dirty:v1", payload);
+      } catch {}
+    }
+
     function esc(v){
       return String(v ?? "").replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
     }
@@ -2635,6 +2644,7 @@ document.documentElement.classList.add("branding-loading");
       const success = document.getElementById("graduateSuccess");
       success.textContent = `${data?.updated_count ?? 0} student(s) marked as graduated.`;
       success.classList.add("show");
+      invalidateStudentLists("graduated");
       showToast("Students graduated");
       await loadStudentOptions();
     }

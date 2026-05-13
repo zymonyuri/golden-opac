@@ -618,6 +618,29 @@
       flex-wrap:wrap;
     }
 
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(10px);
+      padding:12px 18px;
+      border-radius:999px;
+      background:rgba(17,17,17,0.92);
+      color:#fff;
+      font-size:13px;
+      font-weight:900;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 180ms ease, transform 180ms ease;
+      z-index:30;
+      box-shadow:0 14px 34px rgba(0,0,0,0.22);
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+
     .pageBtn{
       height:42px;
       min-width:112px;
@@ -784,6 +807,8 @@
     </section>
   </main>
 
+  <div class="toast" id="toast"></div>
+
   <div class="modalOverlay" id="teacherModal" aria-hidden="true">
     <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="teacherModalTitle">
       <div class="modalTop">
@@ -931,6 +956,14 @@
       }[m]));
     }
 
+    function showToast(message){
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
     const qEl = document.getElementById("q");
     const gradeFilterEl = document.getElementById("gradeFilter");
     const listEl = document.getElementById("list");
@@ -1073,6 +1106,14 @@
 
     function refreshStudentsList(){
       studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+      loadBatch({ reset: true });
+    }
+
+    function refreshStudentsAfterGraduation(){
+      if (activeTab !== "students") return;
+      sessionStorage.removeItem(STUDENTS_STATE_KEY);
+      studentsState = { items: [], nextCursor: null, hasMore: false, loading: false };
+      renderStudents([]);
       loadBatch({ reset: true });
     }
 
@@ -1292,6 +1333,12 @@
         qEl.value = "";
         gradeFilterEl.value = "";
         refreshStudentsList();
+      }
+    });
+    window.addEventListener("storage", (e) => {
+      if (e.key === STUDENTS_DIRTY_KEY && e.newValue && activeTab === "students"){
+        sessionStorage.removeItem(STUDENTS_DIRTY_KEY);
+        refreshStudentsAfterGraduation();
       }
     });
 
@@ -1594,7 +1641,11 @@
       }
     });
 
+    const initialGraduated = new URLSearchParams(window.location.search).get("graduated") === "1";
     syncTabUi();
+    if (initialGraduated){
+      showToast("Student graduated");
+    }
     if (activeTab === "teachers"){
       refreshTeachersList();
     } else if (consumeStudentsDirtyFlag()){
