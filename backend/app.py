@@ -112,6 +112,10 @@ class CheckoutRequest(BaseModel):
     barcode: str
     student_code: str
 
+
+class LibraryLogScanRequest(BaseModel):
+    student_code: str
+
 from typing import Optional
 
 class BookUpdate(BaseModel):
@@ -477,6 +481,40 @@ def ensure_runtime_schema():
             CREATE UNIQUE INDEX IF NOT EXISTS idx_fine_payment_receipt_number
             ON fine_payment (receipt_number)
             WHERE receipt_number IS NOT NULL
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS student_library_log (
+                log_id SERIAL PRIMARY KEY,
+                student_id INT NOT NULL REFERENCES student(student_id) ON DELETE CASCADE,
+                student_code_snapshot VARCHAR(100) NOT NULL,
+                student_name_snapshot VARCHAR(255),
+                grade_snapshot VARCHAR(50),
+                section_snapshot VARCHAR(100),
+                time_in TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                time_out TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ,
+                recorded_by INT REFERENCES librarian(librarian_id),
+                CONSTRAINT student_library_log_time_order_check
+                    CHECK (time_out IS NULL OR time_out >= time_in)
+            )
+        """)
+        cur.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_student_library_log_one_open
+            ON student_library_log (student_id)
+            WHERE time_out IS NULL
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_student_library_log_time_in_desc
+            ON student_library_log (time_in DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_student_library_log_student_time
+            ON student_library_log (student_id, time_in DESC)
+        """)
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_student_library_log_grade_section
+            ON student_library_log (grade_snapshot, section_snapshot)
         """)
         conn.commit()
     finally:
@@ -5014,6 +5052,420 @@ async def import_students_csv(
     finally:
         cur.close()
         conn.close()
+
+
+# -----------------------------
+# STUDENT LIBRARY LOGS
+# -----------------------------
+LIBRARY_LOG_SCAN_COOLDOWN_SECONDS = 4
+
+
+def library_log_row_sql() -> str:
+    return """
+        SELECT
+            l.log_id,
+            l.student_id,
+            COALESCE(l.student_code_snapshot, s.student_code) AS student_code,
+            COALESCE(l.student_name_snapshot, CONCAT_WS(' ', s.first_name, s.last_name)) AS student_name,
+            s.first_name,
+            s.last_name,
+            COALESCE(l.grade_snapshot, s.grade) AS grade,
+            COALESCE(l.section_snapshot, s.section) AS section,
+            l.time_in,
+            l.time_out,
+            CASE
+                WHEN l.time_out IS NOT NULL THEN
+                    EXTRACT(EPOCH FROM (l.time_out - l.time_in))::BIGINT
+                ELSE NULL
+            END AS duration_seconds
+        FROM student_library_log l
+        JOIN student s ON s.student_id = l.student_id
+    """
+
+
+def parse_optional_date(value: str | None, field_name: str) -> date | None:
+    if value is None or not str(value).strip():
+        return None
+    return parse_date_yyyy_mm_dd(str(value).strip(), field_name)
+
+
+def build_library_logs_filters(
+    q: str | None = None,
+    grade: str | None = None,
+    section: str | None = None,
+    log_date: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    inside_only: bool = False,
+):
+    where = ["COALESCE(s.borrower_type, 'student') = 'student'"]
+    params: list = []
+
+    query = (q or "").strip()
+    if query:
+        where.append(
+            """
+            (
+                s.student_code ILIKE %s
+                OR CONCAT_WS(' ', s.first_name, s.last_name) ILIKE %s
+                OR CONCAT_WS(' ', s.last_name, s.first_name) ILIKE %s
+            )
+            """
+        )
+        like = f"%{query}%"
+        params.extend([like, like, like])
+
+    if grade and grade.strip():
+        where.append("COALESCE(l.grade_snapshot, s.grade, '') = %s")
+        params.append(grade.strip())
+
+    if section and section.strip():
+        where.append("COALESCE(l.section_snapshot, s.section, '') = %s")
+        params.append(section.strip())
+
+    if inside_only:
+        where.append("l.time_out IS NULL")
+
+    day = parse_optional_date(log_date, "date")
+    start = parse_optional_date(date_from, "date_from")
+    end = parse_optional_date(date_to, "date_to")
+
+    if day:
+        where.append("DATE(l.time_in AT TIME ZONE 'Asia/Manila') = %s")
+        params.append(day.isoformat())
+    else:
+        if start:
+            where.append("DATE(l.time_in AT TIME ZONE 'Asia/Manila') >= %s")
+            params.append(start.isoformat())
+        if end:
+            where.append("DATE(l.time_in AT TIME ZONE 'Asia/Manila') <= %s")
+            params.append(end.isoformat())
+
+    return where, params
+
+
+@app.post("/api/library-logs/scan")
+def record_library_log_scan(
+    payload: LibraryLogScanRequest,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    code = (payload.student_code or "").strip()
+    if not code or len(code) < 2:
+        raise HTTPException(status_code=400, detail="Invalid student code")
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            SELECT student_id, student_code, first_name, last_name, grade, section, status
+            FROM student
+            WHERE LOWER(TRIM(student_code)) = LOWER(TRIM(%s))
+              AND COALESCE(borrower_type, 'student') = 'student'
+            """,
+            (code,),
+        )
+        student = cur.fetchone()
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        status = (student.get("status") or "active").strip().lower()
+        if status != "active":
+            raise HTTPException(status_code=403, detail="Inactive or graduated student")
+
+        cur.execute(
+            """
+            SELECT log_id, time_in, time_out
+            FROM student_library_log
+            WHERE student_id = %s
+              AND (
+                    time_in >= NOW() - (%s || ' seconds')::interval
+                    OR time_out >= NOW() - (%s || ' seconds')::interval
+                  )
+            ORDER BY COALESCE(time_out, time_in) DESC
+            LIMIT 1
+            """,
+            (student["student_id"], LIBRARY_LOG_SCAN_COOLDOWN_SECONDS, LIBRARY_LOG_SCAN_COOLDOWN_SECONDS),
+        )
+        if cur.fetchone():
+            raise HTTPException(status_code=409, detail="Duplicate rapid scan")
+
+        cur.execute(
+            """
+            SELECT log_id
+            FROM student_library_log
+            WHERE student_id = %s AND time_out IS NULL
+            ORDER BY time_in DESC
+            LIMIT 1
+            FOR UPDATE
+            """,
+            (student["student_id"],),
+        )
+        open_log = cur.fetchone()
+
+        if open_log:
+            cur.execute(
+                f"""
+                UPDATE student_library_log
+                SET time_out = NOW(), updated_at = NOW(), recorded_by = %s
+                WHERE log_id = %s
+                RETURNING log_id
+                """,
+                (current["librarian_id"], open_log["log_id"]),
+            )
+            action = "time_out"
+            message = "TIME OUT RECORDED"
+            log_id = cur.fetchone()["log_id"]
+        else:
+            full_name = " ".join(
+                [str(student.get("first_name") or "").strip(), str(student.get("last_name") or "").strip()]
+            ).strip()
+            cur.execute(
+                """
+                INSERT INTO student_library_log (
+                    student_id,
+                    student_code_snapshot,
+                    student_name_snapshot,
+                    grade_snapshot,
+                    section_snapshot,
+                    recorded_by
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING log_id
+                """,
+                (
+                    student["student_id"],
+                    student["student_code"],
+                    full_name or student["student_code"],
+                    student.get("grade"),
+                    student.get("section"),
+                    current["librarian_id"],
+                ),
+            )
+            action = "time_in"
+            message = "TIME IN RECORDED"
+            log_id = cur.fetchone()["log_id"]
+
+        cur.execute(library_log_row_sql() + " WHERE l.log_id = %s", (log_id,))
+        row = cur.fetchone()
+        conn.commit()
+        return {"action": action, "message": message, "log": row}
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Library log scan failed: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/library-logs")
+def list_library_logs(
+    q: str | None = None,
+    grade: str | None = None,
+    section: str | None = None,
+    date: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    inside_only: bool = False,
+    limit: int = 30,
+    offset: int = 0,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    limit = max(1, min(int(limit or 30), 100))
+    offset = max(0, int(offset or 0))
+    where, params = build_library_logs_filters(q, grade, section, date, date_from, date_to, inside_only)
+    where_sql = "WHERE " + " AND ".join(where)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(f"SELECT COUNT(*) AS cnt FROM student_library_log l JOIN student s ON s.student_id = l.student_id {where_sql}", tuple(params))
+        total = int(cur.fetchone()["cnt"] or 0)
+        cur.execute(
+            library_log_row_sql()
+            + f"""
+            {where_sql}
+            ORDER BY l.time_in DESC, l.log_id DESC
+            LIMIT %s OFFSET %s
+            """,
+            tuple(params + [limit, offset]),
+        )
+        rows = cur.fetchall()
+        return {"rows": rows, "total": total, "limit": limit, "offset": offset}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/library-logs/inside")
+def library_logs_inside(current=Depends(require_roles("librarian", "admin"))):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            library_log_row_sql()
+            + """
+            WHERE l.time_out IS NULL
+              AND COALESCE(s.borrower_type, 'student') = 'student'
+            ORDER BY l.time_in DESC
+            LIMIT 500
+            """
+        )
+        rows = cur.fetchall()
+        return {"rows": rows, "total": len(rows)}
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/library-logs/report")
+def library_usage_report(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    grade: str | None = None,
+    section: str | None = None,
+    limit: int = 2000,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    dt_to = parse_optional_date(date_to, "date_to") or datetime.now(PH_TZ).date()
+    dt_from = parse_optional_date(date_from, "date_from") or dt_to
+    if dt_from > dt_to:
+        raise HTTPException(status_code=400, detail="date_from must be <= date_to")
+
+    limit = max(1, min(int(limit or 2000), 5000))
+    where, params = build_library_logs_filters(
+        grade=grade,
+        section=section,
+        date_from=dt_from.isoformat(),
+        date_to=dt_to.isoformat(),
+    )
+    where_sql = "WHERE " + " AND ".join(where)
+
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            library_log_row_sql()
+            + f"""
+            {where_sql}
+            ORDER BY l.time_in DESC, l.log_id DESC
+            LIMIT %s
+            """,
+            tuple(params + [limit]),
+        )
+        rows = cur.fetchall()
+
+        cur.execute(
+            f"""
+            SELECT
+                DATE(l.time_in AT TIME ZONE 'Asia/Manila') AS log_date,
+                COUNT(*) AS total_visits,
+                COUNT(DISTINCT l.student_id) AS unique_students,
+                COUNT(*) FILTER (WHERE l.time_out IS NULL) AS currently_inside
+            FROM student_library_log l
+            JOIN student s ON s.student_id = l.student_id
+            {where_sql}
+            GROUP BY DATE(l.time_in AT TIME ZONE 'Asia/Manila')
+            ORDER BY log_date DESC
+            """,
+            tuple(params),
+        )
+        daily_totals = cur.fetchall()
+
+        cur.execute(
+            f"""
+            SELECT
+                COALESCE(l.grade_snapshot, s.grade, 'Unspecified') AS grade,
+                COALESCE(l.section_snapshot, s.section, 'Unspecified') AS section,
+                COUNT(*) AS total_visits,
+                COUNT(DISTINCT l.student_id) AS unique_students,
+                COUNT(*) FILTER (WHERE l.time_out IS NULL) AS currently_inside
+            FROM student_library_log l
+            JOIN student s ON s.student_id = l.student_id
+            {where_sql}
+            GROUP BY COALESCE(l.grade_snapshot, s.grade, 'Unspecified'), COALESCE(l.section_snapshot, s.section, 'Unspecified')
+            ORDER BY grade ASC, section ASC
+            """,
+            tuple(params),
+        )
+        grouped_totals = cur.fetchall()
+
+        cur.execute(
+            f"""
+            SELECT
+                s.student_id,
+                COALESCE(l.student_code_snapshot, s.student_code) AS student_code,
+                COALESCE(l.student_name_snapshot, CONCAT_WS(' ', s.first_name, s.last_name)) AS student_name,
+                COALESCE(l.grade_snapshot, s.grade) AS grade,
+                COALESCE(l.section_snapshot, s.section) AS section,
+                COUNT(*) AS visit_count,
+                MAX(l.time_in) AS last_visit_at
+            FROM student_library_log l
+            JOIN student s ON s.student_id = l.student_id
+            {where_sql}
+            GROUP BY s.student_id, COALESCE(l.student_code_snapshot, s.student_code),
+                     COALESCE(l.student_name_snapshot, CONCAT_WS(' ', s.first_name, s.last_name)),
+                     COALESCE(l.grade_snapshot, s.grade), COALESCE(l.section_snapshot, s.section)
+            ORDER BY visit_count DESC, last_visit_at DESC
+            LIMIT 10
+            """,
+            tuple(params),
+        )
+        frequent_users = cur.fetchall()
+
+        total_visits = len(rows)
+        currently_inside = sum(1 for r in rows if r.get("time_out") is None)
+        unique_students = len({r.get("student_id") for r in rows})
+        completed = [int(r.get("duration_seconds") or 0) for r in rows if r.get("duration_seconds") is not None]
+
+        return {
+            "report_type": "library_usage",
+            "filters": {
+                "date_from": dt_from.isoformat(),
+                "date_to": dt_to.isoformat(),
+                "grade": grade or "All",
+                "section": section or "All",
+            },
+            "summary": {
+                "total_visits": total_visits,
+                "unique_students": unique_students,
+                "currently_inside": currently_inside,
+                "completed_sessions": len(completed),
+                "average_duration_seconds": int(sum(completed) / len(completed)) if completed else 0,
+            },
+            "daily_totals": daily_totals,
+            "grouped_totals": grouped_totals,
+            "frequent_users": frequent_users,
+            "rows": rows,
+            "total_records": len(rows),
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
+@app.get("/api/reports/library-usage")
+def report_library_usage(
+    date_from: str | None = None,
+    date_to: str | None = None,
+    grade: str | None = None,
+    section: str | None = None,
+    limit: int = 2000,
+    current=Depends(require_roles("librarian", "admin")),
+):
+    return library_usage_report(
+        date_from=date_from,
+        date_to=date_to,
+        grade=grade,
+        section=section,
+        limit=limit,
+        current=current,
+    )
 
 
 @app.get("/api/reports/grand-summary")

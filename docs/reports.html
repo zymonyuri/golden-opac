@@ -119,7 +119,7 @@
     .insightSub{font-size:12px;font-weight:800;color:rgba(0,0,0,0.55);}
     .miniSelect{padding:6px 10px;border-radius:10px;border:1px solid rgba(0,0,0,0.12);background:rgba(255,255,255,0.80);font-size:12px;font-weight:800;color:#111;width:auto;min-width:0;}
     /* ── Generate Reports ── */
-    .reportTypeGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    .reportTypeGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
     .reportTypeCard{border-radius:14px;border:2px solid rgba(0,0,0,0.10);background:rgba(255,255,255,0.70);padding:14px;cursor:pointer;transition:all 160ms ease;display:flex;flex-direction:column;gap:5px;}
     .reportTypeCard:hover{border-color:rgba(0,0,0,0.22);background:rgba(255,255,255,0.90);transform:translateY(-1px);}
     .reportTypeCard.is-active{border-color:var(--brand-green);background:color-mix(in srgb,var(--brand-green) 10%,white);box-shadow:0 8px 22px rgba(0,0,0,0.10);}
@@ -284,7 +284,7 @@
     .site-footer{margin-top:0;}
     @media(max-width:1180px){.statsGrid{grid-template-columns:repeat(2,1fr);}}
     @media(max-width:1100px){.dashGrid{grid-template-columns:1fr;}.leftCol,.rightCol{display:flex;flex-direction:column;gap:12px;}.card,.leftCol .card,.rightCol .card{height:auto;max-height:none;}.chartViewport{height:250px;min-height:250px;max-height:250px;flex-basis:250px;}#chartMonthly{height:260px !important;max-height:260px !important;}}
-    @media(max-width:900px){.reportTypeGrid{grid-template-columns:repeat(2,1fr);}.insightRow{grid-template-columns:1fr 1fr;}}
+    @media(max-width:1050px){.reportTypeGrid{grid-template-columns:repeat(2,minmax(0,1fr));}.insightRow{grid-template-columns:1fr 1fr;}}
     @media(max-width:760px){.twoCharts{grid-template-columns:1fr;}}
     @media(max-width:640px){.wrap{padding:104px 12px 80px;}.content{padding:14px 14px 18px;}.titleRow h1{font-size:24px;}.statsGrid{grid-template-columns:1fr;}.reportTypeGrid{grid-template-columns:1fr;}.insightRow{grid-template-columns:1fr;}.gradeDropList{grid-template-columns:repeat(3,1fr);}}
     @media(max-width:980px){.shell{grid-template-columns:74px 1fr;}}
@@ -346,6 +346,7 @@
     <section class="wrap">
       <div class="shell">
         <aside class="sidebar" aria-label="Modules">
+          <a class="side-item" href="student-library-logs.html" title="Student Library Logs"><img src="assets/icons/logs.png" alt="Student Library Logs"></a>
           <a class="side-item" href="circulation.html" title="Circulation"><img src="assets/icons/circulation.png" alt="Circulation"></a>
           <a class="side-item" href="students.html" title="Users"><img src="assets/icons/students.png" alt="Users"></a>
           <a class="side-item" href="search-admin.html" title="Search"><img src="assets/icons/search.png" alt="Search"></a>
@@ -482,6 +483,7 @@
                   <div class="reportTypeCard" data-rtype="fines"><div class="rtTitle">Fines Report</div><div class="rtDesc">Fine assessments, collections, and outstanding balances</div></div>
                   <div class="reportTypeCard" data-rtype="most_borrowed"><div class="rtTitle">Most Borrowed Books</div><div class="rtDesc">Books ranked by borrow count over a selected date range</div></div>
                   <div class="reportTypeCard" data-rtype="grade_summary"><div class="rtTitle">Grade Summary</div><div class="rtDesc">Per-grade totals: borrows, active readers, overdue, fines</div></div>
+                  <div class="reportTypeCard" data-rtype="library_usage"><div class="rtTitle">Library Usage</div><div class="rtDesc">Student library visits, currently-inside count, daily totals, and frequent users</div></div>
                   <div class="reportTypeCard" data-rtype="inventory"><div class="rtTitle">Inventory Snapshot</div><div class="rtDesc">Book copy status: available, borrowed, damaged, lost &mdash; with filters</div></div>
                   <div class="reportTypeCard" data-rtype="grand_summary"><div class="rtTitle">Grand Summary</div><div class="rtDesc">Overall library totals, borrower activity, inventory, fines, and top rankings</div></div>
                 </div>
@@ -1134,6 +1136,12 @@
         `<div class="field small"><label>Sort By</label><select id="f_gsort"><option value="grade">Grade Level</option><option value="borrows_desc">Most Borrows</option><option value="overdue_desc">Most Overdue</option><option value="fines_desc">Highest Fines</option></select></div>`;
       initGradeMulti();
     },
+    library_usage(){
+      document.getElementById("filterRow").innerHTML=
+        `<div class="field" style="min-width:330px;"><label>Date Range</label><div class="dateRange"><input id="f_df" type="date" value="${today()}" style="width:auto;flex:1;"><div class="dash">\u2013</div><input id="f_dt" type="date" value="${today()}" style="width:auto;flex:1;"></div></div>`+
+        gradeMultiFieldHtml()+sectionMultiFieldHtml();
+      initGradeMulti();initSectionMulti(_allSections);attachGradeToSectionSync();
+    },
     inventory(){
       document.getElementById("filterRow").innerHTML=
         `<div class="field small"><label>Copy Status</label><select id="f_ist"><option value="">All Statuses</option><option value="available">Available Only</option><option value="borrowed">Borrowed Only</option><option value="damaged">Damaged Only</option><option value="lost">Lost Only</option></select></div>`+
@@ -1198,6 +1206,26 @@
       const grades=getGrades();const df=gfv("f_df"),dt=gfv("f_dt");const p=new URLSearchParams();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);const sy=getSchoolYear();if(sy)p.set("school_year",sy);
       const r=await fetch(`${BASE_URL}/api/reports/grade-summary?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");const data=await r.json();
       if(grades.length&&data.rows){data.rows=data.rows.filter(row=>grades.includes(String(row.grade||"").trim()));}return data;
+    },
+    async library_usage(){
+      const grades=getGrades();const secs=getSections();const df=gfv("f_df"),dt=gfv("f_dt");
+      async function fetchOne(g,s){
+        const p=new URLSearchParams();if(df)p.set("date_from",df);if(dt)p.set("date_to",dt);if(g)p.set("grade",g);if(s)p.set("section",s);p.set("limit","2000");
+        const r=await fetch(`${BASE_URL}/api/reports/library-usage?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");return r.json();
+      }
+      const gradeList=grades.length?grades:[null];const secList=secs.length?secs:[null];
+      const results=await Promise.all(gradeList.flatMap(g=>secList.map(s=>fetchOne(g,s))));
+      const merged={...results[0]};
+      merged.rows=results.flatMap(d=>d.rows||[]);
+      merged.daily_totals=results.flatMap(d=>d.daily_totals||[]);
+      merged.grouped_totals=results.flatMap(d=>d.grouped_totals||[]);
+      const byUser=new Map();
+      results.flatMap(d=>d.frequent_users||[]).forEach(r=>{const k=r.student_id||r.student_code;if(!byUser.has(k))byUser.set(k,{...r,visit_count:0});const item=byUser.get(k);item.visit_count+=Number(r.visit_count||0);if(r.last_visit_at&&(!item.last_visit_at||new Date(r.last_visit_at)>new Date(item.last_visit_at)))item.last_visit_at=r.last_visit_at;});
+      merged.frequent_users=[...byUser.values()].sort((a,b)=>Number(b.visit_count||0)-Number(a.visit_count||0)).slice(0,10);
+      const durations=merged.rows.filter(r=>r.duration_seconds!==null&&r.duration_seconds!==undefined).map(r=>Number(r.duration_seconds||0));
+      merged.summary={total_visits:merged.rows.length,unique_students:new Set(merged.rows.map(r=>r.student_id)).size,currently_inside:merged.rows.filter(r=>!r.time_out).length,completed_sessions:durations.length,average_duration_seconds:durations.length?Math.round(durations.reduce((a,b)=>a+b,0)/durations.length):0};
+      merged.filters={date_from:df||"",date_to:dt||"",grade:gradeLabel(),section:sectionLabel()};
+      return merged;
     },
     async inventory(){
       const p=new URLSearchParams();const r=await fetch(`${BASE_URL}/api/reports/inventory?${p}`,{headers:authHdr()});if(!r.ok)throw new Error("fetch failed");let d=await r.json();
@@ -1421,6 +1449,17 @@
       const tb=rows.length?rows.map(r=>{const active=Number(r.active_students||0);const avg=active>0?(Number(r.total_borrows||0)/active).toFixed(2):"\u2014";const pctBorrowed=active>0?Math.round(Number(r.students_who_borrowed||0)/active*100)+"%":"\u2014";return`<tr><td><b>Gr. ${esc(r.grade||"?")}</b></td><td><b>${fmtNum(active)}</b></td><td>${fmtNum(r.students_who_borrowed)} <span style="color:#999;font-size:11px;">(${pctBorrowed})</span></td><td>${fmtNum(r.total_borrows)}</td><td>${Number(r.overdue_count||0)>0?`<span class="pill red">${fmtNum(r.overdue_count)}</span>`:`<span class="pill green">0</span>`}</td><td>${Number(r.outstanding_fines||0)>0?`<span class="pill yellow">${peso(r.outstanding_fines)}</span>`:`<span class="pill green">\u2014</span>`}</td><td>${avg}</td></tr>`;}).join(""):`<tr><td colspan="7" class="rptEmpty">No grade summary data for this period.</td></tr>`;
       return buildHdr(brand,"Grade Summary Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable" style="table-layout:fixed;width:100%;"><thead>${th}</thead><tbody>${tb}</tbody></table></div>`+buildFoot(rows.length,"Grade Summary");
     },
+    library_usage(data,brand){
+      const rows=data.rows||[],summ=data.summary||{},daily=data.daily_totals||[],top=data.frequent_users||[],grouped=data.grouped_totals||[];
+      const dur=(seconds)=>{seconds=Number(seconds||0);const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60);return h?`${h}h ${m}m`:`${m}m`;};
+      const fp=[{k:"Date",v:`${data.filters?.date_from||gfv("f_df")||"\u2014"} to ${data.filters?.date_to||gfv("f_dt")||"\u2014"}`},{k:"Grade",v:data.filters?.grade||gradeLabel()},{k:"Section",v:data.filters?.section||sectionLabel()}];
+      const sc=[{val:fmtNum(summ.total_visits||rows.length),lbl:"Total Visits"},{val:fmtNum(summ.unique_students||0),lbl:"Unique Students"},{val:fmtNum(summ.currently_inside||0),lbl:"Currently Inside",cls:Number(summ.currently_inside||0)>0?"warn":""},{val:dur(summ.average_duration_seconds||0),lbl:"Avg Duration"}];
+      const dailyRows=daily.length?daily.map(r=>`<tr><td>${fmtDate(r.log_date)}</td><td>${fmtNum(r.total_visits||0)}</td><td>${fmtNum(r.unique_students||0)}</td><td>${fmtNum(r.currently_inside||0)}</td></tr>`).join(""):`<tr><td colspan="4" class="rptEmpty">No daily usage totals found.</td></tr>`;
+      const topRows=top.length?top.map((r,i)=>`<tr><td><b>#${i+1}</b></td><td><div class="ct">${esc(r.student_name||r.student_code||"Student")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.section||"\u2014")}</td><td>${fmtNum(r.visit_count||0)}</td><td>${fmtDate(r.last_visit_at)}</td></tr>`).join(""):`<tr><td colspan="5" class="rptEmpty">No frequent-user data found.</td></tr>`;
+      const groupedRows=grouped.length?grouped.map(r=>`<tr><td>Grade ${esc(r.grade||"\u2014")} / ${esc(r.section||"\u2014")}</td><td>${fmtNum(r.total_visits||0)}</td><td>${fmtNum(r.unique_students||0)}</td><td>${fmtNum(r.currently_inside||0)}</td></tr>`).join(""):`<tr><td colspan="4" class="rptEmpty">No grouped totals found.</td></tr>`;
+      const logRows=rows.length?rows.slice(0,80).map((r,i)=>`<tr><td>${i+1}</td><td><div class="ct">${esc(r.student_name||r.student_code||"Student")}</div><div class="cs">${esc(r.student_code||"")}</div></td><td>${esc(r.grade||"\u2014")} / ${esc(r.section||"\u2014")}</td><td>${fmtDate(r.time_in)}</td><td>${r.time_out?fmtDate(r.time_out):`<span class="pill green">Inside</span>`}</td><td>${r.time_out?dur(r.duration_seconds):"\u2014"}</td></tr>`).join(""):`<tr><td colspan="6" class="rptEmpty">No library log records found.</td></tr>`;
+      return buildHdr(brand,"Library Usage Report")+`<div class="rptBody">${buildFiltBar(fp)}${buildSum(sc)}<table class="rptTable" style="margin-bottom:12px;"><thead><tr><th>Date</th><th>Total Visits</th><th>Unique Students</th><th>Currently Inside</th></tr></thead><tbody>${dailyRows}</tbody></table><table class="rptTable" style="margin-bottom:12px;"><thead><tr><th>Group</th><th>Total Visits</th><th>Unique Students</th><th>Currently Inside</th></tr></thead><tbody>${groupedRows}</tbody></table><table class="rptTable" style="margin-bottom:12px;"><thead><tr><th>Rank</th><th>Student</th><th>Grade / Sec</th><th>Visits</th><th>Last Visit</th></tr></thead><tbody>${topRows}</tbody></table><table class="rptTable"><thead><tr><th>#</th><th>Student</th><th>Grade / Sec</th><th>Time In</th><th>Time Out</th><th>Duration</th></tr></thead><tbody>${logRows}</tbody></table></div>`+buildFoot(rows.length,"Library Usage Report");
+    },
     inventory(data,brand){
       const rows=data.rows||[];const tC=rows.reduce((s,r)=>s+Number(r.total_copies||0),0),tA=rows.reduce((s,r)=>s+Number(r.available||0),0),tD=rows.reduce((s,r)=>s+Number(r.damaged||0),0),tL=rows.reduce((s,r)=>s+Number(r.lost||0),0);
       const st=gfv("f_ist"),bs=gfv("f_bsec"),srt=gfv("f_isort")||"title";
@@ -1476,7 +1515,7 @@
     }
   };
 
-  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",inventory:"Inventory Snapshot",grand_summary:"Grand Summary"};
+  const LABELS={circulation:"Circulation Report",students:"Students Report",fines:"Fines Report",most_borrowed:"Most Borrowed Books",grade_summary:"Grade Summary",library_usage:"Library Usage Report",inventory:"Inventory Snapshot",grand_summary:"Grand Summary"};
 
   async function generateReport(){
     const fetchFn=FETCHERS[curRType],render=RENDERERS[curRType];if(!fetchFn||!render)return;
@@ -1620,12 +1659,24 @@
     fines:`/api/reports/export-typed/csv?report_type=fines`,
     most_borrowed:`/api/reports/export-typed/csv?report_type=most_borrowed`,
     grade_summary:`/api/reports/export-typed/csv?report_type=grade_summary`,
+    library_usage:null,
     inventory:`/api/reports/export-typed/csv?report_type=inventory`,
     grand_summary:null
   };
   document.getElementById("btnCsv").addEventListener("click",async()=>{
     if(curRType==="grand_summary"){
       alert("Grand Summary is available as PDF only.");
+      return;
+    }
+    if(curRType==="library_usage"){
+      showProg();
+      try{
+        const data=await FETCHERS.library_usage();const rows=data.rows||[];
+        const headers=["log_id","student_code","student_name","grade","section","time_in","time_out","duration_seconds"];
+        const csv=[headers.join(",")].concat(rows.map(r=>headers.map(h=>{const val=r[h]??"";const str=String(val).replace(/"/g,'""');return /[",\n]/.test(str)?`"${str}"`:str;}).join(",")));
+        const blob=new Blob([csv.join("\n")],{type:"text/csv;charset=utf-8;"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`library_usage_${getMDS().replace(/-/g,"")}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+        hideProg(true);
+      }catch{hideProg(false);alert("CSV export failed.");}
       return;
     }
     if(curRType==="students"){

@@ -119,8 +119,8 @@
 
     .grid{
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
     }
 
     .tile{
@@ -130,8 +130,8 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
-      min-height: 220px;
-      padding: 26px 20px;
+      min-height: 198px;
+      padding: 24px 18px;
       border-radius: 24px;
       text-decoration: none;
       color: inherit;
@@ -336,6 +336,13 @@
 
         <section class="home-panel" aria-label="Librarian modules">
           <div class="grid">
+            <a class="tile" href="student-library-logs.html" aria-label="Student Library Logs">
+              <div class="tile__icon">
+                <img src="assets/icons/logs.png" alt="" aria-hidden="true" />
+              </div>
+              <div class="tile__label">Student Library Logs</div>
+            </a>
+
             <a class="tile" href="circulation.html" aria-label="Circulation">
               <div class="tile__icon">
                 <img src="assets/icons/circulation.png" alt="" aria-hidden="true" />
