@@ -708,18 +708,8 @@ document.documentElement.classList.add("branding-loading");
       <div class="modalBody">
         <div class="big" id="csvFileName">No file selected</div>
         <div id="csvSummary" style="margin-top:4px; color:rgba(0,0,0,0.62);"></div>
-        <div class="row2" style="margin-top:14px;">
-          <div class="field">
-            <label>Start Year <span class="req">*</span></label>
-            <input id="csvSchoolYearStart" type="text" inputmode="numeric" maxlength="4" placeholder="2026" />
-          </div>
-          <div class="field">
-            <label>End Year <span class="req">*</span></label>
-            <input id="csvSchoolYearEnd" type="text" inputmode="numeric" maxlength="4" placeholder="2027" />
-          </div>
-        </div>
-        <div id="csvSchoolYearPreview" style="margin-top:8px; display:inline-flex; min-height:34px; align-items:center; padding:8px 12px; border:1px solid rgba(0,0,0,0.10); border-radius:10px; font-size:12px; font-weight:1000; color:#111;">
-          School year: 2026-2027
+        <div id="csvSchoolYearPreview" style="margin-top:14px; display:inline-flex; min-height:34px; align-items:center; padding:8px 12px; border:1px solid rgba(0,0,0,0.10); border-radius:10px; font-size:12px; font-weight:1000; color:#111;">
+          School year: Loading...
         </div>
 
         <div class="loaderWrap" id="csvLoader" style="display:none; margin-top:12px;">
@@ -909,62 +899,40 @@ document.documentElement.classList.add("branding-loading");
     const csvPreview = document.getElementById("csvPreview");
     const csvErr = document.getElementById("csvErr");
     const csvLoader = document.getElementById("csvLoader");
-    const csvSchoolYearStart = document.getElementById("csvSchoolYearStart");
-    const csvSchoolYearEnd = document.getElementById("csvSchoolYearEnd");
     const csvSchoolYearPreview = document.getElementById("csvSchoolYearPreview");
 
     let selectedCsv = null;
+    let currentSchoolYear = "";
 
-    function getSuggestedSchoolYear(){
-      const now = new Date();
-      const year = now.getFullYear();
-      const start = now.getMonth() >= 5 ? year : year - 1;
-      return `${start}-${start + 1}`;
+    function setCsvSchoolYearPreview(value, isError = false){
+      currentSchoolYear = String(value || "").trim();
+      csvSchoolYearPreview.textContent = currentSchoolYear
+        ? `School year: ${currentSchoolYear}`
+        : "School year: Not configured";
+      csvSchoolYearPreview.style.color = isError ? "#b91c1c" : "#111";
+      csvSchoolYearPreview.style.borderColor = isError ? "rgba(220,38,38,0.30)" : "rgba(0,0,0,0.10)";
     }
 
-    function digits4(value){
-      return String(value || "").replace(/\D/g, "").slice(0, 4);
-    }
-
-    function syncCsvSchoolYearPreview(){
-      csvSchoolYearStart.value = digits4(csvSchoolYearStart.value);
-      csvSchoolYearEnd.value = digits4(csvSchoolYearEnd.value);
-      const startText = csvSchoolYearStart.value;
-      const endText = csvSchoolYearEnd.value;
-      const start = Number(startText);
-      const end = Number(endText);
-      const valid = /^\d{4}$/.test(startText) && /^\d{4}$/.test(endText) && end === start + 1;
-      const value = valid ? `${startText}-${endText}` : "";
-      csvSchoolYearPreview.textContent = valid ? `School year: ${value}` : "Enter consecutive 4-digit years";
-      csvSchoolYearPreview.style.color = valid ? "#111" : "#b91c1c";
-      csvSchoolYearPreview.style.borderColor = valid ? "rgba(0,0,0,0.10)" : "rgba(220,38,38,0.30)";
-      return value;
-    }
-
-    function setCsvSchoolYearControls(value){
-      const match = String(value || "").trim().match(/^(\d{4})-(\d{4})$/);
-      const fallback = getSuggestedSchoolYear().split("-");
-      csvSchoolYearStart.value = match ? match[1] : fallback[0];
-      csvSchoolYearEnd.value = match ? match[2] : fallback[1];
-      syncCsvSchoolYearPreview();
-    }
-
-    csvSchoolYearStart.addEventListener("input", () => {
-      csvSchoolYearStart.value = digits4(csvSchoolYearStart.value);
-      if (/^\d{4}$/.test(csvSchoolYearStart.value) && !csvSchoolYearEnd.matches(":focus")){
-        csvSchoolYearEnd.value = String(Number(csvSchoolYearStart.value) + 1);
+    async function loadCurrentSchoolYear(){
+      try {
+        const res = await fetch(`${BASE_URL}/api/settings/circulation`, { headers: authHeaders() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.detail || "Unable to load school year.");
+        setCsvSchoolYearPreview(data?.school_year || "", !data?.school_year);
+      } catch(err) {
+        currentSchoolYear = "";
+        setCsvSchoolYearPreview("", true);
+        csvErr.style.display = "block";
+        csvErr.textContent = err?.message || "Unable to load current school year.";
       }
-      syncCsvSchoolYearPreview();
-    });
-    csvSchoolYearEnd.addEventListener("input", syncCsvSchoolYearPreview);
-    setCsvSchoolYearControls(getSuggestedSchoolYear());
+    }
 
     function openCsvModal(){
       csvErr.style.display = "none";
       csvErr.textContent = "";
       csvPreview.innerHTML = "";
       csvSummary.textContent = "";
-      syncCsvSchoolYearPreview();
+      loadCurrentSchoolYear();
       csvFileName.textContent = selectedCsv ? selectedCsv.name : "No file selected";
       confirmImportBtn.disabled = !selectedCsv;
       csvModal.style.display = "flex";
@@ -979,10 +947,9 @@ document.documentElement.classList.add("branding-loading");
 
     confirmImportBtn.addEventListener("click", async () => {
       if (!selectedCsv) return;
-      const schoolYearValue = syncCsvSchoolYearPreview();
-      if (!schoolYearValue){
+      if (!currentSchoolYear){
         csvErr.style.display = "block";
-        csvErr.textContent = "School year must use 4-digit consecutive years, for example 2026 and 2027.";
+        csvErr.textContent = "Current school year is not configured. Update it in Settings first.";
         return;
       }
 
@@ -995,7 +962,7 @@ document.documentElement.classList.add("branding-loading");
         const fd = new FormData();
         fd.append("file", selectedCsv);
 
-        const res = await fetch(`${BASE_URL}/api/students/import-csv?current_school_year=${encodeURIComponent(schoolYearValue)}`, {
+        const res = await fetch(`${BASE_URL}/api/students/import-csv`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}` },
           body: fd

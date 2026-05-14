@@ -878,6 +878,33 @@ def normalize_grade(raw: str) -> str:
 
     return str(g)
 
+def normalize_import_grade(raw: str) -> str:
+    if raw is None:
+        raise ValueError("grade is required")
+
+    s = str(raw).strip().upper()
+    if not s:
+        raise ValueError("grade is required")
+
+    compact = re.sub(r"[\s._-]+", "", s)
+    aliases = {
+        "N": "N",
+        "NURSERY": "N",
+        "K": "K",
+        "KINDER": "K",
+        "KINDERGARTEN": "K",
+        "K1": "K1",
+        "KINDER1": "K1",
+        "KINDERGARTEN1": "K1",
+        "K2": "K2",
+        "KINDER2": "K2",
+        "KINDERGARTEN2": "K2",
+    }
+    if compact in aliases:
+        return aliases[compact]
+
+    return normalize_grade(s)
+
 def get_display_settings_row(cur):
     cur.execute(
         """
@@ -4872,8 +4899,7 @@ async def import_students_csv(
                 if not section:
                     raise ValueError("section is required")
 
-                # Normalize grade to '1'..'12' (use your helper)
-                grade = normalize_grade(grade_raw)
+                grade = normalize_import_grade(grade_raw)
 
                 status_norm = status.lower()
 
