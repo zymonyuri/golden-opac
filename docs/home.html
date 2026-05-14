@@ -118,14 +118,16 @@
     }
 
     .grid{
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 20px;
     }
 
     .tile{
       position: relative;
       display: flex;
+      flex: 0 1 calc((100% - 60px) / 4);
       flex-direction: column;
       align-items: center;
       justify-content: center;
@@ -256,7 +258,11 @@
 
     @media (max-width: 980px){
       .grid{
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: center;
+      }
+
+      .tile{
+        flex-basis: calc((100% - 20px) / 2);
       }
 
       .home-head{
@@ -276,11 +282,11 @@
       }
 
       .grid{
-        grid-template-columns: 1fr;
         gap: 18px;
       }
 
       .tile{
+        flex-basis: 100%;
         min-height: 186px;
         border-radius: 22px;
       }
