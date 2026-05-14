@@ -5057,7 +5057,7 @@ async def import_students_csv(
 # -----------------------------
 # STUDENT LIBRARY LOGS
 # -----------------------------
-LIBRARY_LOG_SCAN_COOLDOWN_SECONDS = 4
+LIBRARY_LOG_SCAN_COOLDOWN_SECONDS = 2
 
 
 def library_log_row_sql() -> str:

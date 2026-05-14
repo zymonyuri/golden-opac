@@ -199,8 +199,8 @@
               <div class="boxBody">
                 <div class="filters">
                   <div class="field"><label for="searchBox">Search</label><input id="searchBox" type="search" placeholder="Student code or name" /></div>
-                  <div class="field"><label for="gradeFilter">Grade</label><input id="gradeFilter" type="text" placeholder="All" /></div>
-                  <div class="field"><label for="sectionFilter">Section</label><input id="sectionFilter" type="text" placeholder="All" /></div>
+                  <div class="field"><label for="gradeFilter">Grade</label><select id="gradeFilter"><option value="">All Grades</option></select></div>
+                  <div class="field"><label for="sectionFilter">Section</label><select id="sectionFilter"><option value="">All Sections</option></select></div>
                   <div class="field"><label for="dateFilter">Date</label><input id="dateFilter" type="date" /></div>
                   <label class="toggleField"><input id="insideOnly" type="checkbox" /> Inside only</label>
                 </div>
@@ -298,6 +298,7 @@
     let displayedRows = [];
     let lastScanKey = "";
     let lastScanAt = 0;
+    let filterMeta = { grades: [], sections: [] };
 
     function focusScanner(){ setTimeout(() => codeInput?.focus(), 60); }
     function showModal(message, sub, loading = true){
@@ -306,7 +307,7 @@
       modalLoading.style.display = loading ? "inline-flex" : "none";
       modalOverlay.style.display = "grid";
     }
-    function hideModalSoon(){ setTimeout(() => { modalOverlay.style.display = "none"; focusScanner(); }, 850); }
+    function hideModalSoon(delay = 360){ setTimeout(() => { modalOverlay.style.display = "none"; focusScanner(); }, delay); }
     function setStatus(kind, title, sub){
       scanStatus.className = "scanStatus";
       if(kind) scanStatus.classList.add(kind);
@@ -333,8 +334,8 @@
     function paramsForLogs(){
       const p = new URLSearchParams();
       const q = document.getElementById("searchBox").value.trim();
-      const grade = document.getElementById("gradeFilter").value.trim();
-      const section = document.getElementById("sectionFilter").value.trim();
+      const grade = document.getElementById("gradeFilter").value;
+      const section = document.getElementById("sectionFilter").value;
       const date = document.getElementById("dateFilter").value;
       if(q) p.set("q", q);
       if(grade) p.set("grade", grade);
@@ -344,6 +345,46 @@
       p.set("limit", String(pageSize));
       p.set("offset", String(offset));
       return p;
+    }
+
+    function fillSelect(select, values, allLabel){
+      const current = select.value;
+      select.innerHTML = `<option value="">${esc(allLabel)}</option>` + values.map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join("");
+      if(values.includes(current)) select.value = current;
+    }
+
+    async function loadFilterMeta(){
+      try{
+        const res = await fetch(`${BASE_URL}/api/reports/filters`, { headers:authHeaders() });
+        if(!res.ok) throw new Error("Filter metadata failed");
+        const data = await res.json();
+        filterMeta.grades = [...new Set((data.grades || []).map(v => String(v || "").trim()).filter(Boolean))]
+          .sort((a,b) => Number(a) - Number(b) || a.localeCompare(b));
+        filterMeta.sections = [...new Set((data.sections || []).map(v => String(v || "").trim()).filter(Boolean))]
+          .sort((a,b) => a.localeCompare(b));
+        fillSelect(document.getElementById("gradeFilter"), filterMeta.grades, "All Grades");
+        fillSelect(document.getElementById("sectionFilter"), filterMeta.sections, "All Sections");
+      }catch(err){
+        console.warn("Could not load grade/section filters", err);
+      }
+    }
+
+    async function syncSectionsForGrade(){
+      const grade = document.getElementById("gradeFilter").value;
+      if(!grade){
+        fillSelect(document.getElementById("sectionFilter"), filterMeta.sections, "All Sections");
+        return;
+      }
+      try{
+        const res = await fetch(`${BASE_URL}/api/reports/filters?grade=${encodeURIComponent(grade)}`, { headers:authHeaders() });
+        if(!res.ok) throw new Error("Section metadata failed");
+        const data = await res.json();
+        const sections = [...new Set((data.sections || []).map(v => String(v || "").trim()).filter(Boolean))]
+          .sort((a,b) => a.localeCompare(b));
+        fillSelect(document.getElementById("sectionFilter"), sections, "All Sections");
+      }catch(err){
+        console.warn("Could not sync sections for grade", err);
+      }
     }
 
     function rowHtml(row){
@@ -402,7 +443,7 @@
       }
 
       const now = Date.now();
-      if(code === lastScanKey && now - lastScanAt < 3500){
+      if(code === lastScanKey && now - lastScanAt < 1800){
         setStatus("is-error", "Duplicate rapid scan", "Please wait a few seconds");
         codeInput.value = "";
         focusScanner();
@@ -428,8 +469,8 @@
         setStatus(isOut ? "is-out" : "is-in", message, `${name} - ${log.grade || "-"} / ${log.section || "-"}`);
         showModal(message, name, false);
         codeInput.value = "";
-        await loadLogs(true);
-        hideModalSoon();
+        hideModalSoon(300);
+        loadLogs(true).catch(console.error);
       }catch(err){
         const msg = String(err.message || err);
         setStatus("is-error", msg, "Scan was not recorded");
@@ -445,7 +486,9 @@
     let filterTimer = null;
     ["searchBox","gradeFilter","sectionFilter","dateFilter","insideOnly"].forEach(id => {
       const el = document.getElementById(id);
-      el.addEventListener(id === "insideOnly" ? "change" : "input", () => {
+      const eventName = ["gradeFilter","sectionFilter","dateFilter","insideOnly"].includes(id) ? "change" : "input";
+      el.addEventListener(eventName, async () => {
+        if(id === "gradeFilter") await syncSectionsForGrade();
         clearTimeout(filterTimer);
         filterTimer = setTimeout(() => loadLogs(true).catch(console.error).finally(focusScanner), 250);
       });
@@ -558,7 +601,7 @@
 
     document.getElementById("downloadSessionPdfBtn").addEventListener("click", downloadCurrentSessionPdf);
 
-    loadLogs(true).catch(console.error).finally(focusScanner);
+    loadFilterMeta().finally(() => loadLogs(true).catch(console.error).finally(focusScanner));
   </script>
   <script src="mobile-nav.js"></script>
 </body>
