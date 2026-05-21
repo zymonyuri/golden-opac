@@ -814,7 +814,7 @@
   <div class="modalOverlay" id="teacherModal" aria-hidden="true">
     <div class="modalCard" role="dialog" aria-modal="true" aria-labelledby="teacherModalTitle">
       <div class="modalTop">
-        <h2 id="teacherModalTitle">Add Teacher</h2>
+        <h2 id="teacherModalTitle">Edit Teacher</h2>
         <button class="btnGhost" id="teacherCloseBtn" type="button">Close</button>
       </div>
       <form id="teacherForm">
@@ -836,8 +836,6 @@
         </div>
         <div class="modalActions">
           <button class="btnDanger" id="teacherDeleteBtn" type="button" style="display:none;">Delete Teacher</button>
-          <a class="btnGhost" id="downloadTeachersTemplateBtn" href="assets/teachers_template.csv" download="teachers_template.csv">Download Template</a>
-          <button class="btnGhost" id="importTeachersBtn" type="button">Import Teachers CSV</button>
           <button class="btnGhost" id="teacherCancelBtn" type="button">Cancel</button>
           <button class="btn" id="teacherSaveBtn" type="submit">Save Teacher</button>
         </div>
@@ -1034,8 +1032,7 @@
     }
 
     document.getElementById("addBtn").addEventListener("click", () => {
-      if (activeTab === "teachers") openTeacherModal();
-      else window.location.href = "add_students.html";
+      window.location.href = activeTab === "teachers" ? "add_teachers.html" : "add_students.html";
     });
 
     function getQueryState(){
@@ -1350,8 +1347,6 @@
     const teachersTab = document.getElementById("teachersTab");
     const titleAccent = document.querySelector(".titleRow h1 .accent");
     const addBtnEl = document.getElementById("addBtn");
-    const importTeachersBtn = document.getElementById("importTeachersBtn");
-    const downloadTeachersTemplateBtn = document.getElementById("downloadTeachersTemplateBtn");
 
     function syncTabUi(){
       const isTeachers = activeTab === "teachers";
@@ -1393,14 +1388,12 @@
 
     function openTeacherModal(teacher = null){
       setTeacherError("");
-      document.getElementById("teacherModalTitle").textContent = teacher ? "Edit Teacher" : "Add Teacher";
+      document.getElementById("teacherModalTitle").textContent = "Edit Teacher";
       document.getElementById("teacherId").value = teacher?.teacher_id || teacher?.student_id || "";
       document.getElementById("teacherCode").value = teacher?.teacher_code || teacher?.student_code || "";
       document.getElementById("teacherLastName").value = teacher?.last_name || "";
       document.getElementById("teacherFirstName").value = teacher?.first_name || "";
-      teacherDeleteBtn.style.display = teacher ? "" : "none";
-      importTeachersBtn.style.display = teacher ? "none" : "";
-      downloadTeachersTemplateBtn.style.display = teacher ? "none" : "";
+      teacherDeleteBtn.style.display = "";
       teacherModal.classList.add("is-open");
       teacherModal.setAttribute("aria-hidden", "false");
       document.getElementById("teacherCode").focus();
@@ -1582,7 +1575,6 @@
       `;
     }
 
-    importTeachersBtn.addEventListener("click", openTeacherCsvModal);
     document.getElementById("teacherCsvCloseBtn").addEventListener("click", closeTeacherCsvModal);
     document.getElementById("teacherCsvCancelBtn").addEventListener("click", closeTeacherCsvModal);
     teacherCsvModal.addEventListener("click", (e) => { if (e.target === teacherCsvModal) closeTeacherCsvModal(); });
