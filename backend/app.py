@@ -230,24 +230,37 @@ def mark_inactive_students_for_school_year(cur, school_year: str, import_started
     return cur.rowcount
 
 
-def prune_inactive_students_without_dependencies(cur, school_year: str, retention_years: int = 5):
-    current_start_year = int(str(school_year).split("-", 1)[0])
-    cutoff_start_year = current_start_year - retention_years
+def mark_inactive_teachers_for_school_year(cur, school_year: str, import_started_at=None):
+    """
+    Mark teachers as inactive for a newly-started school year. Teacher rows
+    remain in place so their IDs and historical activity stay intact.
+    """
+    params = [school_year, school_year]
+    import_guard = ""
+    if import_started_at is not None:
+        import_guard = "AND (last_imported_at IS NULL OR last_imported_at < %s)"
+        params.append(import_started_at)
+
     cur.execute(
-        """
-        DELETE FROM student s
-        WHERE COALESCE(s.borrower_type, 'student') = 'student'
-          AND COALESCE(s.status, '') = 'inactive'
-          AND s.last_status_change_school_year ~ '^[0-9]{4}-[0-9]{4}$'
-          AND CAST(SPLIT_PART(s.last_status_change_school_year, '-', 1) AS INTEGER) <= %s
-          AND NOT EXISTS (SELECT 1 FROM loan l WHERE l.student_id = s.student_id)
-          AND NOT EXISTS (SELECT 1 FROM fine f WHERE f.student_id = s.student_id)
-          AND NOT EXISTS (SELECT 1 FROM fine_payment fp WHERE fp.student_id = s.student_id)
-          AND NOT EXISTS (SELECT 1 FROM damage_report dr WHERE dr.student_id = s.student_id)
+        f"""
+        UPDATE teacher
+        SET
+            status = 'inactive',
+            current_school_year = %s,
+            last_status_change_school_year = %s,
+            updated_at = NOW()
+        WHERE COALESCE(status, 'active') <> 'inactive'
+          {import_guard}
         """,
-        (cutoff_start_year,),
+        tuple(params),
     )
     return cur.rowcount
+
+
+def reset_users_for_new_school_year(cur, school_year: str):
+    students_count = mark_inactive_students_for_school_year(cur, school_year)
+    teachers_count = mark_inactive_teachers_for_school_year(cur, school_year)
+    return {"students_inactive": students_count, "teachers_inactive": teachers_count}
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
@@ -450,10 +463,16 @@ def ensure_runtime_schema():
                 first_name VARCHAR(255) NOT NULL,
                 last_name VARCHAR(255) NOT NULL,
                 status VARCHAR(20) NOT NULL DEFAULT 'active',
+                current_school_year VARCHAR(20),
+                last_status_change_school_year VARCHAR(20),
+                last_imported_at TIMESTAMP WITH TIME ZONE,
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """)
+        cur.execute("ALTER TABLE teacher ADD COLUMN IF NOT EXISTS current_school_year VARCHAR(20)")
+        cur.execute("ALTER TABLE teacher ADD COLUMN IF NOT EXISTS last_status_change_school_year VARCHAR(20)")
+        cur.execute("ALTER TABLE teacher ADD COLUMN IF NOT EXISTS last_imported_at TIMESTAMP WITH TIME ZONE")
         # One-time safety migration for any teacher rows created before the
         # dedicated teacher table existed. Student rows are left untouched.
         cur.execute("""
@@ -2342,10 +2361,15 @@ def add_student(
     conn = get_connection()
     cur = conn.cursor()
     try:
+        school_year = get_active_school_year(conn)
         cur.execute(
             """
-            INSERT INTO student (student_code, last_name, first_name, grade, section, status, borrower_type, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, 'student', NOW())
+            INSERT INTO student (
+                student_code, last_name, first_name, grade, section, status,
+                borrower_type, current_school_year, last_grade_section_change_school_year,
+                last_status_change_school_year, last_imported_at, created_at, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, 'student', %s, %s, %s, NOW(), NOW(), NOW())
             RETURNING student_id
             """,
             (
@@ -2355,6 +2379,9 @@ def add_student(
                 payload.grade.strip(),
                 payload.section.strip(),
                 payload.status.strip(),
+                school_year,
+                school_year,
+                school_year,
             ),
         )
         student_id = cur.fetchone()["student_id"]
@@ -2391,13 +2418,28 @@ def add_student(
     conn = get_connection()
     cur = conn.cursor()
     try:
+        school_year = get_active_school_year(conn)
         cur.execute(
             """
-            INSERT INTO student (student_code, last_name, first_name, grade, section, status, borrower_type, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, 'student', NOW())
+            INSERT INTO student (
+                student_code, last_name, first_name, grade, section, status,
+                borrower_type, current_school_year, last_grade_section_change_school_year,
+                last_status_change_school_year, last_imported_at, created_at, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, 'student', %s, %s, %s, NOW(), NOW(), NOW())
             RETURNING student_id
             """,
-            (student_code.strip(), last_name.strip(), first_name.strip(), grade.strip(), section.strip(), status.strip()),
+            (
+                student_code.strip(),
+                last_name.strip(),
+                first_name.strip(),
+                grade.strip(),
+                section.strip(),
+                status.strip(),
+                school_year,
+                school_year,
+                school_year,
+            ),
         )
         student_id = cur.fetchone()["student_id"]
         conn.commit()
@@ -4836,14 +4878,25 @@ def update_student(
     conn = get_connection()
     cur = conn.cursor()
     try:
+        school_year = get_active_school_year(conn)
         cur.execute(
             """
             UPDATE student
-            SET student_code=%s, last_name=%s, first_name=%s, grade=%s, section=%s, status=%s, borrower_type='student', updated_at=NOW()
+            SET student_code=%s,
+                last_name=%s,
+                first_name=%s,
+                grade=%s,
+                section=%s,
+                status=%s,
+                borrower_type='student',
+                current_school_year=%s,
+                last_grade_section_change_school_year=%s,
+                last_status_change_school_year=%s,
+                updated_at=NOW()
             WHERE student_id=%s AND COALESCE(borrower_type, 'student') = 'student'
             RETURNING student_id
             """,
-            (student_code, last_name, first_name, grade, section, status, student_id),
+            (student_code, last_name, first_name, grade, section, status, school_year, school_year, school_year, student_id),
         )
         row = cur.fetchone()
         if not row:
@@ -4916,9 +4969,6 @@ async def import_students_csv(
         sy_match = re.match(r"^(\d{4})-(\d{4})$", school_year)
         if not sy_match or int(sy_match.group(2)) != int(sy_match.group(1)) + 1:
             raise HTTPException(status_code=400, detail="current_school_year must be consecutive YYYY-YYYY")
-        cur.execute("SELECT NOW() AS import_started_at")
-        import_started_at = cur.fetchone()["import_started_at"]
-
         for idx, row in enumerate(reader, start=2):  # line 1 is header
             cur.execute("SAVEPOINT student_import_row")
             try:
@@ -4981,6 +5031,8 @@ async def import_students_csv(
 
                 if target:
                     fields = [
+                        "last_name = %s",
+                        "first_name = %s",
                         "grade = %s",
                         "section = %s",
                         "status = %s",
@@ -4990,7 +5042,7 @@ async def import_students_csv(
                         "last_imported_at = NOW()",
                         "updated_at = NOW()",
                     ]
-                    params = [grade, section, status_norm, school_year, school_year, school_year]
+                    params = [last_name, first_name, grade, section, status_norm, school_year, school_year, school_year]
                     params.append(target["student_id"])
                     cur.execute(
                         f"""
@@ -5010,11 +5062,11 @@ async def import_students_csv(
                             student_code, last_name, first_name, grade, section, status,
                             borrower_type,
                             current_school_year, last_grade_section_change_school_year,
-                            last_imported_at, created_at, updated_at
+                            last_status_change_school_year, last_imported_at, created_at, updated_at
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, 'student', %s, %s, NOW(), NOW(), NOW())
+                        VALUES (%s, %s, %s, %s, %s, %s, 'student', %s, %s, %s, NOW(), NOW(), NOW())
                         """,
-                        (student_code, last_name, first_name, grade, section, status_norm, school_year, school_year),
+                        (student_code, last_name, first_name, grade, section, status_norm, school_year, school_year, school_year),
                     )
                     created += 1
 
@@ -5026,8 +5078,6 @@ async def import_students_csv(
                 # Record which row failed and why (do not stop entire import)
                 failed.append({"line": idx, "student_code": row.get("student_code"), "error": str(row_err)})
 
-        inactive_count = mark_inactive_students_for_school_year(cur, school_year, import_started_at)
-        pruned_count = prune_inactive_students_without_dependencies(cur, school_year)
         conn.commit()
 
         return {
@@ -5037,8 +5087,8 @@ async def import_students_csv(
             "skipped": len(skipped),
             "failed_count": len(failed),
             "school_year": school_year,
-            "inactive_count": inactive_count,
-            "pruned_count": pruned_count,
+            "inactive_count": 0,
+            "pruned_count": 0,
             "skipped_rows": skipped[:200],
             "failed": failed[:200],  # cap response size
         }
@@ -5699,7 +5749,9 @@ def search_teachers(
                     TRIM(CONCAT(COALESCE(t.last_name, ''), ', ', COALESCE(t.first_name, ''))) ILIKE %s
               ))
               AND (%s = '' OR COALESCE(t.status, '') ILIKE %s)
+              AND (%s <> '' OR COALESCE(t.status, 'active') <> 'inactive')
         """
+        params.append(status_clean)
         cur.execute(
             f"""
             SELECT t.id AS teacher_id, t.id, t.teacher_code, t.last_name, t.first_name, t.status,
@@ -5740,13 +5792,18 @@ def add_teacher(payload: TeacherPayload, current=Depends(require_roles("libraria
     conn = get_connection()
     cur = conn.cursor()
     try:
+        school_year = get_active_school_year(conn)
         cur.execute(
             """
-            INSERT INTO teacher (teacher_code, last_name, first_name, status, created_at, updated_at)
-            VALUES (%s, %s, %s, %s, NOW(), NOW())
+            INSERT INTO teacher (
+                teacher_code, last_name, first_name, status,
+                current_school_year, last_status_change_school_year,
+                last_imported_at, created_at, updated_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
             RETURNING id
             """,
-            (teacher_code, last_name, first_name, status),
+            (teacher_code, last_name, first_name, status, school_year, school_year),
         )
         teacher_id = cur.fetchone()["id"]
         conn.commit()
@@ -5928,14 +5985,21 @@ def update_teacher(
     conn = get_connection()
     cur = conn.cursor()
     try:
+        school_year = get_active_school_year(conn)
         cur.execute(
             """
             UPDATE teacher
-            SET teacher_code=%s, last_name=%s, first_name=%s, status=%s, updated_at=NOW()
+            SET teacher_code=%s,
+                last_name=%s,
+                first_name=%s,
+                status=%s,
+                current_school_year=%s,
+                last_status_change_school_year=%s,
+                updated_at=NOW()
             WHERE id=%s
             RETURNING id
             """,
-            (teacher_code, last_name, first_name, status, teacher_id),
+            (teacher_code, last_name, first_name, status, school_year, school_year, teacher_id),
         )
         row = cur.fetchone()
         if not row:
@@ -5957,6 +6021,7 @@ def update_teacher(
 async def import_teachers_csv(
     file: UploadFile = File(...),
     default_status: str = "active",
+    current_school_year: str | None = None,
     current=Depends(require_roles("librarian", "admin")),
 ):
     if not file.filename.lower().endswith(".csv"):
@@ -5984,6 +6049,11 @@ async def import_teachers_csv(
     skipped = []
     failed = []
     try:
+        school_year = (current_school_year or "").strip() or get_active_school_year(conn)
+        sy_match = re.match(r"^(\d{4})-(\d{4})$", school_year)
+        if not sy_match or int(sy_match.group(2)) != int(sy_match.group(1)) + 1:
+            raise HTTPException(status_code=400, detail="current_school_year must be consecutive YYYY-YYYY")
+
         for idx, row in enumerate(reader, start=2):
             cur.execute("SAVEPOINT teacher_import_row")
             try:
@@ -6002,19 +6072,29 @@ async def import_teachers_csv(
                     cur.execute(
                         """
                         UPDATE teacher
-                        SET first_name=%s, last_name=%s, status=%s, updated_at=NOW()
+                        SET first_name=%s,
+                            last_name=%s,
+                            status=%s,
+                            current_school_year=%s,
+                            last_status_change_school_year=%s,
+                            last_imported_at=NOW(),
+                            updated_at=NOW()
                         WHERE id=%s
                         """,
-                        (first_name, last_name, status, existing["id"]),
+                        (first_name, last_name, status, school_year, school_year, existing["id"]),
                     )
                     updated += 1
                 else:
                     cur.execute(
                         """
-                        INSERT INTO teacher (teacher_code, first_name, last_name, status, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, NOW(), NOW())
+                        INSERT INTO teacher (
+                            teacher_code, first_name, last_name, status,
+                            current_school_year, last_status_change_school_year,
+                            last_imported_at, created_at, updated_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW(), NOW())
                         """,
-                        (teacher_code, first_name, last_name, status),
+                        (teacher_code, first_name, last_name, status, school_year, school_year),
                     )
                     added += 1
                 cur.execute("RELEASE SAVEPOINT teacher_import_row")
@@ -6032,8 +6112,13 @@ async def import_teachers_csv(
             "skipped": len(skipped),
             "skipped_rows": skipped,
             "failed_count": len(failed),
+            "school_year": school_year,
+            "inactive_count": 0,
             "failed": failed,
         }
+    except HTTPException:
+        conn.rollback()
+        raise
     except Exception as e:
         conn.rollback()
         raise HTTPException(status_code=500, detail=f"Teacher CSV import failed: {str(e)}")
@@ -6435,8 +6520,10 @@ def update_circulation_settings(
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute("SELECT settings_id FROM system_settings ORDER BY settings_id ASC LIMIT 1")
+        cur.execute("SELECT settings_id, school_year FROM system_settings ORDER BY settings_id ASC LIMIT 1")
         existing = cur.fetchone()
+        previous_school_year = (existing.get("school_year") or "").strip() if existing else ""
+        school_year_changed = bool(existing and previous_school_year and school_year_clean and school_year_clean != previous_school_year)
 
         if not existing:
             cur.execute(
@@ -6505,8 +6592,9 @@ def update_circulation_settings(
                 ),
             )
 
+        reset_counts = reset_users_for_new_school_year(cur, school_year_clean) if school_year_changed else None
         conn.commit()
-        return {"message": "Circulation settings updated successfully"}
+        return {"message": "Circulation settings updated successfully", "school_year_reset": reset_counts}
 
     except Exception as e:
         conn.rollback()
@@ -6550,8 +6638,11 @@ def update_circulation_settings(
     cur = conn.cursor()
     try:
         # Make sure at least one row exists
-        cur.execute("SELECT settings_id FROM system_settings ORDER BY settings_id ASC LIMIT 1")
+        cur.execute("SELECT settings_id, school_year FROM system_settings ORDER BY settings_id ASC LIMIT 1")
         existing = cur.fetchone()
+        previous_school_year = (existing.get("school_year") or "").strip() if existing else ""
+        sy = (school_year or "").strip() or None
+        school_year_changed = bool(existing and previous_school_year and sy and sy != previous_school_year)
 
         if not existing:
             cur.execute(
@@ -6586,7 +6677,6 @@ def update_circulation_settings(
                 ),
             )
         else:
-            sy = (school_year or "").strip() or None
             cur.execute(
                 """
                 UPDATE system_settings
@@ -6618,8 +6708,9 @@ def update_circulation_settings(
                     existing["settings_id"],
                 ),
             )
+        reset_counts = reset_users_for_new_school_year(cur, sy) if school_year_changed else None
         conn.commit()
-        return {"message": "Circulation settings updated successfully"}
+        return {"message": "Circulation settings updated successfully", "school_year_reset": reset_counts}
 
     except Exception as e:
         conn.rollback()

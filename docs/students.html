@@ -572,6 +572,7 @@
       font-family:inherit;
     }
     .btnGhost{ border:1px solid rgba(0,0,0,0.12); background:rgba(0,0,0,0.04); color:#111; }
+    a.btnGhost{ text-decoration:none; }
     .btnDanger{ border:1px solid rgba(217,54,54,0.35); background:rgba(217,54,54,0.12); color:#8a0d0d; }
     .modalError{ display:none; margin-top:10px; font-size:12px; font-weight:900; color:rgba(176,0,0,0.82); }
     .csvPreview{
@@ -835,6 +836,7 @@
         </div>
         <div class="modalActions">
           <button class="btnDanger" id="teacherDeleteBtn" type="button" style="display:none;">Delete Teacher</button>
+          <a class="btnGhost" id="downloadTeachersTemplateBtn" href="assets/teachers_template.csv" download="teachers_template.csv">Download Template</a>
           <button class="btnGhost" id="importTeachersBtn" type="button">Import Teachers CSV</button>
           <button class="btnGhost" id="teacherCancelBtn" type="button">Cancel</button>
           <button class="btn" id="teacherSaveBtn" type="submit">Save Teacher</button>
@@ -855,6 +857,7 @@
         </p>
         <input id="teacherCsvFile" type="file" accept=".csv,text/csv" style="display:none;" />
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <a class="btnGhost" href="assets/teachers_template.csv" download="teachers_template.csv">Download Template</a>
           <button class="btnGhost" id="chooseTeacherCsvBtn" type="button">Choose File</button>
           <span id="teacherCsvFileName" style="font-size:13px;font-weight:900;color:rgba(0,0,0,0.58);">No file selected</span>
         </div>
@@ -1348,6 +1351,7 @@
     const titleAccent = document.querySelector(".titleRow h1 .accent");
     const addBtnEl = document.getElementById("addBtn");
     const importTeachersBtn = document.getElementById("importTeachersBtn");
+    const downloadTeachersTemplateBtn = document.getElementById("downloadTeachersTemplateBtn");
 
     function syncTabUi(){
       const isTeachers = activeTab === "teachers";
@@ -1396,6 +1400,7 @@
       document.getElementById("teacherFirstName").value = teacher?.first_name || "";
       teacherDeleteBtn.style.display = teacher ? "" : "none";
       importTeachersBtn.style.display = teacher ? "none" : "";
+      downloadTeachersTemplateBtn.style.display = teacher ? "none" : "";
       teacherModal.classList.add("is-open");
       teacherModal.setAttribute("aria-hidden", "false");
       document.getElementById("teacherCode").focus();

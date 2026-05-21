@@ -296,6 +296,7 @@ document.documentElement.classList.add("branding-loading");
       border:1px solid rgba(0,0,0,0.12);
       background:rgba(0,0,0,0.03);
       color:#111;
+      text-decoration:none;
     }
 
     .btnGhost:hover{ transform:translateY(-1px); opacity:.96; }
@@ -624,6 +625,7 @@ document.documentElement.classList.add("branding-loading");
 
               <div class="actions">
                 <input id="csvFile" type="file" accept=".csv,text/csv" style="display:none;" />
+                <a class="btnGhost" href="assets/students_template.csv" download="students_template.csv">Download Template</a>
                 <button class="btnGhost" id="importCsvBtn" type="button">Import CSV</button>
                 <button class="btn" id="addBtn" type="submit">Add Student</button>
               </div>
@@ -727,6 +729,7 @@ document.documentElement.classList.add("branding-loading");
       </div>
 
       <div class="modalActions">
+        <a class="btnGhost" href="assets/students_template.csv" download="students_template.csv">Download Template</a>
         <button class="btnGhost" id="chooseCsvBtn" type="button">Choose File</button>
         <button class="btn" id="confirmImportBtn" type="button" disabled>Import</button>
       </div>
@@ -984,8 +987,6 @@ document.documentElement.classList.add("branding-loading");
         const updated = Number(data?.updated ?? 0);
         const skipped = Number(data?.skipped ?? 0);
         const failed = Number(data?.failed_count ?? 0);
-        const inactive = Number(data?.inactive_count ?? 0);
-        const pruned = Number(data?.pruned_count ?? 0);
         const failedList = Array.isArray(data?.failed) ? data.failed : [];
         const skippedList = Array.isArray(data?.skipped_rows) ? data.skipped_rows : [];
 
@@ -999,8 +1000,6 @@ document.documentElement.classList.add("branding-loading");
                 <tr><td>Updated</td><td>${updated}</td></tr>
                 <tr><td>Skipped</td><td>${skipped}</td></tr>
                 <tr><td>Failed</td><td>${failed}</td></tr>
-                <tr><td>Marked Inactive</td><td>${inactive}</td></tr>
-                <tr><td>Pruned</td><td>${pruned}</td></tr>
               </tbody>
             </table>
           </div>
@@ -1039,7 +1038,7 @@ document.documentElement.classList.add("branding-loading");
             </div>
           ` : (!skippedList.length ? `<div style="margin-top:10px; font-weight:1000; color:#111;">All rows imported successfully</div>` : "")}
         `;
-        csvSummary.textContent = `Created: ${created} • Updated: ${updated} • Inactive: ${inactive} • Pruned: ${pruned} • Skipped: ${skipped} • Failed: ${failed}`;
+        csvSummary.textContent = `Created: ${created} • Updated: ${updated} • Skipped: ${skipped} • Failed: ${failed}`;
         markStudentsListDirty();
 
       }catch(e){
