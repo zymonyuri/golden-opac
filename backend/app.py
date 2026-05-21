@@ -262,6 +262,13 @@ def reset_users_for_new_school_year(cur, school_year: str):
     teachers_count = mark_inactive_teachers_for_school_year(cur, school_year)
     return {"students_inactive": students_count, "teachers_inactive": teachers_count}
 
+
+ENROLLED_STUDENT_WHERE_SQL = """
+    COALESCE(borrower_type, 'student') = 'student'
+    AND COALESCE(status, 'active') NOT IN ('graduated', 'inactive')
+"""
+
+
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 @app.get("/api/public/display")
@@ -3622,7 +3629,7 @@ def reports_dashboard(
         cur.execute("SELECT COUNT(*) AS total_copies FROM book_copy")
         total_copies = cur.fetchone()["total_copies"]
 
-        cur.execute("SELECT COUNT(*) AS total_students FROM student WHERE COALESCE(borrower_type, 'student')='student'")
+        cur.execute(f"SELECT COUNT(*) AS total_students FROM student WHERE {ENROLLED_STUDENT_WHERE_SQL}")
         total_students = cur.fetchone()["total_students"]
         cur.execute("SELECT COUNT(*) AS total_teachers FROM teacher")
         total_teachers = cur.fetchone()["total_teachers"]
@@ -5546,7 +5553,7 @@ def grand_summary_report(
             FROM book_copy
         """)
         inv = cur.fetchone()
-        cur.execute("SELECT COUNT(*)::int AS total_students FROM student WHERE COALESCE(borrower_type, 'student') = 'student'")
+        cur.execute(f"SELECT COUNT(*)::int AS total_students FROM student WHERE {ENROLLED_STUDENT_WHERE_SQL}")
         total_students = int(cur.fetchone()["total_students"] or 0)
         cur.execute("SELECT COUNT(*)::int AS total_teachers FROM teacher")
         total_teachers = int(cur.fetchone()["total_teachers"] or 0)
